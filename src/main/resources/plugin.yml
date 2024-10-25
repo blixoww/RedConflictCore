@@ -5,3 +5,6 @@ prefix: OriginsFightCore
 authors: [MrTroxy, Leziink]
 description: Plugin qui gere les éléments de base du serveur OriginsFight
 website: https://originsfight.net
+commands:
+  rtp:
+    description: Teleportation aleatoire
