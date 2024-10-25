@@ -16,25 +16,24 @@ public class OriginsFightCore extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
+        registerCommands();
         registerListeners();
     }
-
     @Override
     public void onDisable() {
         // Code de désactivation si nécessaire
     }
-
+    private void registerCommands() {
+        //commands
+        getCommand("rtp").setExecutor(new RTPCommand());
+    }
     private void registerListeners() {
         //events
         PluginManager pluginManager = Bukkit.getPluginManager();
         pluginManager.registerEvents(new EnderPearlListener(), this);
         pluginManager.registerEvents(new FoodAppleListener(), this);
         pluginManager.registerEvents(new RTPListener(), this);
-
-        //commands
-        getCommand("rtp").setExecutor(new RTPCommand());
     }
-
     public static OriginsFightCore getInstance() {
         return instance;
     }
