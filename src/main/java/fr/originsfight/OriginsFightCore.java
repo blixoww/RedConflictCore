@@ -1,17 +1,31 @@
 package fr.originsfight;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import fr.originsfight.listeners.EnderPearlListener;
+import fr.originsfight.listeners.GoldenAppleListener;
 
-public final class OriginsFightCore extends JavaPlugin {
+public class OriginsFightCore extends JavaPlugin {
+
+    private static OriginsFightCore instance;
 
     @Override
     public void onEnable() {
-        // Plugin startup logic
-
+        instance = this;
+        saveDefaultConfig();
+        registerListeners();
     }
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        // Code de désactivation si nécessaire
+    }
+
+    private void registerListeners() {
+        getServer().getPluginManager().registerEvents(new EnderPearlListener(this), this);
+        getServer().getPluginManager().registerEvents(new GoldenAppleListener(this), this);
+    }
+
+    public static OriginsFightCore getInstance() {
+        return instance;
     }
 }
