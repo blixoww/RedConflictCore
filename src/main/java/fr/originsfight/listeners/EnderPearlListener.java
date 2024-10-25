@@ -1,6 +1,7 @@
 package fr.originsfight.listeners;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.utils.CooldownManager;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
@@ -9,13 +10,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
+import java.util.concurrent.TimeUnit;
+
 public class EnderPearlListener implements Listener {
-
-    private final OriginsFightCore plugin;
-
-    public EnderPearlListener(OriginsFightCore plugin) {
-        this.plugin = plugin;
-    }
 
     @EventHandler
     public void onPlayerUseEnderPearl(PlayerTeleportEvent event) {
@@ -23,7 +20,7 @@ public class EnderPearlListener implements Listener {
 
         Player player = event.getPlayer();
         Location loc = player.getLocation();
-        ConfigurationSection zonesSection = plugin.getConfig().getConfigurationSection("enderpearl.zones");
+        ConfigurationSection zonesSection = OriginsFightCore.getInstance().getConfig().getConfigurationSection("enderpearl.zones");
 
         if (zonesSection != null) {
             for (String zone : zonesSection.getKeys(false)) {
@@ -38,17 +35,14 @@ public class EnderPearlListener implements Listener {
                         zonesSection.getInt(zone + ".x2"),
                         zonesSection.getInt(zone + ".y2"),
                         zonesSection.getInt(zone + ".z2"));
-
-                // Vérifie si le joueur est dans la zone
                 if (isInZone(loc, point1, point2)) {
-                    // Vérifie si le joueur a un cooldown actif
-                    if (CooldownManager.isOnCooldown(player.getUniqueId(), zone)) {
-                        int remainingTime = CooldownManager.getRemainingTime(player.getUniqueId(), zone);
+                    if (CooldownManager.getCooldownManager().isOnCooldown(player, CooldownType.ENDERPEARL)) {
+                        long remainingTime = CooldownManager.getCooldownManager().remainingTime(player, CooldownType.ENDERPEARL);
                         player.sendMessage("§cVous devez attendre " + remainingTime + " secondes avant de réutiliser une enderpearl dans cette zone.");
                         event.setCancelled(true);
                         return;
                     } else {
-                        CooldownManager.setCooldown(player.getUniqueId(), zone, cooldown);
+                        CooldownManager.getCooldownManager().set(player, cooldown, CooldownType.ENDERPEARL, TimeUnit.SECONDS);
                         player.sendMessage("§aVous avez utilisé une enderpearl. Cooldown appliqué pour " + cooldown + " secondes.");
                     }
                 }

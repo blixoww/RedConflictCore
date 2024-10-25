@@ -2,7 +2,7 @@ package fr.originsfight;
 
 import org.bukkit.plugin.java.JavaPlugin;
 import fr.originsfight.listeners.EnderPearlListener;
-import fr.originsfight.listeners.GoldenAppleListener;
+import fr.originsfight.listeners.FoodAppleListener;
 
 public class OriginsFightCore extends JavaPlugin {
 
@@ -21,8 +21,8 @@ public class OriginsFightCore extends JavaPlugin {
     }
 
     private void registerListeners() {
-        getServer().getPluginManager().registerEvents(new EnderPearlListener(this), this);
-        getServer().getPluginManager().registerEvents(new GoldenAppleListener(this), this);
+        getServer().getPluginManager().registerEvents(new EnderPearlListener(), this);
+        getServer().getPluginManager().registerEvents(new FoodAppleListener(), this);
     }
 
     public static OriginsFightCore getInstance() {

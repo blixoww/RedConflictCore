@@ -1,38 +1,55 @@
 package fr.originsfight.utils;
 
+import fr.originsfight.cooldown.CooldownType;
+import fr.originsfight.cooldown.PlayerCooldown;
+import org.bukkit.entity.Player;
+
 import java.util.HashMap;
-import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class CooldownManager {
 
-    private static final HashMap<String, Long> cooldowns = new HashMap<>();
+    private static final CooldownManager COOLDOWN_MANAGER = new CooldownManager();
+    private final Map<String, PlayerCooldown> cooldowns;
 
-    // Méthode pour définir un cooldown avec UUID et clé
-    public static void setCooldown(UUID uuid, String key, int seconds) {
-        long time = System.currentTimeMillis() + (seconds * 1000L);
-        cooldowns.put(uuid + "_" + key, time);
+    public CooldownManager() {
+        this.cooldowns = new HashMap<>();
     }
-
-    // Vérifie si un cooldown est actif pour un UUID et une clé
-    public static boolean isOnCooldown(UUID uuid, String key) {
-        String uniqueKey = uuid + "_" + key;
-        Long time = cooldowns.get(uniqueKey);
-
-        if (time == null) return false;
-        if (System.currentTimeMillis() > time) {
-            cooldowns.remove(uniqueKey);
-            return false;
+    private PlayerCooldown getOrCreate(Player player) {
+        return this.cooldowns.computeIfAbsent(player.getName(), name -> new PlayerCooldown());
+    }
+    public void set(Player player, long time, CooldownType type, TimeUnit unit) {
+        this.getOrCreate(player).setCooldown(type, System.currentTimeMillis() + unit.toMillis(time));
+    }
+    public long remainingTime(Player player, CooldownType type) {
+        long time = this.cooldowns.getOrDefault(player.getName(), new PlayerCooldown()).getCooldown(type);
+        return Math.max(time - System.currentTimeMillis(), 0);
+    }
+    public boolean isOnCooldown(Player player, CooldownType type) {
+        return this.remainingTime(player, type) > 0;
+    }
+    public void clear(Player player) {
+        this.cooldowns.remove(player.getName());
+    }
+    public static CooldownManager getCooldownManager() {
+        return COOLDOWN_MANAGER;
+    }
+    public static String formatedTime(long time) {
+        long hours = TimeUnit.MILLISECONDS.toHours(time);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(time) - TimeUnit.HOURS.toMinutes(hours);
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(time) - TimeUnit.MINUTES.toSeconds(minutes);
+        StringBuilder builder = new StringBuilder();
+        if (hours > 0) {
+            builder.append(hours).append("h");
         }
-        return true;
+        if (minutes > 0 || hours > 0) {
+            builder.append(minutes).append("m");
+        }
+        if (seconds > 0 || minutes == 0 || hours == 0) {
+            builder.append(seconds).append("s");
+        }
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
-    // Obtenir le temps restant d’un cooldown en secondes pour un UUID et une clé
-    public static int getRemainingTime(UUID uuid, String key) {
-        String uniqueKey = uuid + "_" + key;
-        Long time = cooldowns.get(uniqueKey);
-
-        if (time == null) return 0;
-        long remainingTime = time - System.currentTimeMillis();
-        return remainingTime > 0 ? (int) (remainingTime / 1000) : 0;
-    }
 }
