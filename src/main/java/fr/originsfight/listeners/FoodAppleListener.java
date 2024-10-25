@@ -24,22 +24,16 @@ public class FoodAppleListener implements Listener {
         ItemStack item = event.getItem();
 
         if (item == null || item.getType() != Material.GOLDEN_APPLE  /*|| Material.FRAIDE*/) return;
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (item.getDurability() == 0) {
-                    // Pomme dorée normale
-                    CooldownManager.getCooldownManager().set(player, 10, CooldownType.APPLE, TimeUnit.SECONDS);
-                } else if (item.getDurability() == 1) {
-                    // Pomme dorée enchantée
-                    CooldownManager.getCooldownManager().set(player, 20, CooldownType.GOLDENAPPLE, TimeUnit.SECONDS);
-                } /* else if (item.getType() == Material.FRAISE) {
-                    // Fraise
-                    CooldownManager.getCooldownManager().set(player, 20, CooldownType.FRAISE, TimeUnit.SECONDS);
-                } */
-
-            }
-        }.runTaskLater(OriginsFightCore.getInstance(), 20L);
+        if (item.getDurability() == 0) {
+            // Pomme dorée normale
+            CooldownManager.getCooldownManager().set(player, 10, CooldownType.APPLE, TimeUnit.SECONDS);
+        } else if (item.getDurability() == 1) {
+            // Pomme dorée enchantée
+            CooldownManager.getCooldownManager().set(player, 20, CooldownType.GOLDENAPPLE, TimeUnit.SECONDS);
+        } /* else if (item.getType() == Material.FRAISE) {
+            // Fraise
+            CooldownManager.getCooldownManager().set(player, 20, CooldownType.FRAISE, TimeUnit.SECONDS);
+        } */
     }
 
 }
