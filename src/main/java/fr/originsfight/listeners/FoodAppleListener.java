@@ -32,14 +32,17 @@ public class FoodAppleListener implements Listener {
         if (CooldownManager.getCooldownManager().isOnCooldown(player, CooldownType.APPLE)) {
             long remaining = CooldownManager.getCooldownManager().remainingTime(player, CooldownType.APPLE);
             player.sendMessage("Vous devez attendre " + CooldownManager.formatedTime(remaining) + " avant de pouvoir consommer une pomme d'or.");
+            CooldownManager.getCooldownManager().clear(player);
             event.setCancelled(true);
         } else if (CooldownManager.getCooldownManager().isOnCooldown(player, CooldownType.GOLDENAPPLE)) {
             long remaining = CooldownManager.getCooldownManager().remainingTime(player, CooldownType.GOLDENAPPLE);
             player.sendMessage("Vous devez attendre " + CooldownManager.formatedTime(remaining) + " avant de pouvoir consommer une pomme d'or enchanté.");
+            CooldownManager.getCooldownManager().clear(player);
             event.setCancelled(true);
         } else if (CooldownManager.getCooldownManager().isOnCooldown(player, CooldownType.FRAISE)) {
             long remaining = CooldownManager.getCooldownManager().remainingTime(player, CooldownType.FRAISE);
             player.sendMessage("Vous devez attendre " + CooldownManager.formatedTime(remaining) + " avant de pouvoir consommer une fraise.");
+            CooldownManager.getCooldownManager().clear(player);
             event.setCancelled(true);
         }
     }

@@ -16,9 +16,3 @@ enderpearl:
       x2: 400
       y2: 90
       z2: 400
-
-golden_apple:
-  normal:
-    cooldown: 30
-  enchanted:
-    cooldown: 60
