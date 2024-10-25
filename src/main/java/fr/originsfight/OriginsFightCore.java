@@ -29,7 +29,7 @@ public class OriginsFightCore extends JavaPlugin {
     }
     private void registerListeners() {
         //events
-        PluginManager pluginManager = Bukkit.getPluginManager();
+        PluginManager pluginManager = getServer().getPluginManager();
         pluginManager.registerEvents(new EnderPearlListener(), this);
         pluginManager.registerEvents(new FoodAppleListener(), this);
         pluginManager.registerEvents(new RTPListener(), this);
