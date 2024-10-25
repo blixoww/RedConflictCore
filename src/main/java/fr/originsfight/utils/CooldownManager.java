@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
 
 public class CooldownManager {
 
-    private static final CooldownManager COOLDOWN_MANAGER = new CooldownManager();
+    private static final CooldownManager INSTANCE = new CooldownManager();
     private final Map<String, PlayerCooldown> cooldowns;
 
     public CooldownManager() {
@@ -33,7 +33,7 @@ public class CooldownManager {
         this.cooldowns.remove(player.getName());
     }
     public static CooldownManager getCooldownManager() {
-        return COOLDOWN_MANAGER;
+        return INSTANCE;
     }
     public static String formatedTime(long time) {
         long hours = TimeUnit.MILLISECONDS.toHours(time);

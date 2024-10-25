@@ -16,3 +16,6 @@ enderpearl:
       x2: 400
       y2: 90
       z2: 400
+rtp:
+  max: 9000
+  min: 1000

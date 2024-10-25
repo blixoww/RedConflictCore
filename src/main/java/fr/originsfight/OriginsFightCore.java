@@ -1,5 +1,9 @@
 package fr.originsfight;
 
+import fr.originsfight.rtp.RTPCommand;
+import fr.originsfight.rtp.RTPListener;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import fr.originsfight.listeners.EnderPearlListener;
 import fr.originsfight.listeners.FoodAppleListener;
@@ -21,8 +25,14 @@ public class OriginsFightCore extends JavaPlugin {
     }
 
     private void registerListeners() {
-        getServer().getPluginManager().registerEvents(new EnderPearlListener(), this);
-        getServer().getPluginManager().registerEvents(new FoodAppleListener(), this);
+        //events
+        PluginManager pluginManager = Bukkit.getPluginManager();
+        pluginManager.registerEvents(new EnderPearlListener(), this);
+        pluginManager.registerEvents(new FoodAppleListener(), this);
+        pluginManager.registerEvents(new RTPListener(), this);
+
+        //commands
+        getCommand("rtp").setExecutor(new RTPCommand());
     }
 
     public static OriginsFightCore getInstance() {
