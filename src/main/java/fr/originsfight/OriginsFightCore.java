@@ -5,6 +5,7 @@ import fr.originsfight.combatlog.CombatLogCommand;
 import fr.originsfight.combatlog.CombatLogListener;
 import fr.originsfight.listeners.EnderPearlListener;
 import fr.originsfight.listeners.FoodAppleListener;
+import fr.originsfight.repair.RepairCommand;
 import fr.originsfight.rtp.RTPCommand;
 import fr.originsfight.rtp.RTPListener;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -28,6 +29,7 @@ public class OriginsFightCore extends JavaPlugin {
         //commands
         getCommand("rtp").setExecutor(new RTPCommand());
         getCommand("ct").setExecutor(new CombatLogCommand());
+        getCommand("repairall").setExecutor(new RepairCommand());
     }
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new EnderPearlListener(), this);

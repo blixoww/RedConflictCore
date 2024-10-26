@@ -10,5 +10,5 @@ commands:
     description: Teleportation aleatoire
   ct:
     description: Statut du combat
-  repair:
+  repairall:
     description: Reparation de tous les items
