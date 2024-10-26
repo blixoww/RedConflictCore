@@ -1,10 +1,11 @@
 package fr.originsfight;
 
+
+import fr.originsfight.listeners.EnderPearlListener;
+import fr.originsfight.listeners.FoodAppleListener;
 import fr.originsfight.rtp.RTPCommand;
 import fr.originsfight.rtp.RTPListener;
 import org.bukkit.plugin.java.JavaPlugin;
-import fr.originsfight.listeners.EnderPearlListener;
-import fr.originsfight.listeners.FoodAppleListener;
 
 public class OriginsFightCore extends JavaPlugin {
     private static OriginsFightCore instance;
@@ -12,13 +13,14 @@ public class OriginsFightCore extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
+        getLogger().info("OriginsFightCore est activé !");
         registerCommands();
         registerListeners();
         saveDefaultConfig();
     }
     @Override
     public void onDisable() {
-        // Code de désactivation si nécessaire
+        getLogger().info("OriginsFightCore est désactivé.");
     }
     private void registerCommands() {
         //commands

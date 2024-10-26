@@ -3,6 +3,7 @@ package fr.originsfight.rtp;
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.utils.CooldownManager;
+import fr.originsfight.utils.TimeUnits;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -11,33 +12,34 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 public class RTP {
     private static final RTP INSTANCE = new RTP();
     private final HashMap<Player, BukkitTask> tasks = new HashMap<>();
 
     public void isTeleporting(Player player) {
-        if (!player.isOp()) {
-            if (CooldownManager.getCooldownManager().remainingTime(player, CooldownType.RTP) > 0) {
-                long remaining = CooldownManager.getCooldownManager().remainingTime(player, CooldownType.RTP);
-                player.sendMessage("Vous devez attendre " + CooldownManager.formatedTime(remaining) + " avant de pouvoir vous téléporter.");
-            } else {
-                this.tasks.put(player, new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        RTP.getInstance().teleport(player);
-                    }
-                }.runTaskLater(OriginsFightCore.getInstance(), 20L * 5));
-                player.sendMessage("");
-            }
+        if (player.isOp()) {
+            RTP.instance().teleport(player);
+            player.sendMessage("§7Téléportation effectuée.");
+            return;
+        }
+        if (CooldownManager.instance().timeLeft(player, CooldownType.RTP) > 0) {
+            player.sendMessage("§cTu dois attendre " + CooldownManager.getFormattedTimeLeft(CooldownManager.instance().timeLeft(player, CooldownType.RTP)) + " avant de pouvoir utiliser cette commande.");
+        } else {
+            this.tasks.put(player, new BukkitRunnable() {
+                @Override
+                public void run() {
+                    RTP.instance().teleport(player);
+                }
+            }.runTaskLater(OriginsFightCore.getInstance(), 20L * 5));
+            player.sendMessage("§7Téléportation dans 5 secondes.");
         }
     }
 
     public void teleport(Player player) {
         player.teleport(randomLocation());
-        player.sendMessage("§aVous avez été téléporté avec succès.");
-        CooldownManager.getCooldownManager().set(player, 2, CooldownType.RTP, TimeUnit.HOURS);
+        player.sendMessage("§aTéléportation effectuée.");
+        CooldownManager.instance().set(player, 4, TimeUnits.HOURS, CooldownType.RTP);
         if (this.tasks.containsKey(player)) {
             tasks.get(player).cancel();
             tasks.remove(player);
@@ -63,7 +65,7 @@ public class RTP {
         return tasks;
     }
 
-    public static RTP getInstance() {
+    public static RTP instance() {
         return INSTANCE;
     }
 }

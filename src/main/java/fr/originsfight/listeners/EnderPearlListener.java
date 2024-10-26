@@ -3,14 +3,13 @@ package fr.originsfight.listeners;
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.utils.CooldownManager;
+import fr.originsfight.utils.TimeUnits;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerTeleportEvent;
-
-import java.util.concurrent.TimeUnit;
 
 public class EnderPearlListener implements Listener {
 
@@ -36,13 +35,13 @@ public class EnderPearlListener implements Listener {
                         zonesSection.getInt(zone + ".y2"),
                         zonesSection.getInt(zone + ".z2"));
                 if (isInZone(loc, point1, point2)) {
-                    if (CooldownManager.getCooldownManager().isOnCooldown(player, CooldownType.ENDERPEARL)) {
-                        long remainingTime = CooldownManager.getCooldownManager().remainingTime(player, CooldownType.ENDERPEARL);
+                    if (CooldownManager.instance().isOnCooldown(player, CooldownType.ENDERPEARL)) {
+                        long remainingTime = CooldownManager.instance().timeLeft(player, CooldownType.ENDERPEARL);
                         player.sendMessage("§cVous devez attendre " + remainingTime + " secondes avant de réutiliser une enderpearl dans cette zone.");
                         event.setCancelled(true);
                         return;
                     } else {
-                        CooldownManager.getCooldownManager().set(player, cooldown, CooldownType.ENDERPEARL, TimeUnit.SECONDS);
+                        CooldownManager.instance().set(player, cooldown, TimeUnits.SECONDS, CooldownType.ENDERPEARL);
                         player.sendMessage("§aVous avez utilisé une enderpearl. Cooldown appliqué pour " + cooldown + " secondes.");
                     }
                 }

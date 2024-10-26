@@ -10,11 +10,11 @@ public class PlayerCooldown {
         Arrays.fill(cooldowns, 0);
     }
 
-    public long getCooldown(CooldownType type) {
+    public long get(CooldownType type) {
         return cooldowns[type.ordinal()];
     }
 
-    public void setCooldown(CooldownType type, long time) {
+    public void set(CooldownType type, long time) {
         cooldowns[type.ordinal()] = time;
     }
 

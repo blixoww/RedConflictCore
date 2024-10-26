@@ -9,11 +9,10 @@ public class RTPListener implements Listener {
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        if(player.isOp()) { return; }
-        if (RTP.getInstance().getBukkitTask().containsKey(player)) {
-            RTP.getInstance().getBukkitTask().get(player).cancel();
-            RTP.getInstance().getBukkitTask().remove(player);
-            player.sendMessage("§cVous avez bougé, votre téléportation a été annulée.");
+        if (RTP.instance().getBukkitTask().containsKey(player)) {
+            RTP.instance().getBukkitTask().get(player).cancel();
+            RTP.instance().getBukkitTask().remove(player);
+            player.sendMessage("§cTéléportation annulée.");
         }
     }
 }

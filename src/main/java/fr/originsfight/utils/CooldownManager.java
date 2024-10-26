@@ -6,7 +6,6 @@ import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class CooldownManager {
 
@@ -16,40 +15,49 @@ public class CooldownManager {
     public CooldownManager() {
         this.cooldowns = new HashMap<>();
     }
+
     private PlayerCooldown getOrCreate(Player player) {
-        return this.cooldowns.computeIfAbsent(player.getName(), name -> new PlayerCooldown());
+        return this.cooldowns.computeIfAbsent(player.getName(), k -> new PlayerCooldown());
     }
-    public void set(Player player, long time, CooldownType type, TimeUnit unit) {
-        this.getOrCreate(player).setCooldown(type, System.currentTimeMillis() + unit.toMillis(time));
+
+    public void set(Player player, long time, TimeUnits unit, CooldownType type) {
+        this.getOrCreate(player).set(type, System.currentTimeMillis() + unit.toMillis(time));
     }
-    public long remainingTime(Player player, CooldownType type) {
-        long time = this.cooldowns.getOrDefault(player.getName(), new PlayerCooldown()).getCooldown(type);
-        return Math.max(time - System.currentTimeMillis(), 0);
+
+    public long timeLeft(Player player, CooldownType type) {
+        long cooldown = this.cooldowns.getOrDefault(player.getName(), new PlayerCooldown()).get(type);
+        long left = cooldown - System.currentTimeMillis();
+        return Math.max(left, 0L);
     }
+
     public boolean isOnCooldown(Player player, CooldownType type) {
-        return this.remainingTime(player, type) > 0;
+        return timeLeft(player, type) > 0;
     }
     public void clear(Player player) {
         this.cooldowns.remove(player.getName());
     }
-    public static CooldownManager getCooldownManager() {
+
+    public static CooldownManager instance() {
         return INSTANCE;
     }
-    public static String formatedTime(long time) {
-        long hours = TimeUnit.MILLISECONDS.toHours(time);
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(time) - TimeUnit.HOURS.toMinutes(hours);
-        long seconds = TimeUnit.MILLISECONDS.toSeconds(time) - TimeUnit.MINUTES.toSeconds(minutes);
-        StringBuilder builder = new StringBuilder();
+
+    public static String getFormattedTimeLeft(long timeLeftMillis) {
+        long hours = timeLeftMillis / (1000 * 60 * 60);
+        long minutes = (timeLeftMillis % (1000 * 60 * 60)) / (1000 * 60);
+        long seconds = ((timeLeftMillis % (1000 * 60 * 60)) % (1000 * 60)) / 1000;
+
+        StringBuilder formattedTimeLeft = new StringBuilder();
         if (hours > 0) {
-            builder.append(hours).append("h");
+            formattedTimeLeft.append(hours).append("h");
         }
         if (minutes > 0 || hours > 0) {
-            builder.append(minutes).append("m");
+            formattedTimeLeft.append(minutes).append("m");
         }
-        if (seconds > 0 || minutes == 0 || hours == 0) {
-            builder.append(seconds).append("s");
+        if (seconds > 0 || (hours == 0 && minutes == 0)) {
+            formattedTimeLeft.append(seconds).append("s");
         }
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+
+        return formattedTimeLeft.toString();
     }
 
 }
