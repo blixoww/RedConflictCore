@@ -1,6 +1,8 @@
 package fr.originsfight;
 
 
+import fr.originsfight.combatlog.CombatLogCommand;
+import fr.originsfight.combatlog.CombatLogListener;
 import fr.originsfight.listeners.EnderPearlListener;
 import fr.originsfight.listeners.FoodAppleListener;
 import fr.originsfight.rtp.RTPCommand;
@@ -25,11 +27,13 @@ public class OriginsFightCore extends JavaPlugin {
     private void registerCommands() {
         //commands
         getCommand("rtp").setExecutor(new RTPCommand());
+        getCommand("ct").setExecutor(new CombatLogCommand());
     }
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new EnderPearlListener(), this);
         getServer().getPluginManager().registerEvents(new FoodAppleListener(), this);
         getServer().getPluginManager().registerEvents(new RTPListener(), this);
+        getServer().getPluginManager().registerEvents(new CombatLogListener(), this);
     }
     public static OriginsFightCore getInstance() {
         return instance;
