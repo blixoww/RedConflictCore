@@ -8,3 +8,7 @@ website: https://originsfight.net
 commands:
   rtp:
     description: Teleportation aleatoire
+  ct:
+    description: Statut du combat
+  repair:
+    description: Reparation de tous les items
