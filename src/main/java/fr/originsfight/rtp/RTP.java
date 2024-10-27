@@ -37,6 +37,8 @@ public class RTP {
     }
 
     public void teleport(Player player) {
+        Location randomLocation = randomLocation();
+        randomLocation.getWorld().getChunkAt(randomLocation).load();
         player.teleport(randomLocation());
         player.sendMessage("§aTéléportation effectuée.");
         CooldownManager.instance().set(player, 4, TimeUnits.HOURS, CooldownType.RTP);
