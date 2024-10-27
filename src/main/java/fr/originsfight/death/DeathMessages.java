@@ -1,0 +1,70 @@
+package fr.originsfight.death;
+
+
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.inventory.ItemStack;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+public class DeathMessages implements Listener {
+    private final List<String> deathMessages;
+
+    public DeathMessages() {
+        (this.deathMessages = new ArrayList<>()).add("§c» %player% §e s'est fait péter le cul.");
+        this.deathMessages.add("§7» %player% §es'est fait détruire par le respect.");
+        this.deathMessages.add("§7» %player% §epensait être immortel... il s'est bien fait baiser.");
+        this.deathMessages.add("§7» %player% §efut aspirer par un trou noir.");
+        this.deathMessages.add("§7» %player% §ea été détruit par un trou de ver.");
+        this.deathMessages.add("§7» %player% §ea disparu de la surface de ce monde.");
+    }
+
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player death = event.getEntity();
+        Player killer = death.getKiller();
+        if (killer == null) {
+            Random random = new Random();
+            String msg = this.deathMessages.get(random.nextInt(this.deathMessages.size()));
+            event.setDeathMessage(msg.replace("%player%", death.getName()));
+        } else {
+            ItemStack killItem = killer.getItemInHand();
+            if (killItem != null && killItem.hasItemMeta() && killItem.getItemMeta().hasDisplayName() && (killItem.getType().name().toLowerCase().contains("sword") || killItem.getType().name().toLowerCase().contains("axe"))) {
+                String displayName = killItem.getItemMeta().getDisplayName();
+                TextComponent component = new TextComponent("§7» " + death.getName() + "§e s'est fait tuer par §c" + killer.getName() + " §eavec ");
+                TextComponent item = new TextComponent(displayName);
+                item.setColor(ChatColor.AQUA.asBungee());
+                item.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(this.enchantToString(killItem))));
+
+                for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                    onlinePlayer.spigot().sendMessage(component, item);
+                }
+                event.setDeathMessage(null);
+            } else {
+                event.setDeathMessage("§7» " + death.getName() + "§e s'est fait tuer par §c" + killer.getName());
+            }
+        }
+    }
+
+    private String enchantToString(ItemStack itemStack) {
+        if (itemStack.getEnchantments().isEmpty()) {
+            return "§7Aucun enchantements";
+        } else {
+            StringBuilder builder = new StringBuilder("§7Enchantements:\n");
+            itemStack.getEnchantments().forEach((a, b) -> {
+                String level = String.valueOf(b).replace("1", "I").replace("2", "II").replace("3", "III").replace("4", "IV").replace("5", "V");
+                String name = EnchantName.valueOf(a.getName()).getName();
+                builder.append("§b").append(name).append(" §l").append(level).append("\n");
+            });
+            return builder.toString();
+        }
+    }
+}

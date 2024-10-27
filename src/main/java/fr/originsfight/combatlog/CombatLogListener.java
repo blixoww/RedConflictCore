@@ -39,4 +39,5 @@ public class CombatLogListener implements Listener {
             Bukkit.broadcastMessage("§c" + player.getName() + " est mort suite à un combat log.");
         }
     }
+
 }

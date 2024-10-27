@@ -31,8 +31,8 @@ public class RTP {
                 public void run() {
                     RTP.instance().teleport(player);
                 }
-            }.runTaskLater(OriginsFightCore.getInstance(), 20L * 5));
-            player.sendMessage("§7Téléportation dans 5 secondes.");
+            }.runTaskLater(OriginsFightCore.getInstance(), 20L * 3));
+            player.sendMessage("§7Téléportation dans 3 secondes.");
         }
     }
 

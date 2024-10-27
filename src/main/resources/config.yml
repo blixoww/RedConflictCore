@@ -19,3 +19,14 @@ enderpearl:
 rtp:
   max: 9000
   min: 1000
+commands:
+  always-disabled:
+    - /pl
+  disabled-in-combat:
+    - /rtp
+    - /ec
+    - /enderchest
+    - /poubelle
+    - /shop
+    - /hdv
+    - /ah
