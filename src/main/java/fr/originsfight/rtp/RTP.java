@@ -58,7 +58,7 @@ public class RTP {
             x = -x;
         if (isNegativeZ)
             z = -z;
-        return new Location(Bukkit.getWorld("world"), x, (Bukkit.getWorld("world").getHighestBlockYAt(x, z) + 3), z);
+        return new Location(Bukkit.getWorld("Faction"), x, (Bukkit.getWorld("Faction").getHighestBlockYAt(x, z) + 3), z);
     }
 
     public HashMap<Player, BukkitTask> getBukkitTask() {
