@@ -3,6 +3,7 @@ package fr.originsfight.repair;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 public class RepairItems {
 
@@ -10,8 +11,12 @@ public class RepairItems {
         return itemStack.getDurability() > 0;
     }
 
-    public static boolean repair(ItemStack[] itemStack) {
-        if (itemStack == null) return false;
-        return Arrays.stream(itemStack).filter(RepairItems::canRepair).peek(item -> item.setDurability((short) 0)).count() > 0;
+    public static boolean repair(ItemStack[] items) {
+        if (items == null) return false;
+        return Arrays.stream(items)
+                .filter(Objects::nonNull)
+                .filter(RepairItems::canRepair)
+                .peek(a -> a.setDurability((short) 0))
+                .count() > 0;
     }
 }
