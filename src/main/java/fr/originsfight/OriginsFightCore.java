@@ -1,8 +1,10 @@
 package fr.originsfight;
 
 
+import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import fr.originsfight.combatlog.CombatLogCommand;
 import fr.originsfight.combatlog.CombatLogListener;
+import fr.originsfight.death.DeathMessages;
 import fr.originsfight.listeners.DisabledCommands;
 import fr.originsfight.listeners.EnderPearlListener;
 import fr.originsfight.listeners.FoodAppleListener;
@@ -16,6 +18,7 @@ import java.util.List;
 
 public class OriginsFightCore extends JavaPlugin {
     private static OriginsFightCore instance;
+    private WorldGuardPlugin worldGuard;
     private List<String> disabledInCombatCommands;
     private List<String> alwaysDisabledCommands;
 
@@ -23,6 +26,7 @@ public class OriginsFightCore extends JavaPlugin {
     public void onEnable() {
         instance = this;
         getLogger().info("OriginsFightCore est activé !");
+        this.worldGuard = (WorldGuardPlugin) getServer().getPluginManager().getPlugin("WorldGuard");
         registerCommands();
         registerListeners();
         saveDefaultConfig();
@@ -45,6 +49,7 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RTPListener(), this);
         getServer().getPluginManager().registerEvents(new CombatLogListener(), this);
         getServer().getPluginManager().registerEvents(new VoidListener(), this);
+        getServer().getPluginManager().registerEvents(new DeathMessages(), this);
         getServer().getPluginManager().registerEvents(new DisabledCommands(), this);
     }
 
@@ -54,6 +59,10 @@ public class OriginsFightCore extends JavaPlugin {
 
     public List<String> getAlwaysDisabledCommands() {
         return alwaysDisabledCommands;
+    }
+
+    public WorldGuardPlugin getWorldGuard() {
+        return worldGuard;
     }
     public static OriginsFightCore getInstance() {
         return instance;

@@ -19,12 +19,12 @@ public class DeathMessages implements Listener {
     private final List<String> deathMessages;
 
     public DeathMessages() {
-        (this.deathMessages = new ArrayList<>()).add("§c» %player% §e s'est fait péter le cul.");
-        this.deathMessages.add("§7» %player% §es'est fait détruire par le respect.");
-        this.deathMessages.add("§7» %player% §epensait être immortel... il s'est bien fait baiser.");
-        this.deathMessages.add("§7» %player% §efut aspirer par un trou noir.");
-        this.deathMessages.add("§7» %player% §ea été détruit par un trou de ver.");
-        this.deathMessages.add("§7» %player% §ea disparu de la surface de ce monde.");
+        (this.deathMessages = new ArrayList<>()).add("§e» %player%  s'est fait péter le cul.");
+        this.deathMessages.add("§e» %player% s'est fait détruire par le respect.");
+        this.deathMessages.add("§e» %player% pensait être immortel... il s'est bien fait baiser.");
+        this.deathMessages.add("§e» %player% fut aspirer par un trou noir.");
+        this.deathMessages.add("§e» %player% a été détruit par un trou de ver.");
+        this.deathMessages.add("§e» %player% a disparu de la surface de ce monde.");
     }
 
     @EventHandler
@@ -39,7 +39,7 @@ public class DeathMessages implements Listener {
             ItemStack killItem = killer.getItemInHand();
             if (killItem != null && killItem.hasItemMeta() && killItem.getItemMeta().hasDisplayName() && (killItem.getType().name().toLowerCase().contains("sword") || killItem.getType().name().toLowerCase().contains("axe"))) {
                 String displayName = killItem.getItemMeta().getDisplayName();
-                TextComponent component = new TextComponent("§7» " + death.getName() + "§e s'est fait tuer par §c" + killer.getName() + " §eavec ");
+                TextComponent component = new TextComponent("§e» " + death.getName() + " s'est fait tuer par §c" + killer.getName() + " §eavec ");
                 TextComponent item = new TextComponent(displayName);
                 item.setColor(ChatColor.AQUA.asBungee());
                 item.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(this.enchantToString(killItem))));
@@ -49,7 +49,7 @@ public class DeathMessages implements Listener {
                 }
                 event.setDeathMessage(null);
             } else {
-                event.setDeathMessage("§7» " + death.getName() + "§e s'est fait tuer par §c" + killer.getName());
+                event.setDeathMessage("§e» " + death.getName() + " s'est fait tuer par §c" + killer.getName());
             }
         }
     }

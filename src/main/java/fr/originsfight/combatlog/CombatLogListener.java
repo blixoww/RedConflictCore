@@ -1,5 +1,9 @@
 package fr.originsfight.combatlog;
 
+import com.sk89q.worldguard.protection.ApplicableRegionSet;
+import com.sk89q.worldguard.protection.flags.DefaultFlag;
+import com.sk89q.worldguard.protection.managers.RegionManager;
+import fr.originsfight.OriginsFightCore;
 import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.utils.CooldownManager;
 import fr.originsfight.utils.TimeUnits;
@@ -8,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 public class CombatLogListener implements Listener {
@@ -19,6 +24,10 @@ public class CombatLogListener implements Listener {
         }
         Player player = (Player) event.getEntity();
         Player damager = (Player) event.getDamager();
+        if (!hasPvP(player) || !hasPvP(damager)) {
+            event.setCancelled(true);
+            return;
+        }
         if (!player.isOp()) {
             if (CooldownManager.instance().timeLeft(player, CooldownType.COMBAT) == 0)
                 player.sendMessage("§7Tu viens d'entrer en combat.");
@@ -40,4 +49,19 @@ public class CombatLogListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        if (CooldownManager.instance().timeLeft(player, CooldownType.COMBAT) > 0) {
+            CooldownManager.instance().clear(player);
+        }
+    }
+
+    public boolean hasPvP(Player player) {
+        RegionManager regionManager = OriginsFightCore.getInstance().getWorldGuard().getRegionManager(player.getWorld());
+        ApplicableRegionSet set = regionManager.getApplicableRegions(player.getLocation());
+        if (set.size() == 0)
+            return true;
+        return set.allows(DefaultFlag.PVP);
+    }
 }
