@@ -16,41 +16,32 @@ import java.util.List;
 import java.util.Random;
 
 public class DeathMessages implements Listener {
-    private final List<String> deathMessages;
 
-    public DeathMessages() {
-        (this.deathMessages = new ArrayList<>()).add("§e» %player%  s'est fait péter le cul.");
-        this.deathMessages.add("§e» %player% s'est fait détruire par le respect.");
-        this.deathMessages.add("§e» %player% pensait être immortel... il s'est bien fait baiser.");
-        this.deathMessages.add("§e» %player% fut aspirer par un trou noir.");
-        this.deathMessages.add("§e» %player% a été détruit par un trou de ver.");
-        this.deathMessages.add("§e» %player% a disparu de la surface de ce monde.");
-    }
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player death = event.getEntity();
         Player killer = death.getKiller();
-        if (killer == null) {
-            Random random = new Random();
-            String msg = this.deathMessages.get(random.nextInt(this.deathMessages.size()));
-            event.setDeathMessage(msg.replace("%player%", death.getName()));
-        } else {
-            ItemStack killItem = killer.getItemInHand();
-            if (killItem != null && killItem.hasItemMeta() && killItem.getItemMeta().hasDisplayName() && (killItem.getType().name().toLowerCase().contains("sword") || killItem.getType().name().toLowerCase().contains("axe"))) {
-                String displayName = killItem.getItemMeta().getDisplayName();
-                TextComponent component = new TextComponent("§e» " + death.getName() + " s'est fait tuer par §c" + killer.getName() + " §eavec ");
-                TextComponent item = new TextComponent(displayName);
-                item.setColor(ChatColor.AQUA.asBungee());
-                item.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(this.enchantToString(killItem))));
+        ItemStack killItem = killer.getItemInHand();
 
-                for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
-                    onlinePlayer.spigot().sendMessage(component, item);
-                }
-                event.setDeathMessage(null);
-            } else {
-                event.setDeathMessage("§e» " + death.getName() + " s'est fait tuer par §c" + killer.getName());
+        if (killItem != null && killItem.hasItemMeta() && killItem.getItemMeta().hasDisplayName() &&
+                (killItem.getType().name().toLowerCase().contains("sword") || killItem.getType().name().toLowerCase().contains("axe"))) {
+
+            String displayName = killItem.getItemMeta().getDisplayName();
+            TextComponent component = new TextComponent("§6✦ §e" + death.getName() + " §7a été tué par §c" + killer.getName() + " §7avec ");
+
+            TextComponent item = new TextComponent(displayName);
+            item.setColor(ChatColor.AQUA.asBungee());
+            item.setBold(true);
+            item.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(this.enchantToString(killItem))));
+
+            for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                onlinePlayer.spigot().sendMessage(component, item);
             }
+
+            event.setDeathMessage(null);
+        } else {
+            event.setDeathMessage("§6✦ §e" + death.getName() + " §7a été tué par §c" + killer.getName());
         }
     }
 

@@ -12,6 +12,7 @@ import fr.originsfight.listeners.VoidListener;
 import fr.originsfight.repair.RepairCommand;
 import fr.originsfight.rtp.RTPCommand;
 import fr.originsfight.rtp.RTPListener;
+import fr.originsfight.useful.PoubelleCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
@@ -42,6 +43,7 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("rtp").setExecutor(new RTPCommand());
         getCommand("ct").setExecutor(new CombatLogCommand());
         getCommand("repairall").setExecutor(new RepairCommand());
+        getCommand("poubelle").setExecutor(new PoubelleCommand());
     }
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new EnderPearlListener(), this);
