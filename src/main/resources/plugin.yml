@@ -14,3 +14,5 @@ commands:
     description: Reparation de tous les items
   poubelle:
     description: Ouvre la poubelle
+  furnace:
+    description: Permet de cuire des items

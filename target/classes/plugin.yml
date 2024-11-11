@@ -12,3 +12,7 @@ commands:
     description: Statut du combat
   repairall:
     description: Reparation de tous les items
+  poubelle:
+    description: Ouvre la poubelle
+  furnace:
+    description: Permet de cuire des items
