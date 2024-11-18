@@ -45,10 +45,12 @@ public class OriginsFightCore extends JavaPlugin {
         this.alwaysDisabledCommands = getConfig().getStringList("commands.always-disabled");
         this.disabledInCombatCommands = getConfig().getStringList("commands.disabled-in-combat");
     }
+
     @Override
     public void onDisable() {
         getLogger().info("OriginsFightCore est désactivé.");
     }
+
     private void registerCommands() {
         //commands
         getCommand("rtp").setExecutor(new RTPCommand());
@@ -57,6 +59,7 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("poubelle").setExecutor(new PoubelleCommand());
         getCommand("furnace").setExecutor(new FurnaceCommand());
     }
+
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new EnderPearlListener(), this);
         getServer().getPluginManager().registerEvents(new FoodAppleListener(), this);
@@ -72,8 +75,11 @@ public class OriginsFightCore extends JavaPlugin {
             Recipe recipe = it.next();
             if (recipe instanceof FurnaceRecipe) {
                 FurnaceRecipe furnaceRecipe = (FurnaceRecipe) recipe;
-                if (furnaceRecipe.getInput() != null && furnaceRecipe.getResult() != null) {
-                    smeltableItems.put(furnaceRecipe.getInput().getType(), furnaceRecipe.getResult());
+                Material inputMaterial = furnaceRecipe.getInput().getType();
+                ItemStack resultItem = furnaceRecipe.getResult();
+
+                if (inputMaterial != null && resultItem != null) {
+                    smeltableItems.put(inputMaterial, resultItem);
                 }
             }
         }
@@ -94,6 +100,7 @@ public class OriginsFightCore extends JavaPlugin {
     public WorldGuardPlugin getWorldGuard() {
         return worldGuard;
     }
+
     public static OriginsFightCore getInstance() {
         return instance;
     }

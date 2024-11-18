@@ -1,6 +1,7 @@
 package fr.originsfight.useful;
 
 import fr.originsfight.OriginsFightCore;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -30,11 +31,20 @@ public class FurnaceCommand implements CommandExecutor {
         if (option.equals("this")) {
             ItemStack itemInHand = player.getInventory().getItemInHand();
             if (itemInHand != null && OriginsFightCore.getInstance().getSmeltableItems().containsKey(itemInHand.getType())) {
-                ItemStack cookedItem = OriginsFightCore.getInstance().getSmeltableItems().get(itemInHand.getType());
                 int itemAmount = itemInHand.getAmount();
+
+                // Cas spécifique pour LAPIS_ORE
+                if (itemInHand.getType() == Material.LAPIS_ORE) {
+                    ItemStack lapisItem = new ItemStack(Material.INK_SACK, itemAmount, (short) 4);
+                    player.getInventory().setItemInHand(lapisItem);
+                    player.sendMessage("§aL'item dans votre main a été cuit !");
+                    return true;
+                }
+
+                // Cas général
+                ItemStack cookedItem = OriginsFightCore.getInstance().getSmeltableItems().get(itemInHand.getType());
                 player.getInventory().setItemInHand(new ItemStack(cookedItem.getType(), itemAmount));
                 player.sendMessage("§aL'item dans votre main a été cuit !");
-                transformed = true;
             } else {
                 player.sendMessage("§cL'item dans votre main ne peut pas être cuit.");
             }
@@ -43,8 +53,18 @@ public class FurnaceCommand implements CommandExecutor {
         else if (option.equals("all")) {
             for (ItemStack item : player.getInventory().getContents()) {
                 if (item != null && OriginsFightCore.getInstance().getSmeltableItems().containsKey(item.getType())) {
-                    ItemStack cookedItem = OriginsFightCore.getInstance().getSmeltableItems().get(item.getType());
                     int itemAmount = item.getAmount();
+
+                    // Cas spécifique pour LAPIS_ORE
+                    if (item.getType() == Material.LAPIS_ORE) {
+                        ItemStack lapisItem = new ItemStack(Material.INK_SACK, itemAmount, (short) 4);
+                        player.getInventory().remove(item);
+                        player.getInventory().addItem(lapisItem);
+                        continue;
+                    }
+
+                    // Cas général
+                    ItemStack cookedItem = OriginsFightCore.getInstance().getSmeltableItems().get(item.getType());
                     player.getInventory().remove(item);
                     player.getInventory().addItem(new ItemStack(cookedItem.getType(), itemAmount));
                     transformed = true;
@@ -55,10 +75,7 @@ public class FurnaceCommand implements CommandExecutor {
             } else {
                 player.sendMessage("§cAucun item cuisable trouvé dans votre inventaire.");
             }
-        } else {
-            player.sendMessage("§cOption invalide. Utilisez /furnace main ou /furnace all.");
         }
-
         return true;
     }
 }
