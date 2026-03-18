@@ -1,5 +1,6 @@
 package fr.originsfight.combatlog;
 
+import fr.originsfight.RC;
 import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.utils.CooldownManager;
 import org.bukkit.command.Command;
@@ -10,19 +11,15 @@ import org.bukkit.entity.Player;
 public class CombatLogCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) return false;
+        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
         Player player = (Player) sender;
+        if (player.isOp()) { player.sendMessage(RC.CT_OP); return true; }
         long timeLeft = CooldownManager.instance().timeLeft(player, CooldownType.COMBAT);
-        if (player.isOp()) {
-            player.sendMessage("§cTu es OP, tu n'es pas affecté par le combatlog.");
-            return true;
-        }
         if (timeLeft > 0) {
-            player.sendMessage("§cTu es en combat, tu dois encore attendre " + CooldownManager.getFormattedTimeLeft(timeLeft) + " avant de pouvoir te déconnecter.");
-            return true;
+            player.sendMessage(RC.fmt(RC.CT_IN_COMBAT, CooldownManager.getFormattedTimeLeft(timeLeft)));
         } else {
-            player.sendMessage("§eTu n'es pas en combat");
+            player.sendMessage(RC.CT_NOT_COMBAT);
         }
-        return false;
+        return true;
     }
 }

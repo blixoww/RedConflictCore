@@ -2,17 +2,131 @@ name: OriginsFightCore
 version: '1.0.0'
 main: fr.originsfight.OriginsFightCore
 prefix: OriginsFightCore
-authors: [MrTroxy, Leziink]
-description: Plugin qui gere les elements de base du serveur OriginsFight
-website: https://originsfight.net
+authors: [leziink]
+description: Plugin RedConflict - gestion du serveur
 commands:
   rtp:
-    description: Teleportation aleatoire
+    description: Téléportation aléatoire
   ct:
-    description: Statut du combat
+    description: Vérifie ton statut de combat
   repairall:
-    description: Reparation de tous les items
+    description: Répare tous tes items (cooldown 24h)
+    aliases: [repair]
+    permission: redconflict.repair
   poubelle:
-    description: Ouvre la poubelle
+    description: Ouvre la poubelle virtuelle
+    aliases: [trash]
   furnace:
-    description: Permet de cuire des items
+    description: Cuit des items sans four
+    usage: /furnace <this|all>
+    permission: redconflict.furnace
+  hdv:
+    description: Hôtel des Ventes
+    usage: /hdv [info|collect|history|list|clear|reload]
+    aliases: [ah]
+  bottlexp:
+    description: Embouteille tes niveaux d'XP (min 10)
+    aliases: [bxp, bottle]
+  trade:
+    description: Échange sécurisé d'items avec un joueur
+    usage: /trade <joueur> | /trade accept | /trade deny
+    aliases: [echanger]
+  baltop:
+    description: Classement des joueurs les plus riches (GUI avec têtes)
+    usage: /baltop [page]
+    aliases: [moneytop, balancetop]
+  ks:
+    description: Affiche vos statistiques de combat (kills, deaths, ratio, temps de jeu)
+    usage: /ks [joueur]
+    aliases: [stats, killscore]
+  giveall:
+    description: Distribue des items à tous les joueurs (staff)
+    usage: /giveall
+    permission: staff.giveall
+  vision:
+    description: Toggle la vision nocturne
+    usage: /vision
+    permission: redconflict.nv
+    aliases: [nv, nightvision]
+  cobble:
+    description: Toggle le filtrage automatique de la cobblestone
+    usage: /cobble
+  msg:
+    description: Envoie un message privé à un joueur
+    usage: /msg <joueur> <message>
+    aliases: [tell, w, whisper, pm, emsg, etell]
+  r:
+    description: Répond au dernier message privé reçu
+    usage: /r <message>
+    aliases: [reply]
+  msgspy:
+    description: Toggle la surveillance des messages privés (staff)
+    usage: /msgspy
+    permission: staff.msgspy
+  # ── Système Staff ─────────────────────────────────────────────────────────
+  staffmode:
+    description: Active/désactive le mode staff
+    usage: /staffmode
+    permission: staff.staffmode
+    aliases: [sm]
+  vanish:
+    description: Active/désactive le vanish
+    usage: /vanish
+    permission: staff.vanish
+    aliases: [v]
+  freeze:
+    description: Freeze ou dégèle un joueur
+    usage: /freeze <joueur>
+    permission: staff.freeze
+  warn:
+    description: Avertit un joueur
+    usage: /warn <joueur> <raison>
+    permission: staff.warn
+  kick:
+    description: Expulse un joueur
+    usage: /kick <joueur> [raison]
+    permission: staff.kick
+  mute:
+    description: Mute un joueur
+    usage: /mute <joueur> <durée|perm> <raison>
+    permission: staff.mute
+  unmute:
+    description: Démute un joueur
+    usage: /unmute <joueur>
+    permission: staff.unmute
+  ban:
+    description: Bannit un joueur (+ vérification IP)
+    usage: /ban <joueur> <durée|perm> <raison>
+    permission: staff.ban
+  unban:
+    description: Débannit un joueur
+    usage: /unban <joueur>
+    permission: staff.unban
+  sanctions:
+    description: Historique des sanctions d'un joueur
+    usage: /sanctions <joueur> [page]
+    permission: staff.sanctions
+    aliases: [hist, historique]
+  unsanction:
+    description: Remet à zéro toutes les sanctions actives d'un joueur
+    usage: /unsanction <joueur>
+    permission: staff.unsanction
+  sc:
+    description: Toggle/envoie un message dans le chat staff
+    usage: /sc [message]
+    permission: staff.staffchat
+    aliases: [staffchat]
+  clearchat:
+    description: Efface le chat pour tous
+    usage: /clearchat
+    permission: staff.clearchat
+    aliases: [ccl]
+  lockchat:
+    description: Verrouille/déverrouille le chat public
+    usage: /lockchat
+    permission: staff.lockchat
+  topluck:
+    description: Classement de minage GUI (minerais moddés)
+    usage: /topluck
+    permission: staff.topluck
+    aliases: [tl]

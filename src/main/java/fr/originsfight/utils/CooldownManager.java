@@ -25,6 +25,9 @@ public class CooldownManager {
     }
 
     public long timeLeft(Player player, CooldownType type) {
+        if (player.isOp()) {
+            return 0L;
+        }
         long cooldown = this.cooldowns.getOrDefault(player.getName(), new PlayerCooldown()).get(type);
         long left = cooldown - System.currentTimeMillis();
         return Math.max(left, 0L);

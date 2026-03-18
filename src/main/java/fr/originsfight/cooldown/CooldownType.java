@@ -7,5 +7,7 @@ public enum CooldownType {
     RTP,
     REPAIR,
     FRAISE,
-    COMBAT;
+    COMBAT,
+    HEALSTICK,
+    PUMPKIE_PIE;
 }

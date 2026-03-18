@@ -38,8 +38,12 @@ public class RTP {
 
     public void teleport(Player player) {
         Location randomLocation = randomLocation();
+        if (randomLocation == null || randomLocation.getWorld() == null) {
+            player.sendMessage("§cErreur: Impossible de se téléporter!");
+            return;
+        }
         randomLocation.getWorld().getChunkAt(randomLocation).load();
-        player.teleport(randomLocation());
+        player.teleport(randomLocation);
         player.sendMessage("§aTéléportation effectuée.");
         CooldownManager.instance().set(player, 4, TimeUnits.HOURS, CooldownType.RTP);
         if (this.tasks.containsKey(player)) {
@@ -49,6 +53,7 @@ public class RTP {
     }
 
     public Location randomLocation() {
+        org.bukkit.World world = Bukkit.getWorlds().get(0);
         int max = OriginsFightCore.getInstance().getConfig().getInt("rtp.max");
         int min = OriginsFightCore.getInstance().getConfig().getInt("rtp.min");
         Random random = new Random();
@@ -56,11 +61,9 @@ public class RTP {
         boolean isNegativeZ = random.nextBoolean();
         int x = random.nextInt(max) + min;
         int z = random.nextInt(max) + min;
-        if (isNegativeX)
-            x = -x;
-        if (isNegativeZ)
-            z = -z;
-        return new Location(Bukkit.getWorld("Faction"), x, (Bukkit.getWorld("Faction").getHighestBlockYAt(x, z) + 3), z);
+        if (isNegativeX) x = -x;
+        if (isNegativeZ) z = -z;
+        return new Location(world, x, (world.getHighestBlockYAt(x, z) + 3), z);
     }
 
     public HashMap<Player, BukkitTask> getBukkitTask() {
