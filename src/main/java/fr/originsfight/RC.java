@@ -102,6 +102,21 @@ public class RC {
     public static final String QUIT_GLOBAL      = "§8[§c-§8] §f%s §7a quitté le serveur.";
     public static final String FIRST_JOIN_GLOBAL= "§6§l★ §f%s §7rejoint §c§lRedConflict §7pour la première fois §6§l!";
 
+    // ── Bounty / Prime ─────────────────────────────────────────────────────────
+    public static final String BOUNTY_USAGE          = PRE + "§eUsage §f: /prime <joueur> <montant>";
+    public static final String BOUNTY_NOT_FOUND      = PRE + "§cJoueur introuvable ou hors ligne.";
+    public static final String BOUNTY_SELF           = PRE + "§cVous ne pouvez pas mettre une prime sur vous-même.";
+    public static final String BOUNTY_INVALID_AMOUNT = PRE + "§cMontant invalide. Entrez un nombre entier positif.";
+    public static final String BOUNTY_ALREADY_PLACED = PRE + "§cVous avez déjà une prime en cours. Attendez qu'elle soit réclamée.";
+    public static final String BOUNTY_ALREADY_TARGET = PRE + "§cCe joueur a déjà une prime sur sa tête.";
+    public static final String BOUNTY_NO_MONEY       = PRE + "§cVous n'avez pas assez d'argent.";
+    public static final String BOUNTY_ECO_ERROR      = PRE + "§cErreur d'économie — contactez un administrateur.";
+    public static final String BOUNTY_PLACED         = PRE + "§aPrime placée sur §f%s §apour §f%d$ §a!";
+    public static final String BOUNTY_BROADCAST      = SEP + "\n" + PRE + "§6§l\u2620 §e%s §7a placé une prime de §f%d$ §7sur §c%s §7!\n" + SEP;
+    public static final String BOUNTY_CLAIMED        = PRE + "§aVous avez réclamé la prime sur §f%s §a! §f+%d$";
+    public static final String BOUNTY_CLAIMED_BROADCAST = SEP + "\n" + PRE + "§6§l\u2620 §a%s §7a éliminé §c%s §7et récupère sa prime de §f%d$ §7!\n" + SEP;
+    public static final String BOUNTY_EXPIRED_BROADCAST = SEP + "\n" + PRE + "§6§l\u2620 §7Personne n'a réussi à tuer §c%s §7! La prime de §f%d$ §7a expiré.\n" + SEP;
+
     /** Formate un message en remplaçant %s/%d par les arguments donnés. */
     public static String fmt(String template, Object... args) {
         return String.format(template, args);

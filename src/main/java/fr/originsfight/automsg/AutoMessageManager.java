@@ -41,6 +41,8 @@ public class AutoMessageManager {
         "  §8| §f/ks        §7— Vos statistiques de combat\n" +
         "  §8| §f/bottlexp  §7— Embouteiller vos niveaux d'XP\n" +
         "  §8| §f/trade     §7— Échanger des items en sécurité\n" +
+        "  §8| §f/prime     §7— Placer une prime sur un joueur\n" +
+        "  §8| §f/commands  §7— Voir toutes les commandes disponibles\n" +
         SEP,
 
         // Message 3 : Réparer ses items
@@ -54,6 +56,14 @@ public class AutoMessageManager {
         PRE + "§eMiner dans le noir ?\n" +
         "  §8| §7Activez la vision nocturne avec §f/vision §7si vous avez la permission.\n" +
         "  §8| §7Évitez la cobblestone inutile avec §f/cobble§7.\n" +
+        SEP,
+
+        // Message 5 : Primes (bounty)
+        SEP + "\n" +
+        PRE + "§6§l\u2620 §eSysteme de primes !\n" +
+        "  §8| §7Placez une prime sur un joueur avec §f/prime <joueur> <montant>§7.\n" +
+        "  §8| §7Le joueur qui le tue récupère la somme !\n" +
+        "  §8| §7Une seule prime par joueur, une seule cible à la fois.\n" +
         SEP
     );
 

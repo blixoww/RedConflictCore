@@ -2,6 +2,9 @@ package fr.originsfight;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import fr.originsfight.automsg.AutoMessageManager;
+import fr.originsfight.bounty.BountyCommand;
+import fr.originsfight.bounty.BountyListener;
+import fr.originsfight.bounty.BountyManager;
 import fr.originsfight.bottlexp.BottleXpCommand;
 import fr.originsfight.bottlexp.BottleXpListener;
 import fr.originsfight.combatlog.CombatLogCommand;
@@ -27,6 +30,7 @@ import fr.originsfight.trade.TradeCommand;
 import fr.originsfight.trade.TradeListener;
 import fr.originsfight.useful.BaltopCommand;
 import fr.originsfight.useful.CobbleCommand;
+import fr.originsfight.useful.CommandsCommand;
 import fr.originsfight.useful.FurnaceCommand;
 import fr.originsfight.useful.MsgCommand;
 import fr.originsfight.useful.PoubelleCommand;
@@ -61,6 +65,7 @@ public class OriginsFightCore extends JavaPlugin {
     private HdvManager hdvManager;
     private StaffPlugin staffPlugin;
     private KsDatabase ksDatabase;
+    private BountyManager bountyManager;
 
     public void onEnable() {
         instance = this;
@@ -90,6 +95,14 @@ public class OriginsFightCore extends JavaPlugin {
         } else {
             getLogger().severe("[KS] Échec de l'initialisation du système KS !");
         }
+        // Système de primes (bounty)
+        this.bountyManager = new BountyManager();
+        this.bountyManager.startExpirationTask(this);
+        BountyCommand bountyCmd = new BountyCommand(bountyManager);
+        getCommand("prime").setExecutor(bountyCmd);
+        getCommand("prime").setTabCompleter(bountyCmd);
+        getServer().getPluginManager().registerEvents(new BountyListener(bountyManager), this);
+        getLogger().info("[Bounty] Système de primes initialisé avec succès !");
         // Messages automatiques dans le chat
         new AutoMessageManager(this);
     }
@@ -131,6 +144,8 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("baltop").setTabCompleter(baltop);
         // Vision nocturne
         getCommand("vision").setExecutor(new VisionCommand());
+        // Liste des commandes
+        getCommand("commands").setExecutor(new CommandsCommand());
         // Messagerie privée
         MsgCommand msg = new MsgCommand();
         getCommand("msg").setExecutor(msg);
@@ -174,9 +189,7 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:SHOP_C2S", (ch, player, msg) -> {
 
         });
-        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PDATA_C2S", (ch, player, msg) -> {
-
-        });
+        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PDATA_C2S", (PluginMessageListener)new fr.originsfight.data.PlayerDataServerHandler(this));
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:HDV_S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:SHOP_S2C");
@@ -224,6 +237,10 @@ public class OriginsFightCore extends JavaPlugin {
 
     public static OriginsFightCore getInstance() {
         return instance;
+    }
+
+    public KsDatabase getKsDatabase() {
+        return this.ksDatabase;
     }
 
     public Economy getEconomy() {

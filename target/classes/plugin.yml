@@ -48,6 +48,14 @@ commands:
     usage: /vision
     permission: redconflict.nv
     aliases: [nv, nightvision]
+  prime:
+    description: Place une prime sur un joueur
+    usage: /prime <joueur> <montant>
+    aliases: [bounty]
+  commands:
+    description: Affiche la liste des commandes disponibles
+    usage: /commands
+    aliases: [cmds]
   cobble:
     description: Toggle le filtrage automatique de la cobblestone
     usage: /cobble
