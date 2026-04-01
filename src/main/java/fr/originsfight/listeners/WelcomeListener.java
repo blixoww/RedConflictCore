@@ -22,7 +22,7 @@ public class WelcomeListener implements Listener {
         "§c§l  Bienvenue sur RedConflict §8!",
         "§7  Serveur §f1.8.9 §7| PvP / Survie",
         "§7  Discord §f: §bdiscord.gg/UMJUnfQq",
-        "§7  Tapez §f/help §7pour voir les commandes.",
+        "§7  Tapez §f/commands §7pour voir les commandes.",
         SEP
     };
 

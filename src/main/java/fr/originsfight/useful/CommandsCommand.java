@@ -32,6 +32,7 @@ public class CommandsCommand implements CommandExecutor {
         player.sendMessage("  §8| §f/hdv         §7— Hôtel des Ventes");
         player.sendMessage("  §8| §f/trade       §7— Échange sécurisé d'items");
         player.sendMessage("  §8| §f/prime       §7— Placer une prime sur un joueur");
+        player.sendMessage("  §8| §f/loto        §7— Parier sur le loto §8(§f/loto help§8)");
         player.sendMessage("");
         player.sendMessage("  §6§lUtilitaires");
         player.sendMessage("  §8| §f/repairall   §7— Réparer tous vos items");

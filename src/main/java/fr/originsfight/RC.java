@@ -117,6 +117,32 @@ public class RC {
     public static final String BOUNTY_CLAIMED_BROADCAST = SEP + "\n" + PRE + "§6§l\u2620 §a%s §7a éliminé §c%s §7et récupère sa prime de §f%d$ §7!\n" + SEP;
     public static final String BOUNTY_EXPIRED_BROADCAST = SEP + "\n" + PRE + "§6§l\u2620 §7Personne n'a réussi à tuer §c%s §7! La prime de §f%d$ §7a expiré.\n" + SEP;
 
+    // ── Loto ──────────────────────────────────────────────────────────────────
+    public static final String LOTO_USAGE          = PRE + "§eUsage §f: /loto <montant> §8| §f/loto info §8| §f/loto next §8| §f/loto help";
+    public static final String LOTO_START          = SEP + "\n" + PRE + "§6§l\u2B50 §eLoto lancé §7! Vous avez §f2 minutes §7pour parier.\n" + "  §8| §7Tapez §f/loto <montant> §7pour participer !\n" + "  §8| §7Minimum §f3 participants§7, sinon le loto est annulé.\n" + SEP;
+    public static final String LOTO_REMINDER       = PRE + "§6§l\u2B50 §eIl reste §f%s §epour parier au Loto ! §f/loto <montant>";
+    public static final String LOTO_NOT_OPEN       = PRE + "§cAucun loto n'est en cours. §7Tapez §f/loto next §7pour voir quand le prochain arrive.";
+    public static final String LOTO_ALREADY_BET    = PRE + "§cVous avez déjà parié sur ce loto. §7Attendez le tirage !";
+    public static final String LOTO_INVALID_AMOUNT = PRE + "§cMontant invalide. Entrez un nombre entier positif.";
+    public static final String LOTO_NO_MONEY       = PRE + "§cVous n'avez pas assez d'argent pour ce pari.";
+    public static final String LOTO_ECO_ERROR      = PRE + "§cErreur d'économie — contactez un administrateur.";
+    public static final String LOTO_BET_OK         = PRE + "§6§l\u2B50 §aPari de §f%d$ §aenregistré ! §7Bonne chance !";
+    public static final String LOTO_BET_BROADCAST  = PRE + "§6§l\u2B50 §f%s §7a rejoint le Loto ! §8(§f%d §7participant(s)§8)";
+    public static final String LOTO_CANCELLED      = SEP + "\n" + PRE + "§6§l\u2B50 §cLoto annulé §7— seulement §f%d§7/§f%d §7participants. §aMises remboursées.\n" + SEP;
+    public static final String LOTO_REFUND         = PRE + "§6§l\u2B50 §eLoto annulé — vous avez été remboursé de §f%d$§e.";
+    public static final String LOTO_WIN_BROADCAST  = SEP + "\n" + PRE + "§6§l\u2B50 §a%s §7remporte le Loto et gagne §f%d$ §7!\n" + "  §8| §7%d participants §8| §7Multiplicateur §f%s\n" + SEP;
+    public static final String LOTO_WIN_PERSONAL   = PRE + "§6§l\u2B50 §a§lFélicitations ! §aVous avez gagné le Loto ! §f+%d$";
+    public static final String LOTO_INFO_CLOSED    = PRE + "§7Aucun loto en cours. Tapez §f/loto next §7pour voir quand le prochain arrive.";
+    public static final String LOTO_INFO_CLOSED_NEXT = PRE + "§7Aucun loto en cours. §eProchain loto dans §f%s§e.";
+    public static final String LOTO_INFO_OPEN      = PRE + "§6§l\u2B50 §eLoto en cours §7— §f%d §7participant(s), cagnotte §f%d$§7, temps restant §f%s§7.";
+    public static final String LOTO_ALREADY_OPEN   = PRE + "§cUn loto est déjà en cours.";
+    public static final String LOTO_FORCE_STARTED  = PRE + "§aLoto lancé manuellement.";
+    public static final String LOTO_FORCE_STOPPED  = PRE + "§cLoto arrêté manuellement. Mises remboursées.";
+    public static final String LOTO_FORCE_STOP     = SEP + "\n" + PRE + "§6§l\u2B50 §cLoto arrêté par un membre du staff. §aMises remboursées.\n" + SEP;
+    public static final String LOTO_NEXT           = PRE + "§6§l\u2B50 §7Prochain loto dans §f%s§7.";
+    public static final String LOTO_NEXT_IN_PROGRESS = PRE + "§6§l\u2B50 §eUn loto est en cours ! §7Temps restant : §f%s§7. Tapez §f/loto <montant> §7!";
+    public static final String LOTO_NEXT_UNKNOWN   = PRE + "§7Le prochain loto sera annoncé prochainement.";
+
     /** Formate un message en remplaçant %s/%d par les arguments donnés. */
     public static String fmt(String template, Object... args) {
         return String.format(template, args);

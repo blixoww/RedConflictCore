@@ -64,6 +64,14 @@ public class AutoMessageManager {
         "  §8| §7Placez une prime sur un joueur avec §f/prime <joueur> <montant>§7.\n" +
         "  §8| §7Le joueur qui le tue récupère la somme !\n" +
         "  §8| §7Une seule prime par joueur, une seule cible à la fois.\n" +
+        SEP,
+
+        // Message 6 : Loto
+        SEP + "\n" +
+        PRE + "§6§l\u2B50 §eLoto automatique !\n" +
+        "  §8| §7Un loto se lance régulièrement sur le serveur.\n" +
+        "  §8| §7Pariez avec §f/loto <montant> §7quand il est ouvert !\n" +
+        "  §8| §7Plus il y a de joueurs, plus le multiplicateur est élevé.\n" +
         SEP
     );
 

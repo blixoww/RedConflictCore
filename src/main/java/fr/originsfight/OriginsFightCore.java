@@ -5,6 +5,8 @@ import fr.originsfight.automsg.AutoMessageManager;
 import fr.originsfight.bounty.BountyCommand;
 import fr.originsfight.bounty.BountyListener;
 import fr.originsfight.bounty.BountyManager;
+import fr.originsfight.loto.LotoCommand;
+import fr.originsfight.loto.LotoManager;
 import fr.originsfight.bottlexp.BottleXpCommand;
 import fr.originsfight.bottlexp.BottleXpListener;
 import fr.originsfight.combatlog.CombatLogCommand;
@@ -66,6 +68,7 @@ public class OriginsFightCore extends JavaPlugin {
     private StaffPlugin staffPlugin;
     private KsDatabase ksDatabase;
     private BountyManager bountyManager;
+    private LotoManager lotoManager;
 
     public void onEnable() {
         instance = this;
@@ -103,6 +106,13 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("prime").setTabCompleter(bountyCmd);
         getServer().getPluginManager().registerEvents(new BountyListener(bountyManager), this);
         getLogger().info("[Bounty] Système de primes initialisé avec succès !");
+        // Système de loto automatique
+        this.lotoManager = new LotoManager(this);
+        this.lotoManager.startScheduler();
+        LotoCommand lotoCmd = new LotoCommand(lotoManager);
+        getCommand("loto").setExecutor(lotoCmd);
+        getCommand("loto").setTabCompleter(lotoCmd);
+        getLogger().info("[Loto] Système de loto initialisé avec succès !");
         // Messages automatiques dans le chat
         new AutoMessageManager(this);
     }

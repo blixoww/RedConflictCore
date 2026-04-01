@@ -52,6 +52,10 @@ commands:
     description: Place une prime sur un joueur
     usage: /prime <joueur> <montant>
     aliases: [bounty]
+  loto:
+    description: Participer au loto, voir son état ou le prochain tirage
+    usage: /loto <montant> | /loto info | /loto next | /loto help
+    aliases: [lottery]
   commands:
     description: Affiche la liste des commandes disponibles
     usage: /commands
