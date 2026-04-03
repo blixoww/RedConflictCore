@@ -24,6 +24,14 @@ commands:
     description: Hôtel des Ventes
     usage: /hdv [info|collect|history|list|clear|reload]
     aliases: [ah]
+  shop:
+    description: Boutique du serveur (prix dynamiques)
+    usage: /shop [open]
+    aliases: [boutique, magasin]
+  shopdebug:
+    description: Commandes de debug du shop (admin)
+    usage: /shopdebug <tick all|info|reset>
+    permission: shop.admin
   bottlexp:
     description: Embouteille tes niveaux d'XP (min 10)
     aliases: [bxp, bottle]

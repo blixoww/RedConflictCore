@@ -18,6 +18,9 @@ import fr.originsfight.hdv.HdvCommand;
 import fr.originsfight.hdv.HdvLoginListener;
 import fr.originsfight.hdv.HdvManager;
 import fr.originsfight.hdv.HdvServerHandler;
+import fr.originsfight.shop.ShopCommand;
+import fr.originsfight.shop.ShopManager;
+import fr.originsfight.shop.ShopServerHandler;
 import fr.originsfight.ks.KsCommand;
 import fr.originsfight.ks.KsDatabase;
 import fr.originsfight.ks.KsListener;
@@ -65,6 +68,7 @@ public class OriginsFightCore extends JavaPlugin {
     private final Map<Material, ItemStack> smeltableItems = new HashMap<>();
 
     private HdvManager hdvManager;
+    private ShopManager shopManager;
     private StaffPlugin staffPlugin;
     private KsDatabase ksDatabase;
     private BountyManager bountyManager;
@@ -120,6 +124,7 @@ public class OriginsFightCore extends JavaPlugin {
     public void onDisable() {
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §cRedConflict est désactivé !");
         if (this.hdvManager != null)  this.hdvManager.disable();
+        if (this.shopManager != null) this.shopManager.disable();
         if (this.staffPlugin != null) this.staffPlugin.disable();
         for (Player p : Bukkit.getOnlinePlayers()) {
             Long joinTime = KsListener.getJoinTime(p.getUniqueId());
@@ -196,9 +201,24 @@ public class OriginsFightCore extends JavaPlugin {
         }
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:HDV_C2S", (PluginMessageListener)new HdvServerHandler(this));
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:C2S", (PluginMessageListener)new CustomPacketServerHandler(this));
-        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:SHOP_C2S", (ch, player, msg) -> {
-
-        });
+        // Shop
+        this.shopManager = new ShopManager(this);
+        if (!this.shopManager.enable()) {
+            getLogger().severe("[Shop] Erreur lors de l'initialisation du Shop !");
+        } else {
+            getLogger().info("[Shop] ShopManager initialise avec succes !");
+        }
+        ShopCommand shopCmd = new ShopCommand(this.shopManager);
+        if (getCommand("shop") != null) {
+            getCommand("shop").setExecutor(shopCmd);
+            getCommand("shop").setTabCompleter(shopCmd);
+        }
+        if (getCommand("shopdebug") != null) {
+            getCommand("shopdebug").setExecutor(shopCmd);
+            getCommand("shopdebug").setTabCompleter(shopCmd);
+        }
+        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:SHOP_C2S",
+            (PluginMessageListener) new ShopServerHandler(this));
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PDATA_C2S", (PluginMessageListener)new fr.originsfight.data.PlayerDataServerHandler(this));
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:HDV_S2C");
