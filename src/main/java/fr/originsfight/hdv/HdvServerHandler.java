@@ -59,6 +59,14 @@ public class HdvServerHandler implements PluginMessageListener {
                 case 0x16: // HDV_MY_LISTINGS_REQUEST
                     this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.sendMyListings(player));
                     break;
+                case 0x17: // HDV_ADMIN_EXPIRE
+                    if (!player.isOp()) {
+                        sendActionResult(player, false, "Permission refusée.");
+                        return;
+                    }
+                    listingId[0] = reader.readVarInt();
+                    this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.handleForceExpire(player, listingId[0]));
+                    break;
             }
         } catch (Exception exception) {
             this.plugin.getLogger().severe("Une erreur s'est produite lors de la réception d'un message de plugin : " + exception.getMessage());

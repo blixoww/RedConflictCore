@@ -309,10 +309,7 @@ public class ShopManager {
         // Donner les items
         giveItems(player, item.minecraftItem, item.meta, quantity);
 
-        // Micro-mouvement immédiat (market-impact Kyle)
-        database.applyImmediatePriceImpact(itemId, quantity, true);
-
-        // Enregistrer le volume cumulatif
+        // Enregistrer le volume cumulatif (prix mis à jour uniquement toutes les 24h)
         database.recordBuyVolume(itemId, quantity);
 
         // Logger la transaction
@@ -374,10 +371,7 @@ public class ShopManager {
         // Donner l'argent
         economy.depositPlayer(player, totalEarned);
 
-        // Micro-mouvement immédiat (market-impact Kyle)
-        database.applyImmediatePriceImpact(itemId, quantity, false);
-
-        // Enregistrer le volume cumulatif
+        // Enregistrer le volume cumulatif (prix mis à jour uniquement toutes les 24h)
         database.recordSellVolume(itemId, quantity);
 
         // Logger la transaction
@@ -420,7 +414,7 @@ public class ShopManager {
 
         // Top bought (24h)
         // Format client : id (VarInt), displayName (String), mcItem (String),
-        //                  buyPrice (long), sellPrice (long), volume (long)
+        //                  buyPrice (long), sellPrice (long), volume (long), avgPrice (long)
         pb.writeVarInt(topBought.size());
         for (ShopDatabase.MarketStatEntry e : topBought) {
             String mcItem = (e.item.meta > 0 || META_SENSITIVE_ITEMS.contains(e.item.minecraftItem))
@@ -432,6 +426,7 @@ public class ShopManager {
             pb.writeLong(e.item.currentBuyPrice);
             pb.writeLong(e.item.currentSellPrice);
             pb.writeLong(e.quantity24h);
+            pb.writeLong(e.avgPrice);  // avgPrice MANQUANT — causait le décalage de buffer
         }
 
         // Top sold (24h)
@@ -446,6 +441,7 @@ public class ShopManager {
             pb.writeLong(e.item.currentBuyPrice);
             pb.writeLong(e.item.currentSellPrice);
             pb.writeLong(e.quantity24h);
+            pb.writeLong(e.avgPrice);  // avgPrice MANQUANT — causait le décalage de buffer
         }
 
         player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());

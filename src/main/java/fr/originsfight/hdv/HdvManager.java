@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.logging.Logger;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -107,6 +108,24 @@ public class HdvManager {
         return this.database;
     }
 
+    /** Envoie le packet HDV_OPEN (0x25) pour ouvrir l'interface côté client. */
+    public void sendOpen(Player player) {
+        byte[] pkt = PacketBuilder.create(0x25).build();
+        player.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", pkt);
+    }
+
+    /** Force l'expiration d'une annonce (commande admin ou packet 0x17). */
+    public void handleForceExpire(Player staff, int listingId) {
+        boolean ok = this.database.forceExpireListing(listingId);
+        if (ok) {
+            staff.sendMessage(ChatColor.GOLD + "[HDV] " + ChatColor.GREEN
+                    + "Annonce #" + listingId + " expirée avec succès. Le vendeur peut la récupérer.");
+        } else {
+            staff.sendMessage(ChatColor.GOLD + "[HDV] " + ChatColor.RED
+                    + "Annonce #" + listingId + " introuvable ou déjà vendue/annulée.");
+        }
+    }
+
     public void sendPlayerBalance(Player player) {
         long balance = (this.economy != null) ? this.economy.getBalance(player) : 0L;
         byte[] pkt = PacketBuilder.create(80).writeLong(balance).build();
@@ -194,11 +213,12 @@ public class HdvManager {
         return pb.buildRaw();
     }
 
-    /** Envoie au joueur ses annonces actives + vendues (packet ID 0x24). */
+    /** Envoie au joueur ses annonces actives + expirées + vendues (packet ID 0x24). */
     public void sendMyListings(Player player) {
         String uuid = player.getUniqueId().toString();
-        List<HdvListing> active = this.database.getActiveListingsForPlayer(uuid);
-        List<HdvListing> sold   = this.database.getSoldListingsForPlayer(uuid);
+        List<HdvListing> active  = this.database.getActiveListingsForPlayer(uuid);
+        List<HdvListing> expired = this.database.getExpiredListingsForPlayer(uuid);
+        List<HdvListing> sold    = this.database.getSoldListingsForPlayer(uuid);
         long pendingEarnings    = this.database.getPendingEarnings(uuid);
 
         List<byte[]> serialized = new ArrayList<>();
@@ -216,6 +236,22 @@ public class HdvManager {
                 serialized.add(pb.buildRaw());
             } catch (Exception e) {
                 LOG.warning("[HDV] sendMyListings active error: " + e.getMessage());
+            }
+        }
+        for (HdvListing l : expired) {
+            if (l.getItem() == null) continue;
+            try {
+                PacketBuilder pb = new PacketBuilder();
+                pb.writeVarInt(l.getId());
+                pb.writeString((l.getSellerName() != null) ? l.getSellerName() : "");
+                pb.writeBytes(serializeItemForNetwork(l.getItem()));
+                pb.writeLong(l.getTotalPrice());
+                pb.writeVarInt(l.getQuantity());
+                pb.writeLong(l.getExpiresAt()); // expiresAt in the past → client isExpired() = true
+                pb.writeBoolean(false); // not sold, just expired
+                serialized.add(pb.buildRaw());
+            } catch (Exception e) {
+                LOG.warning("[HDV] sendMyListings expired error: " + e.getMessage());
             }
         }
         for (HdvListing l : sold) {
@@ -300,6 +336,16 @@ public class HdvManager {
                     : listing.getItem().getType().name();
             this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), price);
             HdvServerHandler.sendActionResult(player, true, "Achat effectue !");
+            // Notifier le vendeur s'il est en ligne
+            Player seller = Bukkit.getPlayerExact(listing.getSellerName());
+            if (seller != null && seller.isOnline()) {
+                byte[] notif = PacketBuilder.create(0x26)
+                        .writeString(itemName.length() > 64 ? itemName.substring(0, 64) : itemName)
+                        .writeVarInt(listing.getQuantity())
+                        .writeLong(price)
+                        .build();
+                seller.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", notif);
+            }
             sendListings(player, 0, "");
         } else {
             HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");

@@ -92,6 +92,21 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // /shop help
+        if (args.length == 1 && args[0].equalsIgnoreCase("help")) {
+            player.sendMessage("§6[Shop] §eCommandes Shop");
+            player.sendMessage("§7  /shop §f- Ouvrir le Shop");
+            player.sendMessage("§7  /shop help §f- Afficher cette aide");
+            player.sendMessage("§7  /shop next §f- Prochain rééquilibrage des prix");
+            if (player.hasPermission("shop.admin")) {
+                player.sendMessage("§3  — Staff —");
+                player.sendMessage("§7  /shopdebug info §f- Résumé du marché");
+                player.sendMessage("§7  /shopdebug tick all §f- Simuler une régression 24h");
+                player.sendMessage("§7  /shopdebug reset §f- Réinitialiser le catalogue");
+            }
+            return true;
+        }
+
         // /shop next => prochain rééquilibrage
         if (args.length == 1 && args[0].equalsIgnoreCase("next")) {
             long nextTick = manager.getNextRegressionTime();
@@ -111,7 +126,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.sendMessage("§cUsage: /shop [open|next]");
+        player.sendMessage("§cSous-commande inconnue. Tapez §e/shop help §cpour la liste des commandes.");
         return true;
     }
 

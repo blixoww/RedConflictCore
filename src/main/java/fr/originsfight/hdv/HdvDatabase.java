@@ -225,6 +225,21 @@ public class HdvDatabase {
         return null;
     }
 
+    /**
+     * Force l'expiration immédiate d'une annonce active (admin).
+     * @return true si une ligne a été mise à jour, false si introuvable / déjà sold/cancelled.
+     */
+    public boolean forceExpireListing(int id) {
+        try (PreparedStatement ps = this.connection.prepareStatement(
+                "UPDATE hdv_listings SET expires_at=1 WHERE id=? AND sold=0 AND cancelled=0")) {
+            ps.setInt(1, id);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            LOG.warning("[HDV] forceExpireListing error: " + e.getMessage());
+            return false;
+        }
+    }
+
     public boolean buyListingNoEarnings(int listingId, int qtyToBuy) {
         try {
             this.connection.setAutoCommit(false);
@@ -487,6 +502,45 @@ public class HdvDatabase {
             LOG.severe("[HDV] clearListingsForPlayer error: " + e.getMessage());
             return 0;
         }
+    }
+
+    /** Retourne les IDs de toutes les annonces actives (pour l'auto-complétion admin). */
+    public List<Integer> getActiveListingIds() {
+        List<Integer> ids = new ArrayList<>();
+        long now = System.currentTimeMillis() / 1000L;
+        try (PreparedStatement ps = this.connection.prepareStatement(
+                "SELECT id FROM hdv_listings WHERE sold=0 AND cancelled=0 AND expires_at > ? ORDER BY id")) {
+            ps.setLong(1, now);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) ids.add(rs.getInt(1));
+            }
+        } catch (SQLException e) {
+            LOG.warning("[HDV] getActiveListingIds error: " + e.getMessage());
+        }
+        return ids;
+    }
+
+    /** Retourne les annonces expirées non vendues (sold=0, expires_at <= now) d'un joueur,
+     *  pour qu'il puisse les récupérer depuis le menu "Mes annonces". */
+    public List<HdvListing> getExpiredListingsForPlayer(String sellerUuid) {
+        List<HdvListing> result = new ArrayList<>();
+        long now = System.currentTimeMillis() / 1000L;
+        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at"
+                + " FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND cancelled=0 AND expires_at <= ?"
+                + " ORDER BY id DESC LIMIT 10";
+        try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
+            ps.setString(1, sellerUuid);
+            ps.setLong(2, now);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    HdvListing l = readListing(rs);
+                    if (l != null) result.add(l);
+                }
+            }
+        } catch (SQLException e) {
+            LOG.severe("[HDV] getExpiredListingsForPlayer error: " + e.getMessage());
+        }
+        return result;
     }
 
     /** Retourne les annonces actives (sold=0) d'un joueur */

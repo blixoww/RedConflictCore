@@ -31,10 +31,18 @@ public class HdvCommand implements CommandExecutor, TabCompleter {
 
     public boolean onCommand(CommandSender s, Command cmd, String label, String[] args) {
         if (args.length == 0) {
-            help(s);
+            // Ouvre directement l'HDV si c'est un joueur, sinon affiche l'aide
+            if (s instanceof Player) {
+                this.manager.sendOpen((Player) s);
+            } else {
+                help(s);
+            }
             return true;
         }
         switch (args[0].toLowerCase()) {
+            case "help":
+                help(s);
+                return true;
             case "info":
                 return info(s);
             case "collect":
@@ -47,22 +55,51 @@ public class HdvCommand implements CommandExecutor, TabCompleter {
                 return clear(s, args);
             case "reload":
                 return reload(s);
+            case "expire":
+                return expire(s, args);
         }
-        s.sendMessage(PRE + ChatColor.RED + "Sous-commande inconnue. /hdv pour l'aide.");
+        s.sendMessage(PRE + ChatColor.RED + "Sous-commande inconnue. Tapez " + ChatColor.YELLOW + "/hdv help" + ChatColor.RED + " pour la liste des commandes.");
         return true;
     }
 
     private void help(CommandSender s) {
-        s.sendMessage(PRE + ChatColor.YELLOW + "Appuyez sur en jeu pour ouvrir l'HDV.");
+        s.sendMessage(PRE + ChatColor.YELLOW + "Commandes HDV");
+        line(s, "/hdv", "Ouvrir l'Hôtel des Ventes");
         line(s, "/hdv info", "Voir votre solde, annonces et gains");
         line(s, "/hdv collect", "Collecter vos gains en attente");
         line(s, "/hdv history [page]", "Voir l'historique de vos transactions");
         if (s.isOp()) {
-            s.sendMessage(ChatColor.DARK_AQUA + "Admin" );
-            line(s, "/hdv list [page]", "Lister toutes les annonces");
+            s.sendMessage(ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "  — Staff —");
+            line(s, "/hdv list [page]", "Lister toutes les annonces actives");
             line(s, "/hdv clear <joueur>", "Supprimer les annonces d'un joueur");
             line(s, "/hdv history <joueur> [page]", "Historique d'un joueur");
+            line(s, "/hdv expire <id>", "Forcer l'expiration d'une annonce");
         }
+    }
+
+    private boolean expire(CommandSender s, String[] args) {
+        if (!s.isOp()) {
+            s.sendMessage(NOPERM);
+            return true;
+        }
+        if (args.length < 2) {
+            s.sendMessage(PRE + ChatColor.RED + "Usage : /hdv expire <id_annonce>");
+            return true;
+        }
+        int id;
+        try {
+            id = Integer.parseInt(args[1]);
+        } catch (NumberFormatException e) {
+            s.sendMessage(PRE + ChatColor.RED + "ID invalide : " + args[1]);
+            return true;
+        }
+        boolean ok = this.manager.getDatabase().forceExpireListing(id);
+        if (ok) {
+            s.sendMessage(PRE + ChatColor.GREEN + "Annonce #" + id + " expirée avec succès. Le vendeur peut la récupérer.");
+        } else {
+            s.sendMessage(PRE + ChatColor.RED + "Annonce #" + id + " introuvable ou déjà vendue/annulée.");
+        }
+        return true;
     }
 
     private void line(CommandSender s, String cmd, String desc) {
@@ -276,8 +313,20 @@ public class HdvCommand implements CommandExecutor, TabCompleter {
 
     public List<String> onTabComplete(CommandSender s, Command cmd, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> subs = s.isOp() ? Arrays.<String>asList(new String[] { "info", "collect", "history", "list", "clear", "reload" }) : Arrays.<String>asList(new String[] { "info", "collect", "history" });
+            List<String> subs = s.isOp()
+                ? Arrays.asList("help", "info", "collect", "history", "list", "clear", "reload", "expire")
+                : Arrays.asList("help", "info", "collect", "history");
             return filter(subs, args[0]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("expire") && s.isOp()) {
+            List<Integer> ids = this.manager.getDatabase().getActiveListingIds();
+            String prefix = args[1];
+            List<String> result = new ArrayList<>();
+            for (Integer id : ids) {
+                String sid = String.valueOf(id);
+                if (sid.startsWith(prefix)) result.add(sid);
+            }
+            return result;
         }
         return Collections.emptyList();
     }
