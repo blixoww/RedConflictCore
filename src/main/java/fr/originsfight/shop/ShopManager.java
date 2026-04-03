@@ -309,7 +309,10 @@ public class ShopManager {
         // Donner les items
         giveItems(player, item.minecraftItem, item.meta, quantity);
 
-        // Enregistrer le volume (les prix ne changent qu'à la régression 24h)
+        // Micro-mouvement immédiat (market-impact Kyle)
+        database.applyImmediatePriceImpact(itemId, quantity, true);
+
+        // Enregistrer le volume cumulatif
         database.recordBuyVolume(itemId, quantity);
 
         // Logger la transaction
@@ -371,7 +374,10 @@ public class ShopManager {
         // Donner l'argent
         economy.depositPlayer(player, totalEarned);
 
-        // Enregistrer le volume (les prix ne changent qu'à la régression 24h)
+        // Micro-mouvement immédiat (market-impact Kyle)
+        database.applyImmediatePriceImpact(itemId, quantity, false);
+
+        // Enregistrer le volume cumulatif
         database.recordSellVolume(itemId, quantity);
 
         // Logger la transaction
@@ -413,6 +419,8 @@ public class ShopManager {
         PacketBuilder pb = PacketBuilder.create(SHOP_MARKET_STATS);
 
         // Top bought (24h)
+        // Format client : id (VarInt), displayName (String), mcItem (String),
+        //                  buyPrice (long), sellPrice (long), volume (long)
         pb.writeVarInt(topBought.size());
         for (ShopDatabase.MarketStatEntry e : topBought) {
             String mcItem = (e.item.meta > 0 || META_SENSITIVE_ITEMS.contains(e.item.minecraftItem))
@@ -424,7 +432,6 @@ public class ShopManager {
             pb.writeLong(e.item.currentBuyPrice);
             pb.writeLong(e.item.currentSellPrice);
             pb.writeLong(e.quantity24h);
-            pb.writeLong(e.avgPrice);
         }
 
         // Top sold (24h)
@@ -439,7 +446,6 @@ public class ShopManager {
             pb.writeLong(e.item.currentBuyPrice);
             pb.writeLong(e.item.currentSellPrice);
             pb.writeLong(e.quantity24h);
-            pb.writeLong(e.avgPrice);
         }
 
         player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());

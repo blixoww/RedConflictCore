@@ -388,69 +388,237 @@ public class ShopDatabase {
     // ── Régression journalière ────────────────────────────────────────────────
 
     /**
-     * Calcule les nouveaux prix pour TOUS les items en fonction de l'offre/demande
-     * sur les 7 derniers jours. Appelé toutes les 24h (vraies ou simulées).
+     * Applique un micro-mouvement de prix IMMÉDIAT à chaque transaction.
      *
-     * Logique :
-     *  - buyVol  >> sellVol  → forte demande → prix monte (jusqu'à +30% max par cycle)
-     *  - sellVol >> buyVol   → forte offre   → prix baisse (jusqu'à -30% max par cycle)
-     *  - volumes faibles (< seuil)           → régression douce vers le prix de base (8%)
-     *  - volumes équilibrés                  → régression douce vers le prix de base
+     * Inspiré du modèle de market-impact de Kyle (1985) :
+     *   price_impact = λ × sqrt(qty / liquidity_base)
      *
-     * Le seuil minimum est de 10 unités sur 7 jours pour qu'un volume soit
-     * considéré comme significatif.
+     * L'impact est racine-carrée de la quantité (non linéaire), ce qui représente
+     * réalistement que vendre 100 items n'a pas 10× l'impact de vendre 10 items.
+     *
+     * @param itemId   identifiant de l'item
+     * @param qty      quantité échangée (positif = achat, négatif = vente)
+     * @param isBuy    true si c'est un achat (prix monte), false si vente (prix baisse)
+     */
+    public void applyImmediatePriceImpact(int itemId, int qty, boolean isBuy) {
+        ShopItem item = getItemById(itemId);
+        if (item == null || item.frozen) return;
+
+        // Liquidité de base : items communs (stackables à 64) = plus liquides → impact réduit
+        // Items rares (maxStack=1 ou 16) = moins liquides → impact plus élevé
+        double liquidityFactor = Math.max(0.2, Math.min(1.0, item.maxStack / 64.0));
+
+        // λ = sensibilité au prix : items chers réagissent moins en proportion
+        // (les marchés d'actifs chers ont plus de profondeur)
+        double lambda = 0.004 / (1.0 + Math.log1p(item.baseBuyPrice / 100.0));
+
+        // Impact = λ × sqrt(qty) / liquidityFactor (en fraction du prix de base)
+        double impact = lambda * Math.sqrt(qty) / liquidityFactor;
+
+        long buyDelta  = (long)(item.baseBuyPrice  * impact);
+        long sellDelta = (long)(item.baseSellPrice * impact);
+
+        // Plancher de 1 centime
+        buyDelta  = Math.max(1, buyDelta);
+        sellDelta = Math.max(1, sellDelta);
+
+        long newBuy, newSell;
+        if (isBuy) {
+            // Pression acheteuse : prix montent
+            newBuy  = item.currentBuyPrice  + buyDelta;
+            newSell = item.currentSellPrice + sellDelta;
+        } else {
+            // Pression vendeuse : prix descendent
+            newBuy  = item.currentBuyPrice  - buyDelta;
+            newSell = item.currentSellPrice - sellDelta;
+        }
+
+        // Respecter les bornes
+        newBuy  = Math.max(item.floorPrice + 1, Math.min(item.ceilPrice, newBuy));
+        newSell = Math.max(item.floorPrice,      Math.min(newBuy - 1,    newSell));
+
+        // Le spread bid-ask doit rester ≥ 1% du prix de base (liquidité minimale)
+        long minSpread = Math.max(1, item.baseBuyPrice / 100);
+        if (newBuy - newSell < minSpread) {
+            newSell = newBuy - minSpread;
+            if (newSell < item.floorPrice) { newSell = item.floorPrice; newBuy = newSell + minSpread; }
+        }
+
+        updatePrices(itemId, newBuy, newSell);
+    }
+
+    /**
+     * Régression journalière — modèle inspiré de la finance de marché.
+     *
+     * Architecture à 3 composantes (comme les modèles ARMA + mean-reversion réels) :
+     *
+     * 1. SIGNAL OFFRE/DEMANDE (7 jours)
+     *    Ratio de pression net = (buyVol - sellVol) / sqrt(buyVol² + sellVol²)
+     *    → Normalisation en cercle : stable sous faible volume, saturée sous fort volume
+     *    → Applique une variation de ±MAX_MOVE×élasticité sur le prix
+     *
+     * 2. MOMENTUM (3 derniers jours)
+     *    Si le prix a évolué dans la même direction 3 jours de suite → boost ×1.15
+     *    Si le prix a évolué dans la direction opposée → frein ×0.85
+     *    Simule l'inertie des marchés (tendance de court terme)
+     *
+     * 3. MEAN-REVERSION (retour vers le prix de base)
+     *    Force de rappel proportionnelle à l'écart : Δ = α × (basePrix - prixActuel)
+     *    α varie selon le volume (marché actif → rappel plus faible, marché calme → rappel fort)
+     *    Simule la gravité économique vers la "juste valeur"
+     *
+     * 4. SPREAD DYNAMIQUE
+     *    Le spread (buyPrice - sellPrice) s'élargit quand la volatilité est forte
+     *    et se resserre quand le marché est stable. Plancher = 1% du prix de base.
      */
     public void applyDailyPriceRegression() {
         List<ShopItem> all = getAllItems();
-        long sevenDaysAgo = System.currentTimeMillis() / 1000L - 7 * 86400L;
+        long sevenDaysAgo  = System.currentTimeMillis() / 1000L - 7  * 86400L;
+        long threeDaysAgo  = System.currentTimeMillis() / 1000L - 3  * 86400L;
 
-        try (PreparedStatement psVol = connection.prepareStatement(
+        try (PreparedStatement psVol7 = connection.prepareStatement(
                 "SELECT " +
-                "  COALESCE(SUM(CASE WHEN type='BUY'  THEN quantity END),0) AS bv," +
-                "  COALESCE(SUM(CASE WHEN type='SELL' THEN quantity END),0) AS sv " +
+                "  COALESCE(SUM(CASE WHEN type='BUY'  THEN quantity END),0) AS bv7," +
+                "  COALESCE(SUM(CASE WHEN type='SELL' THEN quantity END),0) AS sv7 " +
                 "FROM shop_transactions WHERE item_id=? AND timestamp>=?");
+             PreparedStatement psVol3 = connection.prepareStatement(
+                "SELECT " +
+                "  COALESCE(SUM(CASE WHEN type='BUY'  THEN quantity END),0) AS bv3," +
+                "  COALESCE(SUM(CASE WHEN type='SELL' THEN quantity END),0) AS sv3 " +
+                "FROM shop_transactions WHERE item_id=? AND timestamp>=?");
+             PreparedStatement psMom = connection.prepareStatement(
+                "SELECT buy_price FROM shop_price_history " +
+                "WHERE item_id=? AND daily=1 ORDER BY timestamp DESC LIMIT 3");
              PreparedStatement psUpd = connection.prepareStatement(
                 "UPDATE shop_items SET current_buy_price=?,current_sell_price=? WHERE id=?")) {
 
-            final double REGRESSION   = 0.08;  // retour vers la base si pas d'activité
-            final double MAX_MOVE     = 0.30;  // variation max par cycle (30%)
-            final long   MIN_VOL      = 10L;   // volume minimum pour affecter les prix
+            // ── Paramètres globaux du modèle ──────────────────────────────────
+            final double MAX_MOVE         = 0.25;  // variation max par cycle (±25%)
+            final double REVERSION_CALM   = 0.12;  // force de rappel si marché calme
+            final double REVERSION_ACTIVE = 0.04;  // force de rappel si marché actif
+            final double MOMENTUM_BOOST   = 1.15;  // amplificateur si momentum confirmé
+            final double MOMENTUM_BRAKE   = 0.85;  // frein si momentum contraire
+            final long   ACTIVITY_FLOOR   = 5L;    // unités min pour considérer l'activité
 
             for (ShopItem item : all) {
                 if (item.frozen) continue;
 
-                // Lire les volumes 7 jours depuis les transactions
-                psVol.setInt(1, item.id);
-                psVol.setLong(2, sevenDaysAgo);
-                long buyVol = 0, sellVol = 0;
-                try (ResultSet rs = psVol.executeQuery()) {
-                    if (rs.next()) { buyVol = rs.getLong("bv"); sellVol = rs.getLong("sv"); }
+                // ── 1. Volumes 7 jours ────────────────────────────────────────
+                psVol7.setInt(1, item.id); psVol7.setLong(2, sevenDaysAgo);
+                long buyVol7 = 0, sellVol7 = 0;
+                try (ResultSet rs = psVol7.executeQuery()) {
+                    if (rs.next()) { buyVol7 = rs.getLong("bv7"); sellVol7 = rs.getLong("sv7"); }
+                }
+
+                // ── 2. Volumes 3 jours (pour le momentum) ────────────────────
+                psVol3.setInt(1, item.id); psVol3.setLong(2, threeDaysAgo);
+                long buyVol3 = 0, sellVol3 = 0;
+                try (ResultSet rs = psVol3.executeQuery()) {
+                    if (rs.next()) { buyVol3 = rs.getLong("bv3"); sellVol3 = rs.getLong("sv3"); }
+                }
+
+                // ── 3. Historique des prix (momentum directionnel) ────────────
+                psMom.setInt(1, item.id);
+                java.util.List<Long> recentPrices = new java.util.ArrayList<>();
+                try (ResultSet rs = psMom.executeQuery()) {
+                    while (rs.next()) recentPrices.add(rs.getLong("buy_price"));
                 }
 
                 long newBuy, newSell;
+                boolean marketActive = (buyVol7 + sellVol7) >= ACTIVITY_FLOOR;
 
-                if (buyVol < MIN_VOL && sellVol < MIN_VOL) {
-                    // Activité insuffisante → régression douce vers le prix de base
-                    newBuy  = item.currentBuyPrice  + (long)((item.baseBuyPrice  - item.currentBuyPrice)  * REGRESSION);
-                    newSell = item.currentSellPrice + (long)((item.baseSellPrice - item.currentSellPrice) * REGRESSION);
+                if (!marketActive) {
+                    // ── Marché calme : pure mean-reversion ────────────────────
+                    // Prix tend vers la base avec une force REVERSION_CALM
+                    newBuy  = item.currentBuyPrice  + (long)((item.baseBuyPrice  - item.currentBuyPrice)  * REVERSION_CALM);
+                    newSell = item.currentSellPrice + (long)((item.baseSellPrice - item.currentSellPrice) * REVERSION_CALM);
                 } else {
-                    long total = buyVol + sellVol;
-                    // Ratio entre -1 (tout vente) et +1 (tout achat)
-                    double pressure = (double)(buyVol - sellVol) / total;
-                    // Variation proportionnelle à la pression, plafonnée à MAX_MOVE
-                    double move = Math.max(-MAX_MOVE, Math.min(MAX_MOVE, pressure * MAX_MOVE));
+                    // ── Marché actif : modèle offre/demande + mean-reversion ──
+
+                    // Normalisation en norme euclidienne (stable sur tous volumes)
+                    // pressure ∈ [-1, +1] : +1 = 100% achats, -1 = 100% ventes
+                    double norm = Math.sqrt((double)buyVol7 * buyVol7 + (double)sellVol7 * sellVol7);
+                    double pressure = (norm < 1.0) ? 0.0 : (buyVol7 - sellVol7) / norm;
+
+                    // Élasticité des prix (items rares = plus élastiques)
+                    // Items communs (maxStack=64, prix bas) → élasticité réduite
+                    double elasticity = 0.5 + 0.5 * (1.0 - Math.min(1.0, item.baseBuyPrice / 100_000.0));
+                    elasticity *= (1.0 + (1.0 - item.maxStack / 64.0) * 0.5); // rareté amplifie
+
+                    double move = Math.max(-MAX_MOVE, Math.min(MAX_MOVE, pressure * MAX_MOVE * elasticity));
 
                     newBuy  = item.currentBuyPrice  + (long)(item.baseBuyPrice  * move);
                     newSell = item.currentSellPrice + (long)(item.baseSellPrice * move);
 
-                    // Régression partielle vers la base (les prix tendent toujours à revenir)
-                    newBuy  += (long)((item.baseBuyPrice  - newBuy)  * REGRESSION * 0.5);
-                    newSell += (long)((item.baseSellPrice - newSell) * REGRESSION * 0.5);
+                    // ── Momentum (amplification ou freinage) ─────────────────
+                    if (recentPrices.size() >= 2) {
+                        // Direction des derniers jours
+                        long p0 = recentPrices.get(0); // prix le plus récent
+                        long p1 = recentPrices.get(recentPrices.size() - 1); // prix le plus ancien
+                        boolean risingTrend = p0 > p1;
+                        boolean buyPressure = pressure > 0.1;
+                        boolean sellPressure = pressure < -0.1;
+
+                        // Momentum confirmé : tendance et pression dans le même sens
+                        if (risingTrend && buyPressure) {
+                            newBuy  = (long)(newBuy  * MOMENTUM_BOOST);
+                            newSell = (long)(newSell * MOMENTUM_BOOST);
+                        } else if (!risingTrend && sellPressure) {
+                            newBuy  = (long)(newBuy  * MOMENTUM_BRAKE);
+                            newSell = (long)(newSell * MOMENTUM_BRAKE);
+                        }
+                        // Retournement : tendance inverse → freinage de la pression
+                        else if (risingTrend && sellPressure) {
+                            newBuy  = (long)(newBuy  * MOMENTUM_BRAKE);
+                            newSell = (long)(newSell * MOMENTUM_BRAKE);
+                        }
+                    }
+
+                    // ── Mean-reversion partielle (gravité vers la juste valeur) ──
+                    // Force de rappel réduite si le marché est très actif
+                    double activityRatio = Math.min(1.0, (buyVol7 + sellVol7) / 200.0);
+                    double reversionAlpha = REVERSION_CALM - (REVERSION_CALM - REVERSION_ACTIVE) * activityRatio;
+                    newBuy  += (long)((item.baseBuyPrice  - newBuy)  * reversionAlpha);
+                    newSell += (long)((item.baseSellPrice - newSell) * reversionAlpha);
+
+                    // ── Régression 3 jours (court terme) ─────────────────────
+                    // Pression court terme amplifie légèrement si cohérente avec 7j
+                    if (buyVol3 + sellVol3 >= ACTIVITY_FLOOR) {
+                        double norm3 = Math.sqrt((double)buyVol3 * buyVol3 + (double)sellVol3 * sellVol3);
+                        double pressure3 = (buyVol3 - sellVol3) / norm3;
+                        // Poids de la pression court terme = 30%
+                        if (Math.signum(pressure3) == Math.signum(pressure)) {
+                            long shortMoveB = (long)(item.baseBuyPrice  * pressure3 * MAX_MOVE * 0.30);
+                            long shortMoveS = (long)(item.baseSellPrice * pressure3 * MAX_MOVE * 0.30);
+                            newBuy  += shortMoveB;
+                            newSell += shortMoveS;
+                        }
+                    }
                 }
 
-                // Respecter les limites floor / ceil
-                newBuy  = Math.max(item.floorPrice + 1, Math.min(item.ceilPrice, newBuy));
-                newSell = Math.max(item.floorPrice,      Math.min(newBuy - 1,    newSell));
+                // ── 4. Spread dynamique ───────────────────────────────────────
+                // Calcule la volatilité des 7 derniers jours (écart-type des variations)
+                double spreadMultiplier = 1.0;
+                if (recentPrices.size() >= 2) {
+                    double sumSq = 0.0;
+                    for (int i = 1; i < recentPrices.size(); i++) {
+                        double pctChange = (double)(recentPrices.get(i) - recentPrices.get(i-1)) / recentPrices.get(i-1);
+                        sumSq += pctChange * pctChange;
+                    }
+                    double volatility = Math.sqrt(sumSq / (recentPrices.size() - 1));
+                    // Volatilité élevée → spread s'élargit (marché nerveux = moins liquide)
+                    // Volatilité faible  → spread se resserre (marché stable = plus liquide)
+                    spreadMultiplier = 1.0 + volatility * 10.0; // 10% vol → spread ×2
+                    spreadMultiplier = Math.max(1.0, Math.min(3.0, spreadMultiplier));
+                }
+
+                // Spread minimal = 1% du prix de base × multiplicateur de volatilité
+                long minSpread = Math.max(1, (long)(item.baseBuyPrice * 0.01 * spreadMultiplier));
+
+                // ── 5. Application des bornes floor/ceil ──────────────────────
+                newBuy  = Math.max(item.floorPrice + minSpread, Math.min(item.ceilPrice, newBuy));
+                newSell = newBuy - minSpread;
+                if (newSell < item.floorPrice) { newSell = item.floorPrice; newBuy = newSell + minSpread; }
 
                 psUpd.setLong(1, newBuy);
                 psUpd.setLong(2, newSell);
