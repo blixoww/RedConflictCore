@@ -2,6 +2,7 @@ package fr.originsfight;
 
 /**
  * Centralisateur de tous les messages du plugin RedConflict.
+ * Inclut les messages du système de primes (bounty).
  *
  * COULEURS STANDARD :
  *   §8[§c§lRedConflict§8]  →  préfixe principal
@@ -103,19 +104,26 @@ public class RC {
     public static final String FIRST_JOIN_GLOBAL= "§6§l★ §f%s §7rejoint §c§lRedConflict §7pour la première fois §6§l!";
 
     // ── Bounty / Prime ─────────────────────────────────────────────────────────
-    public static final String BOUNTY_USAGE          = PRE + "§eUsage §f: /prime <joueur> <montant>";
-    public static final String BOUNTY_NOT_FOUND      = PRE + "§cJoueur introuvable ou hors ligne.";
-    public static final String BOUNTY_SELF           = PRE + "§cVous ne pouvez pas mettre une prime sur vous-même.";
-    public static final String BOUNTY_INVALID_AMOUNT = PRE + "§cMontant invalide. Entrez un nombre entier positif.";
-    public static final String BOUNTY_ALREADY_PLACED = PRE + "§cVous avez déjà une prime en cours. Attendez qu'elle soit réclamée.";
-    public static final String BOUNTY_ALREADY_TARGET = PRE + "§cCe joueur a déjà une prime sur sa tête.";
-    public static final String BOUNTY_NO_MONEY       = PRE + "§cVous n'avez pas assez d'argent.";
-    public static final String BOUNTY_ECO_ERROR      = PRE + "§cErreur d'économie — contactez un administrateur.";
-    public static final String BOUNTY_PLACED         = PRE + "§aPrime placée sur §f%s §apour §f%d$ §a!";
-    public static final String BOUNTY_BROADCAST      = SEP + "\n" + PRE + "§6§l\u2620 §e%s §7a placé une prime de §f%d$ §7sur §c%s §7!\n" + SEP;
-    public static final String BOUNTY_CLAIMED        = PRE + "§aVous avez réclamé la prime sur §f%s §a! §f+%d$";
-    public static final String BOUNTY_CLAIMED_BROADCAST = SEP + "\n" + PRE + "§6§l\u2620 §a%s §7a éliminé §c%s §7et récupère sa prime de §f%d$ §7!\n" + SEP;
-    public static final String BOUNTY_EXPIRED_BROADCAST = SEP + "\n" + PRE + "§6§l\u2620 §7Personne n'a réussi à tuer §c%s §7! La prime de §f%d$ §7a expiré.\n" + SEP;
+    public static final String BOUNTY_USAGE              = PRE + "§eUsage §f: /prime <joueur> <montant> §8| §f/prime list §8| §f/prime info §8| §f/prime cancel";
+    public static final String BOUNTY_NOT_FOUND          = PRE + "§cJoueur introuvable ou hors ligne.";
+    public static final String BOUNTY_SELF               = PRE + "§cVous ne pouvez pas mettre une prime sur vous-même.";
+    public static final String BOUNTY_INVALID_AMOUNT     = PRE + "§cMontant invalide. Entrez un nombre entier positif.";
+    public static final String BOUNTY_TOO_LOW            = PRE + "§cMontant minimum : §f%d$§c.";
+    public static final String BOUNTY_ALREADY_PLACED     = PRE + "§cVous avez déjà une prime active. Utilisez §f/prime cancel §cpour l'annuler.";
+    public static final String BOUNTY_ALREADY_TARGET     = PRE + "§cCe joueur a déjà une prime sur sa tête.";
+    public static final String BOUNTY_NO_MONEY           = PRE + "§cVous n'avez pas assez d'argent.";
+    public static final String BOUNTY_ECO_ERROR          = PRE + "§cErreur d'économie — contactez un administrateur.";
+    public static final String BOUNTY_NO_LAST_KILLER     = PRE + "§cVous ne pouvez placer une prime que sur votre dernier tueur. §7Vous n'en avez pas encore.";
+    public static final String BOUNTY_WRONG_TARGET       = PRE + "§cVous ne pouvez cibler que votre dernier tueur : §f%s§c.";
+    public static final String BOUNTY_UNKNOWN            = "Inconnu";
+    public static final String BOUNTY_PLACED             = PRE + "§aPrime placée sur §f%s §apour §f%d$ §a!";
+    public static final String BOUNTY_CANCELLED          = PRE + "§ePrime sur §f%s §eannulée. §f+%d$ §eremboursé.";
+    public static final String BOUNTY_BROADCAST          = SEP + "\n" + PRE + "§6§l\u2694 §e%s §7a placé une prime de §f%d$ §7sur §c%s §7!\n" + SEP;
+    public static final String BOUNTY_CLAIMED            = PRE + "§aVous avez réclamé la prime sur §f%s §a! §f+%d$";
+    public static final String BOUNTY_CLAIMED_BROADCAST  = SEP + "\n" + PRE + "§4§l\u2620 §a%s §7a éliminé §c%s §7et remporte §f%d$ §7!\n" + SEP;
+    public static final String BOUNTY_EXPIRED_BROADCAST  = SEP + "\n" + PRE + "§6§l\u23F3 §7La prime sur §c%s §7(§f%d$§7) a expiré — §eMise remboursée.\n" + SEP;
+    public static final String BOUNTY_EXPIRED_REFUND     = PRE + "§eVotre prime sur §f%s §en'a pas été réclamée. §f+%d$ §eremboursé.";
+    public static final String BOUNTY_REFUND_CREDITED    = PRE + "§eRemboursement de prime perçu : §f+%d$§e.";
 
     // ── Loto ──────────────────────────────────────────────────────────────────
     public static final String LOTO_USAGE          = PRE + "§eUsage §f: /loto <montant> §8| §f/loto info §8| §f/loto next §8| §f/loto help";

@@ -57,9 +57,13 @@ commands:
     permission: redconflict.nv
     aliases: [nv, nightvision]
   prime:
-    description: Place une prime sur un joueur
-    usage: /prime <joueur> <montant>
+    description: Système de primes PvP (bounty)
+    usage: /prime <joueur> <montant> | /prime list | /prime info [joueur] | /prime cancel
     aliases: [bounty]
+  friend:
+    description: Système d'amis (pas de dégâts entre amis, max 5)
+    usage: /friend <add|accept|deny|remove|list|requests> [joueur]
+    aliases: [ami, amis, friends]
   loto:
     description: Participer au loto, voir son état ou le prochain tirage
     usage: /loto <montant> | /loto info | /loto next | /loto help

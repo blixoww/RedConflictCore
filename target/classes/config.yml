@@ -1,6 +1,12 @@
 rtp:
   max: 9000
   min: 1000
+
+# ── Système de primes (Bounty) ────────────────────────────────────────────────
+bounty:
+  # Montant minimum requis pour placer une prime (en $)
+  minimum-amount: 100
+
 commands:
   # Commandes TOUJOURS désactivées pour les non-op (sans le "/" devant)
   always-disabled:

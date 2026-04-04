@@ -5,6 +5,9 @@ import fr.originsfight.automsg.AutoMessageManager;
 import fr.originsfight.bounty.BountyCommand;
 import fr.originsfight.bounty.BountyListener;
 import fr.originsfight.bounty.BountyManager;
+import fr.originsfight.friend.FriendCommand;
+import fr.originsfight.friend.FriendListener;
+import fr.originsfight.friend.FriendManager;
 import fr.originsfight.loto.LotoCommand;
 import fr.originsfight.loto.LotoManager;
 import fr.originsfight.bottlexp.BottleXpCommand;
@@ -72,6 +75,7 @@ public class OriginsFightCore extends JavaPlugin {
     private StaffPlugin staffPlugin;
     private KsDatabase ksDatabase;
     private BountyManager bountyManager;
+    private FriendManager friendManager;
     private LotoManager lotoManager;
 
     public void onEnable() {
@@ -104,12 +108,26 @@ public class OriginsFightCore extends JavaPlugin {
         }
         // Système de primes (bounty)
         this.bountyManager = new BountyManager();
-        this.bountyManager.startExpirationTask(this);
+        if (this.bountyManager.enable(this)) {
+            getLogger().info("[Bounty] Système de primes initialisé avec succès !");
+        } else {
+            getLogger().severe("[Bounty] Échec de l'initialisation du système de primes !");
+        }
         BountyCommand bountyCmd = new BountyCommand(bountyManager);
         getCommand("prime").setExecutor(bountyCmd);
         getCommand("prime").setTabCompleter(bountyCmd);
         getServer().getPluginManager().registerEvents(new BountyListener(bountyManager), this);
-        getLogger().info("[Bounty] Système de primes initialisé avec succès !");
+        // Système d'amis (friend)
+        this.friendManager = new FriendManager();
+        if (this.friendManager.enable(this)) {
+            getLogger().info("[Friend] Système d'amis initialisé avec succès !");
+        } else {
+            getLogger().severe("[Friend] Échec de l'initialisation du système d'amis !");
+        }
+        FriendCommand friendCmd = new FriendCommand(friendManager);
+        getCommand("friend").setExecutor(friendCmd);
+        getCommand("friend").setTabCompleter(friendCmd);
+        getServer().getPluginManager().registerEvents(new FriendListener(friendManager), this);
         // Système de loto automatique
         this.lotoManager = new LotoManager(this);
         this.lotoManager.startScheduler();
@@ -123,9 +141,11 @@ public class OriginsFightCore extends JavaPlugin {
 
     public void onDisable() {
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §cRedConflict est désactivé !");
-        if (this.hdvManager != null)  this.hdvManager.disable();
-        if (this.shopManager != null) this.shopManager.disable();
-        if (this.staffPlugin != null) this.staffPlugin.disable();
+        if (this.hdvManager != null)     this.hdvManager.disable();
+        if (this.shopManager != null)    this.shopManager.disable();
+        if (this.staffPlugin != null)    this.staffPlugin.disable();
+        if (this.bountyManager != null)  this.bountyManager.disable();
+        if (this.friendManager != null)  this.friendManager.disable();
         for (Player p : Bukkit.getOnlinePlayers()) {
             Long joinTime = KsListener.getJoinTime(p.getUniqueId());
             if (joinTime != null) {

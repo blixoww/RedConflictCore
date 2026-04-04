@@ -35,35 +35,35 @@ public class AutoMessageManager {
         "  §8| §7Vendez et achetez des items entre joueurs.\n" +
         SEP,
 
-        // Message 2 : Commandes utiles
+        // Message 2 : /commands mis en avant
         SEP + "\n" +
-        PRE + "§eCommandes utiles :\n" +
-        "  §8| §f/ks        §7— Vos statistiques de combat\n" +
-        "  §8| §f/bottlexp  §7— Embouteiller vos niveaux d'XP\n" +
-        "  §8| §f/trade     §7— Échanger des items en sécurité\n" +
-        "  §8| §f/prime     §7— Placer une prime sur un joueur\n" +
-        "  §8| §f/commands  §7— Voir toutes les commandes disponibles\n" +
+        PRE + "§6§l★ §eTapez §f/commands §epour voir toutes les commandes disponibles !\n" +
+        "  §8| §f/friend   §7— Système d'amis (pas de dégâts entre amis)\n" +
+        "  §8| §f/prime    §7— Placer une prime sur un joueur\n" +
+        "  §8| §f/trade    §7— Échanger des items en sécurité\n" +
+        "  §8| §f/shop     §7— Boutique dynamique du serveur\n" +
         SEP,
 
-        // Message 3 : Réparer ses items
+        // Message 3 : Amis
+        SEP + "\n" +
+        PRE + "§a§l♥ §eSystème d'amis !\n" +
+        "  §8| §7Ajoutez jusqu'à §f5 amis §7avec §f/friend add <joueur>§7.\n" +
+        "  §8| §7Vous ne pouvez pas vous faire de dégâts entre amis.\n" +
+        "  §8| §7Consultez votre liste avec §f/friend list§7.\n" +
+        SEP,
+
+        // Message 4 : Réparer ses items
         SEP + "\n" +
         PRE + "§eVos items sont endommagés ?\n" +
         "  §8| §7Utilisez §f/repairall §7pour tout réparer §8(cooldown 24h)§7.\n" +
         SEP,
 
-        // Message 4 : Vision nocturne
-        SEP + "\n" +
-        PRE + "§eMiner dans le noir ?\n" +
-        "  §8| §7Activez la vision nocturne avec §f/vision §7si vous avez la permission.\n" +
-        "  §8| §7Évitez la cobblestone inutile avec §f/cobble§7.\n" +
-        SEP,
-
         // Message 5 : Primes (bounty)
         SEP + "\n" +
-        PRE + "§6§l\u2620 §eSysteme de primes !\n" +
+        PRE + "§6§l\u2620 §eSystème de primes !\n" +
         "  §8| §7Placez une prime sur un joueur avec §f/prime <joueur> <montant>§7.\n" +
         "  §8| §7Le joueur qui le tue récupère la somme !\n" +
-        "  §8| §7Une seule prime par joueur, une seule cible à la fois.\n" +
+        "  §8| §7Une seule prime à la fois. Durée : §f24 heures§7.\n" +
         SEP,
 
         // Message 6 : Loto

@@ -1,0 +1,103 @@
+package fr.originsfight.friend;
+
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.*;
+
+/**
+ * Gestionnaire du système d'amis.
+ *
+ * Règles :
+ *  - Maximum 5 amis par joueur.
+ *  - Relation bidirectionnelle : si A et B sont amis, ils ne se font pas de dégâts.
+ *  - Demande nécessaire : A envoie une demande, B doit l'accepter.
+ *  - Persistance SQLite dans friends.db.
+ */
+public class FriendManager {
+
+    public static final int MAX_FRIENDS = 5;
+
+    private static FriendManager instance;
+    private FriendDatabase database;
+
+    public static FriendManager getInstance() { return instance; }
+
+    public FriendManager() { instance = this; }
+
+    // ── Initialisation ────────────────────────────────────────────────────────
+
+    public boolean enable(JavaPlugin plugin) {
+        database = new FriendDatabase((fr.originsfight.OriginsFightCore) plugin);
+        if (!database.init()) return false;
+        return true;
+    }
+
+    public void disable() {
+        if (database != null) database.close();
+    }
+
+    // ── Amis ─────────────────────────────────────────────────────────────────
+
+    public boolean areFriends(UUID a, UUID b) {
+        return database.areFriends(a, b);
+    }
+
+    public List<UUID> getFriends(UUID uuid) {
+        return database.getFriends(uuid);
+    }
+
+    public int getFriendCount(UUID uuid) {
+        return database.countFriends(uuid);
+    }
+
+    /** Ajoute la relation amicale (bidirectionnelle) et retire la demande. */
+    public void addFriend(UUID a, String nameA, UUID b, String nameB) {
+        database.saveName(a, nameA);
+        database.saveName(b, nameB);
+        database.addFriend(a, b);
+        database.removeRequest(a, b);
+        database.removeRequest(b, a);
+    }
+
+    public void removeFriend(UUID a, UUID b) {
+        database.removeFriend(a, b);
+    }
+
+    // ── Demandes ─────────────────────────────────────────────────────────────
+
+    public void sendRequest(UUID sender, String senderName, UUID receiver, String receiverName) {
+        database.addRequest(sender, senderName, receiver, receiverName);
+    }
+
+    public void denyRequest(UUID sender, UUID receiver) {
+        database.removeRequest(sender, receiver);
+    }
+
+    public boolean hasRequest(UUID sender, UUID receiver) {
+        return database.hasRequest(sender, receiver);
+    }
+
+    /** Demandes reçues par receiver (sender_uuid → sender_name). */
+    public Map<UUID, String> getPendingRequests(UUID receiver) {
+        return database.getPendingRequests(receiver);
+    }
+
+    // ── Noms ─────────────────────────────────────────────────────────────────
+
+    public void saveName(UUID uuid, String name) {
+        database.saveName(uuid, name);
+    }
+
+    public String getName(UUID uuid) {
+        // D'abord en ligne
+        Player p = Bukkit.getPlayer(uuid);
+        if (p != null) return p.getName();
+        // Sinon DB
+        return database.getName(uuid);
+    }
+}
+
+
+

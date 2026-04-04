@@ -27,6 +27,13 @@ public class CommandsCommand implements CommandExecutor {
         player.sendMessage("  §8| §f/ct          §7— Vérifie ton statut de combat");
         player.sendMessage("  §8| §f/ks          §7— Statistiques de combat");
         player.sendMessage("  §8| §f/baltop      §7— Classement des plus riches");
+        player.sendMessage("  §8| §f/msg         §7— Message privé §8(§f/r §7pour répondre§8)");
+        player.sendMessage("");
+        player.sendMessage("  §6§lSocial");
+        player.sendMessage("  §8| §f/friend      §7— Système d'amis §8(§fmax 5, pas de dégâts entre amis§8)");
+        player.sendMessage("  §8|   §8└ §f/friend add <joueur>    §7envoyer une demande");
+        player.sendMessage("  §8|   §8└ §f/friend list            §7voir vos amis");
+        player.sendMessage("  §8|   §8└ §f/friend requests        §7demandes reçues");
         player.sendMessage("");
         player.sendMessage("  §6§lÉchanges & Économie");
         player.sendMessage("  §8| §f/hdv         §7— Hôtel des Ventes");

@@ -9,10 +9,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 
 /**
  * Listener pour le système de primes.
- * Lorsqu'un joueur avec une prime est tué, le tueur reçoit la somme.
+ *
+ * Gère :
+ *  - Tracking du dernier tueur (pour la validation de /prime).
+ *  - Résolution de la prime quand la cible est tuée par un joueur.
+ *  - Remboursements différés à la reconnexion.
+ *  - Annulation auto-kill / suicide.
  */
 public class BountyListener implements Listener {
 
@@ -22,12 +28,12 @@ public class BountyListener implements Listener {
         this.manager = manager;
     }
 
+    // ── Mort PvP ──────────────────────────────────────────────────────────────
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
         Player killer = victim.getKiller();
-
-        if (killer == null || killer.equals(victim)) return;
 
         // Vérifier si la victime avait une prime
         BountyInfo bounty = manager.getBounty(victim.getUniqueId());
@@ -35,9 +41,7 @@ public class BountyListener implements Listener {
 
         // Verser la prime au tueur
         Economy eco = OriginsFightCore.getInstance().getEconomy();
-        if (eco != null) {
-            eco.depositPlayer(killer, bounty.getAmount());
-        }
+        if (eco != null) eco.depositPlayer(killer, bounty.getAmount());
 
         // Retirer la prime
         manager.removeBounty(victim.getUniqueId());
@@ -50,5 +54,12 @@ public class BountyListener implements Listener {
                 killer.getName(), victim.getName(), bounty.getAmount()).split("\n")) {
             Bukkit.broadcastMessage(line);
         }
+    }
+
+    // ── Connexion : remboursements différés ───────────────────────────────────
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        manager.creditPendingRefund(event.getPlayer());
     }
 }
