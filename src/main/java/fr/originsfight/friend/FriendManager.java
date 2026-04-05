@@ -14,6 +14,7 @@ import java.util.*;
  *  - Relation bidirectionnelle : si A et B sont amis, ils ne se font pas de dégâts.
  *  - Demande nécessaire : A envoie une demande, B doit l'accepter.
  *  - Persistance SQLite dans friends.db.
+ *  - Cache mémoire pour les demandes en attente (fiabilité immédiate).
  */
 public class FriendManager {
 
@@ -21,6 +22,13 @@ public class FriendManager {
 
     private static FriendManager instance;
     private FriendDatabase database;
+
+    /**
+     * Cache mémoire des demandes en attente.
+     * Clé externe : UUID du receiver (celui qui reçoit la demande).
+     * Clé interne : UUID du sender → nom du sender.
+     */
+    private final Map<UUID, Map<UUID, String>> pendingCache = new HashMap<>();
 
     public static FriendManager getInstance() { return instance; }
 
@@ -31,7 +39,16 @@ public class FriendManager {
     public boolean enable(JavaPlugin plugin) {
         database = new FriendDatabase((fr.originsfight.OriginsFightCore) plugin);
         if (!database.init()) return false;
+        // Charger les demandes existantes depuis la BDD dans le cache
+        loadRequestsCache();
         return true;
+    }
+
+    /** Charge toutes les demandes en attente de la BDD dans le cache mémoire. */
+    private void loadRequestsCache() {
+        Map<UUID, Map<UUID, String>> all = database.getAllPendingRequests();
+        pendingCache.clear();
+        pendingCache.putAll(all);
     }
 
     public void disable() {
@@ -59,6 +76,9 @@ public class FriendManager {
         database.addFriend(a, b);
         database.removeRequest(a, b);
         database.removeRequest(b, a);
+        // Nettoyer le cache
+        removeCachedRequest(a, b);
+        removeCachedRequest(b, a);
     }
 
     public void removeFriend(UUID a, UUID b) {
@@ -69,19 +89,47 @@ public class FriendManager {
 
     public void sendRequest(UUID sender, String senderName, UUID receiver, String receiverName) {
         database.addRequest(sender, senderName, receiver, receiverName);
+        // Mettre à jour le cache immédiatement
+        pendingCache.computeIfAbsent(receiver, k -> new LinkedHashMap<>()).put(sender, senderName);
     }
 
     public void denyRequest(UUID sender, UUID receiver) {
         database.removeRequest(sender, receiver);
+        // Nettoyer le cache
+        removeCachedRequest(sender, receiver);
     }
 
     public boolean hasRequest(UUID sender, UUID receiver) {
+        // Vérifier d'abord le cache mémoire
+        Map<UUID, String> requests = pendingCache.get(receiver);
+        if (requests != null && requests.containsKey(sender)) return true;
+        // Fallback sur la BDD
         return database.hasRequest(sender, receiver);
     }
 
     /** Demandes reçues par receiver (sender_uuid → sender_name). */
     public Map<UUID, String> getPendingRequests(UUID receiver) {
-        return database.getPendingRequests(receiver);
+        // Retourner depuis le cache mémoire (toujours à jour)
+        Map<UUID, String> cached = pendingCache.get(receiver);
+        if (cached != null && !cached.isEmpty()) {
+            return new LinkedHashMap<>(cached);
+        }
+        // Fallback sur la BDD si le cache est vide
+        Map<UUID, String> fromDb = database.getPendingRequests(receiver);
+        if (!fromDb.isEmpty()) {
+            pendingCache.put(receiver, new LinkedHashMap<>(fromDb));
+        }
+        return fromDb;
+    }
+
+    // ── Utilitaire cache ──────────────────────────────────────────────────────
+
+    private void removeCachedRequest(UUID sender, UUID receiver) {
+        Map<UUID, String> requests = pendingCache.get(receiver);
+        if (requests != null) {
+            requests.remove(sender);
+            if (requests.isEmpty()) pendingCache.remove(receiver);
+        }
     }
 
     // ── Noms ─────────────────────────────────────────────────────────────────
@@ -98,6 +146,4 @@ public class FriendManager {
         return database.getName(uuid);
     }
 }
-
-
 

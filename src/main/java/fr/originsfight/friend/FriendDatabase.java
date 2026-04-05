@@ -29,6 +29,10 @@ public class FriendDatabase {
         try {
             Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+            connection.setAutoCommit(true);
+            // Mode WAL pour une meilleure fiabilité des écritures
+            connection.createStatement().execute("PRAGMA journal_mode=WAL");
+            connection.createStatement().execute("PRAGMA synchronous=NORMAL");
             createTables();
             return true;
         } catch (Exception e) {
@@ -43,8 +47,12 @@ public class FriendDatabase {
     }
 
     private Connection conn() throws SQLException {
-        if (connection == null || connection.isClosed())
+        if (connection == null || connection.isClosed()) {
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+            connection.setAutoCommit(true);
+            connection.createStatement().execute("PRAGMA journal_mode=WAL");
+            connection.createStatement().execute("PRAGMA synchronous=NORMAL");
+        }
         return connection;
     }
 
@@ -211,6 +219,27 @@ public class FriendDatabase {
             rs.close(); ps.close();
         } catch (SQLException e) { log("getPendingRequests: " + e.getMessage()); }
         return map;
+    }
+
+    /**
+     * Retourne toutes les demandes en attente groupées par receiver_uuid.
+     * Utilisé pour initialiser le cache mémoire au démarrage.
+     */
+    public Map<UUID, Map<UUID, String>> getAllPendingRequests() {
+        Map<UUID, Map<UUID, String>> all = new HashMap<>();
+        try {
+            PreparedStatement ps = conn().prepareStatement(
+                "SELECT sender_uuid, sender_name, receiver_uuid FROM friend_requests ORDER BY sent_at");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                UUID sender   = UUID.fromString(rs.getString("sender_uuid"));
+                String name   = rs.getString("sender_name");
+                UUID receiver = UUID.fromString(rs.getString("receiver_uuid"));
+                all.computeIfAbsent(receiver, k -> new LinkedHashMap<>()).put(sender, name);
+            }
+            rs.close(); ps.close();
+        } catch (SQLException e) { log("getAllPendingRequests: " + e.getMessage()); }
+        return all;
     }
 
     // ── Utilitaire ────────────────────────────────────────────────────────────

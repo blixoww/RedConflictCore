@@ -28,12 +28,12 @@ public class LotoManager {
     /** Durée d'un loto ouvert en ticks (2 minutes = 2400 ticks). */
     private static final long LOTO_DURATION_TICKS = 20L * 60 * 2;
 
-    /** Délai minimum entre deux lotos (2h en ticks). */
-    private static final long MIN_INTERVAL_TICKS = 20L * 60 * 60 * 2;
-    /** Délai maximum entre deux lotos (4h en ticks). */
-    private static final long MAX_INTERVAL_TICKS = 20L * 60 * 60 * 4;
+    /** Délai minimum entre deux lotos (1h en ticks). */
+    private static final long MIN_INTERVAL_TICKS = 20L * 60 * 60;
+    /** Délai maximum entre deux lotos (2h en ticks). */
+    private static final long MAX_INTERVAL_TICKS = 20L * 60 * 60 * 2;
 
-    /** Délai max pour le premier loto après démarrage (1h en ticks). */
+    /** Délai max pour le premier loto après démarrage du serveur (1h en ticks). */
     private static final long FIRST_MAX_TICKS = 20L * 60 * 60;
 
     /** Minimum de participants pour valider le loto. */
@@ -71,9 +71,9 @@ public class LotoManager {
 
     // ── Scheduling ───────────────────────────────────────────────────────────
 
-    /** Lance le scheduler : premier loto dans [5min-1h], puis toutes les [2-4h]. */
+    /** Lance le scheduler : premier loto dans [0-1h], puis toutes les [1-2h]. */
     public void startScheduler() {
-        long firstDelay = randomTicks(20L * 60 * 5, FIRST_MAX_TICKS);
+        long firstDelay = randomTicks(1L, FIRST_MAX_TICKS);
         scheduleNext(firstDelay);
     }
 
