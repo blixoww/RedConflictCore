@@ -154,3 +154,13 @@ commands:
     usage: /topluck
     permission: staff.topluck
     aliases: [tl]
+  lagswitch:
+    description: Gestion du système anti lag-switch
+    usage: /lagswitch <info|reset|status|reload|debug> [joueur]
+    permission: redconflict.staff
+    aliases: [ls, antilag]
+  clearlagg:
+    description: Gestion du système de nettoyage d'entités
+    usage: /clearlagg <now|info|reload|count> [monde]
+    permission: redconflict.staff
+    aliases: [cl, lagg]

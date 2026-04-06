@@ -8,6 +8,11 @@ import fr.originsfight.bounty.BountyManager;
 import fr.originsfight.friend.FriendCommand;
 import fr.originsfight.friend.FriendListener;
 import fr.originsfight.friend.FriendManager;
+import fr.originsfight.clearlagg.ClearLaggCommand;
+import fr.originsfight.clearlagg.ClearLaggManager;
+import fr.originsfight.lagswitch.LagSwitchCommand;
+import fr.originsfight.lagswitch.LagSwitchListener;
+import fr.originsfight.lagswitch.LagSwitchManager;
 import fr.originsfight.loto.LotoCommand;
 import fr.originsfight.loto.LotoManager;
 import fr.originsfight.bottlexp.BottleXpCommand;
@@ -77,6 +82,8 @@ public class OriginsFightCore extends JavaPlugin {
     private BountyManager bountyManager;
     private FriendManager friendManager;
     private LotoManager lotoManager;
+    private LagSwitchManager lagSwitchManager;
+    private ClearLaggManager clearLaggManager;
 
     public void onEnable() {
         instance = this;
@@ -90,6 +97,16 @@ public class OriginsFightCore extends JavaPlugin {
         registerCommands();
         registerListeners();
         loadPackets();
+        // Système anti lag-switch
+        this.lagSwitchManager = new LagSwitchManager(this);
+        this.lagSwitchManager.enable();
+        LagSwitchCommand lsCmd = new LagSwitchCommand(this, this.lagSwitchManager);
+        if (getCommand("lagswitch") != null) {
+            getCommand("lagswitch").setExecutor(lsCmd);
+            getCommand("lagswitch").setTabCompleter(lsCmd);
+        }
+        getServer().getPluginManager().registerEvents(
+                new LagSwitchListener(this, this.lagSwitchManager), this);
         // Système staff
         this.staffPlugin = new StaffPlugin(this);
         if (!this.staffPlugin.enable()) {
@@ -137,10 +154,20 @@ public class OriginsFightCore extends JavaPlugin {
         getLogger().info("[Loto] Système de loto initialisé avec succès !");
         // Messages automatiques dans le chat
         new AutoMessageManager(this);
+        // Système ClearLagg
+        this.clearLaggManager = new ClearLaggManager(this);
+        this.clearLaggManager.enable();
+        ClearLaggCommand clCmd = new ClearLaggCommand(this, this.clearLaggManager);
+        if (getCommand("clearlagg") != null) {
+            getCommand("clearlagg").setExecutor(clCmd);
+            getCommand("clearlagg").setTabCompleter(clCmd);
+        }
     }
 
     public void onDisable() {
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §cRedConflict est désactivé !");
+        if (this.lagSwitchManager  != null) this.lagSwitchManager.disable();
+        if (this.clearLaggManager  != null) this.clearLaggManager.disable();
         if (this.hdvManager != null)     this.hdvManager.disable();
         if (this.shopManager != null)    this.shopManager.disable();
         if (this.staffPlugin != null)    this.staffPlugin.disable();
@@ -283,6 +310,10 @@ public class OriginsFightCore extends JavaPlugin {
 
     public HdvManager getHdvManager() {
         return this.hdvManager;
+    }
+
+    public LagSwitchManager getLagSwitchManager() {
+        return this.lagSwitchManager;
     }
 
     public static OriginsFightCore getInstance() {

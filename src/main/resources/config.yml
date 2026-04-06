@@ -2,6 +2,143 @@ rtp:
   max: 9000
   min: 1000
 
+# ── Système Anti Lag-Switch ───────────────────────────────────────────────────
+lagswitch:
+
+  # ── Seuils de détection ──────────────────────────────────────────────────
+  # Ping absolu (ms) à dépasser pour commencer à suspecter un joueur.
+  # Relevez cette valeur si vous avez des joueurs avec un ping naturellement élevé.
+  ping-threshold-ms: 1200
+
+  # Variation brutale minimale du ping en un seul check (ms).
+  # Un saut < à cette valeur = lag naturel progressif → pas déclenché.
+  # Un saut >= = déconnexion brusque (lag-switch) → déclenché rapidement.
+  ping-delta-threshold-ms: 600
+
+  # Nombre de checks consécutifs au-dessus du seuil + delta brutal avant déclenchement
+  # (chemin "rapide" : ping absolu élevé ET variation brusque)
+  ticks-before-trigger: 3
+
+  # Nombre de checks consécutifs uniquement au-dessus du seuil absolu avant déclenchement
+  # (chemin "lent" : connexion coupée durablement sans spike détecté)
+  # Avec check-interval-ticks=10, 8 checks ≈ 4 secondes de déconnexion
+  ticks-before-trigger-hard: 8
+
+  # ── Timing ──────────────────────────────────────────────────────────────
+  # Intervalle entre deux vérifications (ticks, 20 ticks = 1 seconde)
+  # 10 = vérification toutes les 0.5s — bon compromis performance/réactivité
+  check-interval-ticks: 10
+
+  # Durée de la grace-period après retour de la connexion (ms)
+  # Les actions restent bloquées pendant ce délai
+  grace-period-ms: 3000
+
+  # ── Sanctions automatiques (désactivées par défaut) ──────────────────────
+  # Recommandé : laisser à 0 et gérer manuellement via /lagswitch unfreeze/freeze
+  # Nombre d'incidents avant kick automatique (0 = désactivé)
+  incidents-before-kick: 0
+  # Nombre d'incidents avant ban temporaire (0 = désactivé)
+  incidents-before-ban: 0
+  # Durée du ban temporaire automatique (secondes, si incidents-before-ban > 0)
+  ban-duration-seconds: 300
+
+  # ── Comportement ────────────────────────────────────────────────────────
+  # Rubber-band : téléporte le joueur à sa position de freeze pendant le lag
+  rubber-band: true
+  # Logs de debug détaillés en console (ping + delta de chaque joueur à chaque check)
+  # À activer uniquement pour diagnostiquer des faux positifs
+  debug: false
+
+# ── Système ClearLagg ────────────────────────────────────────────────────────
+clearlagg:
+
+  # Intervalle entre deux nettoyages automatiques (en minutes)
+  interval-minutes: 5
+
+  # Secondes avant le clearlagg où un avertissement est diffusé en chat
+  # Mettre à 0 pour désactiver l'avertissement
+  warning-seconds: 30
+
+  # ── Entités non-vivantes ──────────────────────────────────────────────────
+  # Supprimer les items droppés au sol
+  clear-items: true
+  # Supprimer les flèches tirées
+  clear-arrows: true
+  # Supprimer les orbes d'expérience
+  clear-exp-orbs: true
+
+  # ── Mobs ─────────────────────────────────────────────────────────────────
+  # Si true, TOUS les mobs sont supprimés (sauf exclus ci-dessous, nommés et apprivoisés)
+  # Si false, seuls les mobs listés dans mobs-to-clear sont supprimés
+  clear-all-mobs: false
+
+  # Liste des types de mobs à supprimer (ignoré si clear-all-mobs: true)
+  # Noms exacts des EntityType Bukkit (en majuscule ou minuscule)
+  # Voir la liste complète : https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/entity/EntityType.html
+  mobs-to-clear:
+    - ZOMBIE
+    - SKELETON
+    - CREEPER
+    - SPIDER
+    - CAVE_SPIDER
+    - ENDERMAN
+    - WITCH
+    - SLIME
+    - MAGMA_CUBE
+    - BLAZE
+    - GHAST
+    - ZOMBIE_PIGMAN
+    - SILVERFISH
+    - ENDERMITE
+    - GUARDIAN
+    # Mobs passifs (décommenter/ajouter si vous voulez les nettoyer)
+    - COW
+    - PIG
+    - SHEEP
+    - CHICKEN
+    - RABBIT
+    - HORSE
+    - MULE
+    - DONKEY
+    - WOLF
+
+  # Types de mobs TOUJOURS exclus du clearlagg (même si clear-all-mobs: true)
+  # Par défaut : villageois et zombie-villageois protégés
+  excluded-mobs:
+    - VILLAGER
+    - ZOMBIE_VILLAGER
+
+  # ── Protection ────────────────────────────────────────────────────────────
+  # Protéger les entités qui ont un nametag personnalisé (nom visible au-dessus)
+  protect-named: true
+  # Protéger les animaux apprivoisés (chiens, chats...)
+  protect-tamed: true
+
+  # ── MobStacker detection (heuristiques) ──────────────────────────────────
+  # Active la détection des mobs "stackés" (MobStacker, etc.)
+  detect-mobstacker: true
+  # Clés metadata courantes utilisées par des plugins de stacking (heuristique)
+  mobstacker-metadata-keys:
+    - stack
+    - stacked
+    - mobstack
+    - mobstacker
+    - stackamount
+    - stack_size
+  # Si true, autorise la suppression des entités nommées détectées comme "stackées"
+  force-clear-named-stacked: true
+
+  # ── Mondes exclus ─────────────────────────────────────────────────────────
+  # Mondes où le clearlagg ne s'applique PAS (laisser vide pour tout nettoyer)
+  excluded-worlds: []
+  # Exemple :
+  # excluded-worlds:
+  #   - creative_world
+  #   - spawn
+
+  # ── Debug ─────────────────────────────────────────────────────────────────
+  debug: false
+
 # ── Système de primes (Bounty) ────────────────────────────────────────────────
 bounty:
   # Montant minimum requis pour placer une prime (en $)
