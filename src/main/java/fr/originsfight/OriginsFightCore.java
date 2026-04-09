@@ -229,6 +229,7 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BottleXpListener(), this);
         getServer().getPluginManager().registerEvents(new TradeListener(), this);
         getServer().getPluginManager().registerEvents(new GiveAllListener(), this);
+        getServer().getPluginManager().registerEvents(new WeatherListener(), this);
         CobbleCommand cobbleListener = new CobbleCommand();
         getCommand("cobble").setExecutor(cobbleListener);
         getServer().getPluginManager().registerEvents(cobbleListener, this);
