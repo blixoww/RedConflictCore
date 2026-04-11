@@ -43,6 +43,10 @@ public class PacketReader {
         return v;
     }
 
+    public double readDouble() throws IOException {
+        return Double.longBitsToDouble(readLong());
+    }
+
     public boolean readBoolean() throws IOException {
         ensureAvailable(1);
         return

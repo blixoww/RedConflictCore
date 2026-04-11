@@ -38,6 +38,24 @@ public class PacketBuilder {
         return this;
     }
 
+    public PacketBuilder writeDouble(double value) {
+        try {
+            this.dos.writeDouble(value);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return this;
+    }
+
+    public PacketBuilder writeByte(byte value) {
+        try {
+            this.dos.writeByte(value);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return this;
+    }
+
     public PacketBuilder writeBoolean(boolean value) {
         try {
             this.dos.writeBoolean(value);

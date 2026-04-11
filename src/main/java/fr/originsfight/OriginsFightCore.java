@@ -34,6 +34,7 @@ import fr.originsfight.ks.KsDatabase;
 import fr.originsfight.ks.KsListener;
 import fr.originsfight.listeners.*;
 import fr.originsfight.listeners.WelcomeListener;
+import fr.originsfight.ping.PingServerHandler;
 import fr.originsfight.packets.CustomPacketServerHandler;
 import fr.originsfight.repair.RepairCommand;
 import fr.originsfight.rtp.RTPCommand;
@@ -272,6 +273,10 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:HDV_S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:SHOP_S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:PDATA_S2C");
+        // Système de Ping
+        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PING_C2S",
+            (PluginMessageListener) new PingServerHandler(this));
+        getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:PING_S2C");
         getLogger().info("[CustomPackets] Canaux enregistré avec succès !");
     }
 
