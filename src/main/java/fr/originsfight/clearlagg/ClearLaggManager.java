@@ -8,6 +8,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.regex.Pattern;
+import java.lang.reflect.Method;
 
 /**
  * Système ClearLagg — supprime périodiquement les entités indésirables.
@@ -29,8 +30,18 @@ public class ClearLaggManager {
     /** Intervalle entre deux clearlagg (minutes). */
     private int intervalMinutes = 5;
 
-    /** Secondes avant le clearlagg où le compte à rebours commence. */
+    /** Secondes avant le clearlagg où un avertissement est diffusé en chat (deprecated). */
+    @Deprecated
     private int warningSeconds = 30;
+
+    /** Liste de warnings (en secondes avant le clear) à diffuser. */
+    private List<Integer> warningSecondsList = new ArrayList<>();
+
+    /** Envoyer aussi un title en plus du message chat pour chaque avertissement. */
+    private boolean warningUseTitle = true;
+
+    /** Durées du title (ticks). */
+    private int titleFadeIn = 5, titleStay = 40, titleFadeOut = 5;
 
     /** Supprimer les items droppés au sol. */
     private boolean clearItems = true;
@@ -97,7 +108,8 @@ public class ClearLaggManager {
         loadConfig();
         scheduleAll();
         plugin.getLogger().info("[ClearLagg] Activé — intervalle=" + intervalMinutes
-                + "min, countdown=" + warningSeconds + "s"
+                + "min, countdowns=" + warningSecondsList
+                + ", titles=" + warningUseTitle
                 + ", clearItems=" + clearItems
                 + ", clearArrows=" + clearArrows
                 + ", clearExpOrbs=" + clearExpOrbs
@@ -120,6 +132,17 @@ public class ClearLaggManager {
     public void loadConfig() {
         intervalMinutes      = plugin.getConfig().getInt("clearlagg.interval-minutes",   5);
         warningSeconds       = plugin.getConfig().getInt("clearlagg.warning-seconds",    30);
+
+        // New: list of warning seconds (allows multiple warnings). Backwards compatible
+        List<Integer> list = plugin.getConfig().getIntegerList("clearlagg.warning-seconds-list");
+        warningSecondsList.clear();
+        if (list != null && !list.isEmpty()) {
+            warningSecondsList.addAll(list);
+        } else {
+            // Back-compat: use single warningSeconds if list not provided
+            warningSecondsList.add(warningSeconds);
+        }
+
         clearItems           = plugin.getConfig().getBoolean("clearlagg.clear-items",    true);
         clearArrows          = plugin.getConfig().getBoolean("clearlagg.clear-arrows",   true);
         clearExpOrbs         = plugin.getConfig().getBoolean("clearlagg.clear-exp-orbs", true);
@@ -127,6 +150,12 @@ public class ClearLaggManager {
         protectNamedEntities = plugin.getConfig().getBoolean("clearlagg.protect-named",  true);
         protectTamedAnimals  = plugin.getConfig().getBoolean("clearlagg.protect-tamed",  true);
         debugMode            = plugin.getConfig().getBoolean("clearlagg.debug",          false);
+
+        // Title options
+        warningUseTitle      = plugin.getConfig().getBoolean("clearlagg.warning-use-title", true);
+        titleFadeIn          = plugin.getConfig().getInt("clearlagg.title-fade-in", 5);
+        titleStay            = plugin.getConfig().getInt("clearlagg.title-stay", 40);
+        titleFadeOut         = plugin.getConfig().getInt("clearlagg.title-fade-out", 5);
 
         // --- MobStacker options ---
         detectMobStacker = plugin.getConfig().getBoolean("clearlagg.detect-mobstacker", true);
@@ -149,6 +178,12 @@ public class ClearLaggManager {
         excludedMobs.replaceAll(String::toUpperCase);
         excludedWorlds.replaceAll(String::toLowerCase);
         mobStackerKeys.replaceAll(String::toLowerCase);
+
+        // Ensure warning list is sorted ascending (smallest first) and unique
+        Collections.sort(warningSecondsList);
+        List<Integer> uniq = new ArrayList<>();
+        for (int s : warningSecondsList) if (!uniq.contains(s) && s > 0) uniq.add(s);
+        warningSecondsList = uniq;
     }
 
     // ── Scheduling ────────────────────────────────────────────────────────────
@@ -158,7 +193,6 @@ public class ClearLaggManager {
 
         long intervalMs    = (long) intervalMinutes * 60 * 1000L;
         long intervalTicks = (long) intervalMinutes * 60 * 20L;
-        long warningTicks  = intervalTicks - (long) warningSeconds * 20L;
 
         nextClearMs = System.currentTimeMillis() + intervalMs;
 
@@ -167,9 +201,20 @@ public class ClearLaggManager {
             nextClearMs = System.currentTimeMillis() + intervalMs;
         }, intervalTicks, intervalTicks);
 
-        if (warningSeconds > 0 && warningTicks > 0) {
-            warningTask = Bukkit.getScheduler().runTaskTimer(plugin,
-                    this::sendWarning, warningTicks, intervalTicks);
+        // Warning scheduling: we create a repeating task every second that checks if any configured
+        // warning time matches the remaining seconds. This approach is simple and handles multiple
+        // warning times per interval.
+        if (!warningSecondsList.isEmpty()) {
+            warningTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                long secsLeft = getSecondsUntilNext();
+                if (secsLeft <= 0) return;
+                // If any configured warning equals secsLeft, send it.
+                for (int warn : warningSecondsList) {
+                    if (secsLeft == warn) {
+                        sendWarning(warn);
+                    }
+                }
+            }, 20L, 20L); // run every 1 second
         }
     }
 
@@ -180,9 +225,45 @@ public class ClearLaggManager {
 
     // ── Avertissement ─────────────────────────────────────────────────────────
 
-    private void sendWarning() {
-        Bukkit.broadcastMessage("§8[§6§lClearLagg§8] §eLes entités seront supprimées dans §f"
-                + warningSeconds + " §esecondes !");
+    private void sendWarning(int seconds) {
+        String timeText = (seconds >= 60 && seconds % 60 == 0)
+                ? (seconds / 60) + " minute(s)"
+                : seconds + " seconde(s)";
+
+        String chat = "§8[§6§lClearLagg§8] §eLes entités seront supprimées dans §f"
+                + timeText + " §e!";
+        Bukkit.broadcastMessage(chat);
+
+        if (warningUseTitle) {
+            String title = "§6§lClearLagg";
+            String subtitle = "§eDans " + timeText;
+            // send title to all online players (use reflection for compatibility)
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                boolean sent = false;
+                try {
+                    Method m = p.getClass().getMethod("sendTitle", String.class, String.class, int.class, int.class, int.class);
+                    m.invoke(p, title, subtitle, titleFadeIn, titleStay, titleFadeOut);
+                    sent = true;
+                } catch (NoSuchMethodException ignored) {
+                    // try older signature
+                    try {
+                        Method m2 = p.getClass().getMethod("sendTitle", String.class, String.class);
+                        m2.invoke(p, title, subtitle);
+                        sent = true;
+                    } catch (NoSuchMethodException ignored2) {
+                        // nothing
+                    } catch (Exception ex) {
+                        // fallback to chat
+                    }
+                } catch (Exception e) {
+                    // reflection failed, fallback
+                }
+
+                if (!sent) {
+                    p.sendMessage("§6[ClearLagg] §e" + subtitle);
+                }
+            }
+        }
     }
 
     // ── Clearlagg ─────────────────────────────────────────────────────────────
@@ -319,6 +400,8 @@ public class ClearLaggManager {
 
     public int getIntervalMinutes()        { return intervalMinutes; }
     public int getWarningSeconds()         { return warningSeconds; }
+    public List<Integer> getWarningSecondsList() { return Collections.unmodifiableList(warningSecondsList); }
+    public boolean isWarningUseTitle()     { return warningUseTitle; }
     public boolean isClearItems()          { return clearItems; }
     public boolean isClearArrows()         { return clearArrows; }
     public boolean isClearExpOrbs()        { return clearExpOrbs; }

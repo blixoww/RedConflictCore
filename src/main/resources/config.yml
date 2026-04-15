@@ -57,7 +57,21 @@ clearlagg:
 
   # Secondes avant le clearlagg où un avertissement est diffusé en chat
   # Mettre à 0 pour désactiver l'avertissement
+  # NOTE: Vous pouvez désormais définir plusieurs avertissements avec la clé
+  # "warning-seconds-list":
+  #   - 60
+  #   - 30
+  # Si cette liste est absente, la clé legacy "warning-seconds" est utilisée.
   warning-seconds: 30
+  warning-seconds-list:
+    - 60
+    - 30
+
+  # Send a title (big overlay) in addition to chat warnings
+  warning-use-title: true
+  title-fade-in: 5
+  title-stay: 40
+  title-fade-out: 5
 
   # ── Entités non-vivantes ──────────────────────────────────────────────────
   # Supprimer les items droppés au sol
