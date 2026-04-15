@@ -96,13 +96,7 @@ public class PingServerHandler implements PluginMessageListener {
         FriendManager friendManager = FriendManager.getInstance();
         List<UUID> friends = (friendManager != null) ? friendManager.getFriends(senderUUID) : null;
 
-        // Payload S2C : VarInt packetId | double x | double y | double z | String sender
-        byte[] payload = PacketBuilder.create(PING_RECEIVE)
-                .writeDouble(x)
-                .writeDouble(y)
-                .writeDouble(z)
-                .writeString(senderName)
-                .build();
+        // Le payload est construit par destination ci-dessous (inclut le typeOrdinal)
 
         String senderFaction = getFaction(sender);
         List<String> senderAllies = getAllies(senderFaction);
@@ -112,10 +106,25 @@ public class PingServerHandler implements PluginMessageListener {
             if (!target.getWorld().getName().equals(senderWorld)) continue;
             if (!isInRange(sender, target)) continue;
 
-            if (isFriend(friends, target)
-                    || isSameFaction(senderFaction, target)
-                    || isAlly(senderAllies, target)) {
-                target.sendPluginMessage(plugin, PING_S2C, payload);
+            // Déterminer la relation spécifique au target (priorité : faction > ally > friend)
+            int relation = -1; // -1 = none
+            if (isSameFaction(senderFaction, target)) relation = 0;
+            else if (isAlly(senderAllies, target)) relation = 1;
+            else if (isFriend(friends, target)) relation = 2;
+
+            if (relation != -1) {
+                if (relation == 2) {
+                    plugin.getLogger().info("[Ping] Envoi PING (friend) de " + senderName + " vers " + target.getName());
+                }
+                // Construire un payload spécifique en incluant le typeOrdinal
+                byte[] payloadWithType = PacketBuilder.create(PING_RECEIVE)
+                        .writeDouble(x)
+                        .writeDouble(y)
+                        .writeDouble(z)
+                        .writeByte((byte) relation)
+                        .writeString(senderName)
+                        .build();
+                target.sendPluginMessage(plugin, PING_S2C, payloadWithType);
             }
         }
     }
