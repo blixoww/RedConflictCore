@@ -173,6 +173,16 @@ public class ClearLaggManager {
             ));
         }
 
+        // If mobsToClear is empty, provide sensible defaults (common mobs & animals excluding villagers)
+        if (mobsToClear == null || mobsToClear.isEmpty()) {
+            mobsToClear = new ArrayList<>(Arrays.asList(
+                    "ZOMBIE", "SKELETON", "CREEPER", "SPIDER", "CAVE_SPIDER", "ENDERMAN",
+                    "WITCH", "SLIME", "MAGMA_CUBE", "BLAZE", "GHAST", "SILVERFISH",
+                    "ENDERMITE", "GUARDIAN", "SHULKER", "SQUID", "BAT",
+                    "WOLF", "OCELOT", "RABBIT", "PIG", "SHEEP", "COW", "CHICKEN", "HORSE", "LLAMA", "POLAR_BEAR"
+            ));
+        }
+
         // Normaliser
         mobsToClear.replaceAll(String::toUpperCase);
         excludedMobs.replaceAll(String::toUpperCase);
@@ -274,27 +284,103 @@ public class ClearLaggManager {
      */
     public int runClearLagg() {
         int total = 0;
-        for (World world : Bukkit.getWorlds()) {
-            if (excludedWorlds.contains(world.getName().toLowerCase())) {
-                if (debugMode) plugin.getLogger().info("[ClearLagg] Monde ignoré : " + world.getName());
-                continue;
+        try {
+            for (World world : Bukkit.getWorlds()) {
+                if (excludedWorlds.contains(world.getName().toLowerCase())) {
+                    if (debugMode) plugin.getLogger().info("[ClearLagg] Monde ignoré : " + world.getName());
+                    continue;
+                }
+                int count = clearWorld(world);
+                total += count;
+                if (debugMode) plugin.getLogger().info("[ClearLagg] " + world.getName() + " → " + count + " entités supprimées");
             }
-            int count = clearWorld(world);
-            total += count;
-            if (debugMode) plugin.getLogger().info("[ClearLagg] " + world.getName() + " → " + count + " entités supprimées");
+        } catch (Throwable t) {
+            plugin.getLogger().severe("[ClearLagg] Erreur inattendue lors du clearlagg : " + t.getMessage());
+            if (debugMode) t.printStackTrace();
+        } finally {
+            // Always broadcast result (even if partial) so admins know the task ran
+            Bukkit.broadcastMessage("§8[§6§lClearLagg§8] §aNettoyage terminé — §f"
+                    + total + " §aentité(s) supprimée(s).");
+
+            // Log to console as well so admins see it in server logs
+            plugin.getLogger().info("[ClearLagg] Nettoyage terminé — " + total + " entité(s) supprimée(s).");
+
+            // send title on completion if configured
+            if (warningUseTitle) {
+                String title = "§6§lClearLagg";
+                String subtitle = "§aNettoyage terminé — §f" + total + "§a entité(s)";
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    boolean sent = false;
+                    try {
+                        Method m = p.getClass().getMethod("sendTitle", String.class, String.class, int.class, int.class, int.class);
+                        m.invoke(p, title, subtitle, titleFadeIn, titleStay, titleFadeOut);
+                        sent = true;
+                    } catch (NoSuchMethodException ignored) {
+                        try {
+                            Method m2 = p.getClass().getMethod("sendTitle", String.class, String.class);
+                            m2.invoke(p, title, subtitle);
+                            sent = true;
+                        } catch (NoSuchMethodException ignored2) {
+                        } catch (Exception ex) {
+                        }
+                    } catch (Exception e) {
+                    }
+
+                    if (!sent) {
+                        p.sendMessage("§6[ClearLagg] §aNettoyage terminé — §f" + total + " §aentité(s)");
+                    }
+                }
+            }
         }
-        Bukkit.broadcastMessage("§8[§6§lClearLagg§8] §aNettoyage terminé — §f"
-                + total + " §aentité(s) supprimée(s).");
         return total;
     }
 
     private int clearWorld(World world) {
         int count = 0;
-        for (Entity entity : world.getEntities()) {
-            if (shouldRemove(entity)) {
-                entity.remove();
-                count++;
+        // Collect entities to remove first to avoid concurrent modification and to catch errors per-entity.
+        List<Entity> toRemove = new ArrayList<>();
+        try {
+            for (Entity entity : world.getEntities()) {
+                try {
+                    if (shouldRemove(entity)) {
+                        toRemove.add(entity);
+                    }
+                } catch (Throwable t) {
+                    if (debugMode) plugin.getLogger().warning("[ClearLagg] Erreur lors du test de l'entité " + entity + ": " + t.getMessage());
+                }
             }
+
+            // Detailed debug: count entities by type before removal
+            if (debugMode) {
+                Map<String, Integer> preRemoveCount = new HashMap<>();
+                for (Entity e : toRemove) {
+                    String key = e.getType().name();
+                    preRemoveCount.put(key, preRemoveCount.getOrDefault(key, 0) + 1);
+                }
+                plugin.getLogger().info("[ClearLagg] Entités à supprimer (avant) : " + preRemoveCount);
+            }
+
+            for (Entity e : toRemove) {
+                try {
+                    e.remove();
+                    count++;
+                } catch (Throwable t) {
+                    if (debugMode) plugin.getLogger().warning("[ClearLagg] Erreur lors de la suppression de l'entité " + e + ": " + t.getMessage());
+                }
+            }
+
+            // Detailed debug: count remaining entities by type after removal
+            if (debugMode) {
+                Map<String, Integer> postRemoveCount = new HashMap<>();
+                for (Entity e : world.getEntities()) {
+                    String key = e.getType().name();
+                    postRemoveCount.put(key, postRemoveCount.getOrDefault(key, 0) + 1);
+                }
+                plugin.getLogger().info("[ClearLagg] Entités restantes (après) : " + postRemoveCount);
+            }
+        } catch (Throwable t) {
+            plugin.getLogger().severe("[ClearLagg] Exception lors du nettoyage du monde " + world.getName() + ": " + t.getMessage());
+            if (debugMode) t.printStackTrace();
         }
         return count;
     }
