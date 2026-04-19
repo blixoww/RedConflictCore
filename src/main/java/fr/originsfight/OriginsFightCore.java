@@ -5,6 +5,7 @@ import fr.originsfight.automsg.AutoMessageManager;
 import fr.originsfight.bounty.BountyCommand;
 import fr.originsfight.bounty.BountyListener;
 import fr.originsfight.bounty.BountyManager;
+import fr.originsfight.faction.FactionDataSender;
 import fr.originsfight.friend.FriendCommand;
 import fr.originsfight.friend.FriendListener;
 import fr.originsfight.friend.FriendManager;
@@ -277,6 +278,9 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PING_C2S",
             (PluginMessageListener) new PingServerHandler(this));
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:PING_S2C");
+        // Données de faction (tag + relation) envoyées périodiquement aux clients proches
+        getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:FACTION_S2C");
+        new FactionDataSender(this).start();
         getLogger().info("[CustomPackets] Canaux enregistré avec succès !");
     }
 
