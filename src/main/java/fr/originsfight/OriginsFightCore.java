@@ -6,6 +6,7 @@ import fr.originsfight.bounty.BountyCommand;
 import fr.originsfight.bounty.BountyListener;
 import fr.originsfight.bounty.BountyManager;
 import fr.originsfight.faction.FactionDataSender;
+import fr.originsfight.faction.FactionZoneSender;
 import fr.originsfight.friend.FriendCommand;
 import fr.originsfight.friend.FriendListener;
 import fr.originsfight.friend.FriendManager;
@@ -281,6 +282,11 @@ public class OriginsFightCore extends JavaPlugin {
         // Données de faction (tag + relation) envoyées périodiquement aux clients proches
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:FACTION_S2C");
         new FactionDataSender(this).start();
+        // Zone (claim) – envoie au client la faction propriétaire du chunk courant
+        FactionZoneSender zoneSender = new FactionZoneSender(this);
+        getServer().getPluginManager().registerEvents(zoneSender, this);
+        // Tâche périodique : détecte les changements de zone sans déplacement de chunk
+        zoneSender.startPeriodicUpdate();
         getLogger().info("[CustomPackets] Canaux enregistré avec succès !");
     }
 
