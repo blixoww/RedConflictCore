@@ -1,6 +1,7 @@
 package fr.originsfight.useful;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.annonyme.AnonymeManager;
 import fr.originsfight.ks.KsDatabase;
 import fr.originsfight.staff.StaffManager;
 import net.milkbowl.vault.chat.Chat;
@@ -49,11 +50,14 @@ public class PlayerListManager {
      */
     private void setupTeams(Scoreboard board, Player viewer, Chat vaultChat) {
         boolean viewerIsStaff = mgr.isStaff(viewer);
+        AnonymeManager anonymeManager = plugin.getAnonymeManager();
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             boolean isVanished  = mgr.isVanished(p.getUniqueId());
             boolean isStaffMode = mgr.isInStaffMode(p.getUniqueId());
             boolean isStaff     = mgr.isStaff(p);
+            boolean isAnonymous = anonymeManager != null && anonymeManager.isAnonymous(p)
+                    && !viewer.hasPermission("staff.annonyme");
 
             // Cacher les vanish/staffmode aux non-staff
             if ((isVanished || isStaffMode) && !viewerIsStaff) {
@@ -68,8 +72,14 @@ public class PlayerListManager {
             else                           sortPrefix = "20_";
 
             // Récupérer le préfixe LuckPerms via Vault Chat
+            // Pour les joueurs anonymes : on impose le pr\u00e9fixe \u00a7k (magic) afin
+            // que le pseudo affich\u00e9 dans le tab et au-dessus de la t\u00eate soit
+            // obfusqu\u00e9. Chaque viewer a son propre scoreboard ici, donc la team
+            // "anonymous" du main scoreboard n'est jamais consult\u00e9e.
             String lpPrefix = "";
-            if (vaultChat != null) {
+            if (isAnonymous) {
+                lpPrefix = "\u00a7k";
+            } else if (vaultChat != null) {
                 try {
                     String raw = vaultChat.getPlayerPrefix(p);
                     if (raw != null) lpPrefix = raw.replace("&", "\u00a7");

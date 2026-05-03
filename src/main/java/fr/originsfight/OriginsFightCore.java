@@ -1,10 +1,14 @@
 package fr.originsfight;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
+import fr.originsfight.annonyme.AnonymeCommand;
+import fr.originsfight.annonyme.AnonymeListener; // Import AnonymeListener
+import fr.originsfight.annonyme.AnonymeManager;
 import fr.originsfight.automsg.AutoMessageManager;
 import fr.originsfight.bounty.BountyCommand;
 import fr.originsfight.bounty.BountyListener;
 import fr.originsfight.bounty.BountyManager;
+import fr.originsfight.bounty.KillstreakManager;
 import fr.originsfight.faction.FactionDataSender;
 import fr.originsfight.faction.FactionZoneSender;
 import fr.originsfight.friend.FriendCommand;
@@ -87,6 +91,7 @@ public class OriginsFightCore extends JavaPlugin {
     private LotoManager lotoManager;
     private LagSwitchManager lagSwitchManager;
     private ClearLaggManager clearLaggManager;
+    private AnonymeManager anonymeManager; // Added AnonymeManager
 
     public void onEnable() {
         instance = this;
@@ -97,6 +102,10 @@ public class OriginsFightCore extends JavaPlugin {
         loadRecipes();
         this.alwaysDisabledCommands = getConfig().getStringList("commands.always-disabled");
         this.disabledInCombatCommands = getConfig().getStringList("commands.disabled-in-combat");
+        
+        // Initialize AnonymeManager before registering commands
+        this.anonymeManager = new AnonymeManager(this); // Initialize AnonymeManager
+
         registerCommands();
         registerListeners();
         loadPackets();
@@ -126,17 +135,21 @@ public class OriginsFightCore extends JavaPlugin {
         } else {
             getLogger().severe("[KS] Échec de l'initialisation du système KS !");
         }
-        // Système de primes (bounty)
-        this.bountyManager = new BountyManager();
+        // Système de primes (bounty) + killstreak
+        KillstreakManager killstreakManager = new KillstreakManager();
+        this.bountyManager = new BountyManager(killstreakManager);
+
         if (this.bountyManager.enable(this)) {
             getLogger().info("[Bounty] Système de primes initialisé avec succès !");
         } else {
             getLogger().severe("[Bounty] Échec de l'initialisation du système de primes !");
         }
-        BountyCommand bountyCmd = new BountyCommand(bountyManager);
+        BountyCommand bountyCmd = new BountyCommand(bountyManager, killstreakManager);
         getCommand("prime").setExecutor(bountyCmd);
         getCommand("prime").setTabCompleter(bountyCmd);
-        getServer().getPluginManager().registerEvents(new BountyListener(bountyManager), this);
+        BountyListener bountyListener = new BountyListener(bountyManager, killstreakManager);
+        getServer().getPluginManager().registerEvents(bountyListener, this);
+        getServer().getPluginManager().registerEvents(bountyManager.getFactionTracker(), this);
         // Système d'amis (friend)
         this.friendManager = new FriendManager();
         if (this.friendManager.enable(this)) {
@@ -176,6 +189,7 @@ public class OriginsFightCore extends JavaPlugin {
         if (this.staffPlugin != null)    this.staffPlugin.disable();
         if (this.bountyManager != null)  this.bountyManager.disable();
         if (this.friendManager != null)  this.friendManager.disable();
+        if (this.anonymeManager != null) this.anonymeManager.disable(); // Call disable on AnonymeManager
         for (Player p : Bukkit.getOnlinePlayers()) {
             Long joinTime = KsListener.getJoinTime(p.getUniqueId());
             if (joinTime != null) {
@@ -217,13 +231,19 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("msg").setTabCompleter(msg);
         getCommand("r").setExecutor(msg);
         getCommand("msgspy").setExecutor(msg);
+        // Anonyme command
+        AnonymeCommand anonymeCommand = new AnonymeCommand(anonymeManager);
+        if (getCommand("annonyme") != null) {
+            getCommand("annonyme").setExecutor(anonymeCommand);
+            getCommand("annonyme").setTabCompleter(anonymeCommand);
+        }
     }
 
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new RTPListener(), this);
         getServer().getPluginManager().registerEvents(new CombatLogListener(), this);
         getServer().getPluginManager().registerEvents(new VoidListener(), this);
-        getServer().getPluginManager().registerEvents(new DeathMessages(), this);
+        getServer().getPluginManager().registerEvents(new DeathMessages(anonymeManager), this);
         getServer().getPluginManager().registerEvents(new DisabledCommands(), this);
         getServer().getPluginManager().registerEvents(new FallProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new HdvLoginListener(this), this);
@@ -236,6 +256,8 @@ public class OriginsFightCore extends JavaPlugin {
         CobbleCommand cobbleListener = new CobbleCommand();
         getCommand("cobble").setExecutor(cobbleListener);
         getServer().getPluginManager().registerEvents(cobbleListener, this);
+        // Register AnonymeListener
+        getServer().getPluginManager().registerEvents(new AnonymeListener(anonymeManager), this);
     }
 
     private void loadPackets() {
@@ -338,6 +360,10 @@ public class OriginsFightCore extends JavaPlugin {
 
     public KsDatabase getKsDatabase() {
         return this.ksDatabase;
+    }
+
+    public AnonymeManager getAnonymeManager() {
+        return this.anonymeManager;
     }
 
     public Economy getEconomy() {

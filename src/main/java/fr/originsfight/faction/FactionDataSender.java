@@ -1,8 +1,10 @@
 package fr.originsfight.faction;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.annonyme.AnonymeManager; // Import AnonymeManager
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor; // Import ChatColor
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
@@ -30,9 +32,11 @@ public class FactionDataSender implements Runnable {
     private static final double RENDER_RANGE   = 64.0;
 
     private final OriginsFightCore plugin;
+    private final AnonymeManager anonymeManager; // Added AnonymeManager field
 
     public FactionDataSender(OriginsFightCore plugin) {
         this.plugin = plugin;
+        this.anonymeManager = plugin.getAnonymeManager(); // Get AnonymeManager instance
     }
 
     /** Lance la tâche répétée. */
@@ -56,11 +60,20 @@ public class FactionDataSender implements Runnable {
 
                 byte relation = resolveRelation(viewer, target);
 
+                // Le client utilise targetName comme clé de lookup dans FactionDataCache
+                // (RenderPlayer fait FactionDataCache.get(entity.getName())).
+                // Ne JAMAIS l'obfusquer ici, sinon l'entrée n'est jamais retrouvée et
+                // l'ancien tag réel reste affiché jusqu'à expiration (10s).
+                String targetName = target.getName();
+                if (anonymeManager.isAnonymous(target) && !viewer.hasPermission("staff.annonyme")) {
+                    targetFaction = ChatColor.MAGIC.toString() + "FACTION" + ChatColor.RESET.toString();
+                }
+
                 plugin.getLogger().fine("[FactionData] " + viewer.getName() + " -> " + target.getName()
                         + " faction=" + targetFaction + " relation=" + relation);
 
                 byte[] payload = PacketBuilder.create(FACTION_DATA)
-                        .writeString(safeTrunc(target.getName(), 32))
+                        .writeString(safeTrunc(targetName, 32))
                         .writeString(safeTrunc(targetFaction, 32))
                         .writeByte(relation)
                         .build();

@@ -1,8 +1,6 @@
 package fr.originsfight.bounty;
 
-import fr.originsfight.OriginsFightCore;
 import fr.originsfight.RC;
-import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -11,264 +9,141 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
- * Commande /prime (alias /bounty) : place une prime sur un joueur.
+ * Commande /prime (alias /bounty).
  *
- * Sous-commandes :
- *   /prime <joueur> <montant>  – placer une prime
- *   /prime list                – liste des primes actives
- *   /prime info [joueur]       – détail d'une prime
- *   /prime cancel              – annuler sa propre prime (remboursement, cooldown 5 min)
+ *   /prime              – primes actives
+ *   /prime list         – idem
+ *   /prime info [joueur]– killstreak & prime d'un joueur
+ *   /prime top          – top killstreaks de la session
  */
 public class BountyCommand implements CommandExecutor, TabCompleter {
 
-    private final BountyManager manager;
+    private static final String BAR = "§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
-    public BountyCommand(BountyManager manager) {
-        this.manager = manager;
+    private final BountyManager     bountyManager;
+    private final KillstreakManager ksManager;
+
+    public BountyCommand(BountyManager bm, KillstreakManager ksm) {
+        this.bountyManager = bm;
+        this.ksManager      = ksm;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(RC.ERR_PLAYER_ONLY);
-            return true;
-        }
+    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
         Player player = (Player) sender;
 
-        if (args.length == 0) {
-            sendHelp(player);
-            return true;
-        }
-
-        String sub = args[0].toLowerCase();
-
+        String sub = args.length > 0 ? args[0].toLowerCase() : "list";
         switch (sub) {
-            case "list":
-                doList(player);
-                return true;
-            case "info":
-                doInfo(player, args);
-                return true;
-            case "cancel":
-                doCancel(player);
-                return true;
-            default:
-                // /prime <joueur> <montant>
-                doPlace(player, args);
-                return true;
+            case "list":  doList(player);       break;
+            case "top":   doTop(player);        break;
+            case "info":  doInfo(player, args); break;
+            default:      sendHelp(player);     break;
         }
-    }
-
-    // ── /prime <joueur> <montant> ─────────────────────────────────────────────
-
-    private void doPlace(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage(RC.BOUNTY_USAGE);
-            return;
-        }
-
-        // Résoudre la cible (peut être hors ligne → on utilise le nom pour retrouver l'UUID via lastKiller)
-        UUID lastKillerUuid = manager.getLastKiller(player.getUniqueId());
-        if (lastKillerUuid == null) {
-            player.sendMessage(RC.PRE + "§cVous ne pouvez placer une prime que sur votre dernier tueur. §7Vous n'en avez pas encore.");
-            return;
-        }
-
-        // Vérifier que le joueur cible correspond bien au dernier tueur
-        String targetName = args[0];
-        Player targetOnline = Bukkit.getPlayer(targetName);
-
-        UUID targetUuid;
-        String resolvedName;
-
-        if (targetOnline != null) {
-            targetUuid    = targetOnline.getUniqueId();
-            resolvedName  = targetOnline.getName();
-        } else {
-            // Cible hors ligne : on accepte uniquement si l'UUID stocké correspond
-            // On vérifie par le nom (insensible à la casse) en comparant avec les données du dernier tueur
-            // Le lastKiller stocke l'UUID ; on récupère le nom depuis la BountyInfo ou les données KS
-            // Ici on force : si hors-ligne, le joueur doit connaître le nom exact
-            player.sendMessage(RC.BOUNTY_NOT_FOUND);
-            return;
-        }
-
-        if (targetUuid.equals(player.getUniqueId())) {
-            player.sendMessage(RC.BOUNTY_SELF);
-            return;
-        }
-
-        // Vérification : cible = dernier tueur
-        if (!targetUuid.equals(lastKillerUuid)) {
-            // Chercher le nom du dernier tueur pour le message
-            Player lastKillerPlayer = Bukkit.getPlayer(lastKillerUuid);
-            String killerName = lastKillerPlayer != null ? lastKillerPlayer.getName() : "Inconnu";
-            player.sendMessage(String.format(RC.PRE + "§cVous ne pouvez cibler que votre dernier tueur : §f%s§c.", killerName));
-            return;
-        }
-
-        // Parse du montant
-        long amount;
-        try {
-            amount = Long.parseLong(args[1]);
-        } catch (NumberFormatException e) {
-            player.sendMessage(RC.BOUNTY_INVALID_AMOUNT);
-            return;
-        }
-
-        if (amount < manager.getMinimumAmount()) {
-            player.sendMessage(String.format(RC.PRE + "§cMontant minimum : §f%d$§c.", manager.getMinimumAmount()));
-            return;
-        }
-
-        // Vérifier que le joueur n'a pas déjà placé une prime
-        if (manager.hasPlacedBounty(player.getUniqueId())) {
-            player.sendMessage(RC.BOUNTY_ALREADY_PLACED);
-            return;
-        }
-
-        // Vérifier que la cible n'a pas déjà une prime
-        if (manager.hasBounty(targetUuid)) {
-            player.sendMessage(RC.BOUNTY_ALREADY_TARGET);
-            return;
-        }
-
-        // Vérifier les fonds via Vault
-        Economy eco = OriginsFightCore.getInstance().getEconomy();
-        if (eco == null) {
-            player.sendMessage(RC.BOUNTY_ECO_ERROR);
-            return;
-        }
-        if ((long) eco.getBalance(player) < amount) {
-            player.sendMessage(RC.BOUNTY_NO_MONEY);
-            return;
-        }
-
-        // Débiter et placer la prime
-        eco.withdrawPlayer(player, amount);
-        manager.placeBounty(player.getUniqueId(), player.getName(), targetUuid, resolvedName, amount);
-
-        // Confirmation
-        player.sendMessage(RC.fmt(RC.BOUNTY_PLACED, resolvedName, amount));
-
-        // Annonce globale
-        for (String line : RC.fmt(RC.BOUNTY_BROADCAST, player.getName(), amount, resolvedName).split("\n")) {
-            Bukkit.broadcastMessage(line);
-        }
+        return true;
     }
 
     // ── /prime list ───────────────────────────────────────────────────────────
 
     private void doList(Player player) {
-        Map<UUID, BountyInfo> all = manager.getBounties();
+        Map<UUID, BountyInfo> all = bountyManager.getActiveBounties();
+        player.sendMessage(BAR);
+        player.sendMessage("  §c§l⚔ §e§lPRIMES ACTIVES §c§l⚔  §8(" + all.size() + ")");
         if (all.isEmpty()) {
-            player.sendMessage(RC.PRE + "§7Aucune prime active pour le moment.");
-            return;
+            player.sendMessage("  §8┃ §7Aucune prime active pour le moment.");
+        } else {
+            for (BountyInfo info : all.values()) {
+                int ks = ksManager.getStreak(info.getTarget());
+                player.sendMessage("  §8┃ §c§l" + info.getTargetName()
+                    + " §8| §f§l" + info.getAmount() + "$ §8| §7killstreak : §e" + ks);
+            }
         }
-        player.sendMessage(RC.SEP);
-        player.sendMessage(RC.PRE + "§e§lPrimes actives §8(" + all.size() + ") §7:");
-        for (BountyInfo info : all.values()) {
-            long remaining = info.getRemainingMs(BountyManager.BOUNTY_DURATION_MS);
-            String time = formatDuration(Math.max(0, remaining));
-            player.sendMessage(RC.PRE_S + "§c" + info.getTargetName()
-                + " §8| §fpar §7" + info.getSetterName()
-                + " §8| §f" + info.getAmount() + "$ §8| §7expire dans §f" + time);
-        }
-        player.sendMessage(RC.SEP);
+        player.sendMessage(BAR);
     }
 
     // ── /prime info [joueur] ──────────────────────────────────────────────────
 
     private void doInfo(Player player, String[] args) {
-        BountyInfo info;
+        UUID targetUuid;
+        String targetName;
         if (args.length >= 2) {
-            Player target = Bukkit.getPlayer(args[1]);
-            if (target == null) {
-                player.sendMessage(RC.BOUNTY_NOT_FOUND);
-                return;
-            }
-            info = manager.getBounty(target.getUniqueId());
+            Player t = Bukkit.getPlayer(args[1]);
+            if (t == null) { player.sendMessage(RC.PRE + "§cJoueur introuvable."); return; }
+            targetUuid = t.getUniqueId(); targetName = t.getName();
         } else {
-            info = manager.getBounty(player.getUniqueId());
+            targetUuid = player.getUniqueId(); targetName = player.getName();
         }
 
-        if (info == null) {
-            player.sendMessage(RC.PRE + "§7Aucune prime sur ce joueur.");
-            return;
-        }
+        int ks = ksManager.getStreak(targetUuid);
+        BountyInfo info = bountyManager.getBounty(targetUuid);
 
-        long remaining = info.getRemainingMs(BountyManager.BOUNTY_DURATION_MS);
-        player.sendMessage(RC.SEP);
-        player.sendMessage(RC.PRE + "§e§lPrime sur §c" + info.getTargetName());
-        player.sendMessage(RC.PRE_S + "§7Posée par : §f" + info.getSetterName());
-        player.sendMessage(RC.PRE_S + "§7Montant   : §f" + info.getAmount() + "$");
-        player.sendMessage(RC.PRE_S + "§7Expire dans : §f" + formatDuration(Math.max(0, remaining)));
-        player.sendMessage(RC.SEP);
+        player.sendMessage(BAR);
+        player.sendMessage("  §e§lInfos — §f" + targetName);
+        player.sendMessage("  §8┃ §7Killstreak actuel : §e§l" + ks);
+        if (info != null) {
+            player.sendMessage("  §8┃ §7Prime active : §f§l" + info.getAmount() + "$");
+            player.sendMessage("  §8┃ §7Killstreak à la création : §c" + info.getKillstreakAtCreation());
+        } else {
+            player.sendMessage("  §8┃ §7Aucune prime active sur ce joueur.");
+        }
+        List<Integer> thresholds = ksManager.getBountyThresholdKills();
+        int next = nextThreshold(thresholds, ks);
+        if (next > 0) {
+            player.sendMessage("  §8┃ §7Prochain seuil : §c" + next + " kills §8(§7encore §c" + (next - ks) + "§8)");
+        }
+        player.sendMessage(BAR);
     }
 
-    // ── /prime cancel ─────────────────────────────────────────────────────────
+    // ── /prime top ────────────────────────────────────────────────────────────
 
-    private void doCancel(Player player) {
-        if (!manager.hasPlacedBounty(player.getUniqueId())) {
-            player.sendMessage(RC.PRE + "§7Vous n'avez aucune prime active à annuler.");
-            return;
-        }
-        // Trouver la bounty placée par ce joueur
-        UUID targetUuid = null;
-        for (Map.Entry<UUID, BountyInfo> entry : manager.getBounties().entrySet()) {
-            if (entry.getValue().getSetter().equals(player.getUniqueId())) {
-                targetUuid = entry.getKey();
-                break;
+    private void doTop(Player player) {
+        // Tri des killstreaks courants de la session (pas de persistance)
+        Map<UUID, BountyInfo> bounties = bountyManager.getActiveBounties();
+
+        // Récupérer tous les streaks de la session : joueurs avec prime + joueurs en streak sans prime
+        // On affiche les joueurs qui ont une prime active pour simplifier
+        player.sendMessage(BAR);
+        player.sendMessage("  §e§l🏆 PRIMES ACTIVES — SESSION");
+        if (bounties.isEmpty()) {
+            player.sendMessage("  §8┃ §7Aucune prime active pour le moment.");
+        } else {
+            List<BountyInfo> sorted = bounties.values().stream()
+                .sorted((a, b) -> Long.compare(b.getAmount(), a.getAmount()))
+                .collect(Collectors.toList());
+            int rank = 1;
+            for (BountyInfo b : sorted) {
+                int streak = ksManager.getStreak(b.getTarget());
+                player.sendMessage("  §8┃ §7#" + rank + " §f" + b.getTargetName()
+                    + " §8— §c" + b.getAmount() + "$ §8| §e" + streak + " kills");
+                rank++;
             }
         }
-        if (targetUuid == null) {
-            player.sendMessage(RC.PRE + "§cErreur interne — prime introuvable.");
-            return;
-        }
-        BountyInfo info = manager.removeBounty(targetUuid);
-        if (info != null) {
-            Economy eco = OriginsFightCore.getInstance().getEconomy();
-            if (eco != null) eco.depositPlayer(player, info.getAmount());
-            player.sendMessage(String.format(RC.PRE + "§ePrime sur §f%s §eannulée. §f+%d$ §eremboursé.", info.getTargetName(), info.getAmount()));
-        }
+        player.sendMessage(BAR);
     }
 
     // ── Aide ──────────────────────────────────────────────────────────────────
 
     private void sendHelp(Player player) {
-        player.sendMessage(RC.SEP);
-        player.sendMessage(RC.PRE + "§e§lCommandes Primes");
-        player.sendMessage(RC.PRE_S + "§f/prime <joueur> <montant> §8— §7Mettre une prime sur votre tueur");
-        player.sendMessage(RC.PRE_S + "§f/prime list §8— §7Voir toutes les primes actives");
-        player.sendMessage(RC.PRE_S + "§f/prime info [joueur] §8— §7Détails d'une prime");
-        player.sendMessage(RC.PRE_S + "§f/prime cancel §8— §7Annuler votre prime (remboursement)");
-        player.sendMessage(RC.SEP);
+        player.sendMessage(BAR);
+        player.sendMessage("  §e§l⚔ Commandes Primes & Killstreaks");
+        player.sendMessage("  §8┃ §f/prime list             §8— §7Primes actives");
+        player.sendMessage("  §8┃ §f/prime info [joueur]    §8— §7Killstreak & prime d'un joueur");
+        player.sendMessage("  §8┃ §f/prime top              §8— §7Primes les plus élevées");
+        player.sendMessage(BAR);
     }
 
-    // ── Utilitaire ────────────────────────────────────────────────────────────
-
-    private static String formatDuration(long ms) {
-        long hours   = TimeUnit.MILLISECONDS.toHours(ms);
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60;
-        long seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60;
-        if (hours > 0)   return hours + "h " + minutes + "min";
-        if (minutes > 0) return minutes + "min " + seconds + "s";
-        return seconds + "s";
-    }
+    // ── Tab completion ────────────────────────────────────────────────────────
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
             String prefix = args[0].toLowerCase();
-            for (String sub : Arrays.asList("list", "info", "cancel")) {
-                if (sub.startsWith(prefix)) completions.add(sub);
-            }
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.getName().toLowerCase().startsWith(prefix)) completions.add(p.getName());
+            for (String s : Arrays.asList("list", "info", "top")) {
+                if (s.startsWith(prefix)) completions.add(s);
             }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
             String prefix = args[1].toLowerCase();
@@ -277,5 +152,10 @@ public class BountyCommand implements CommandExecutor, TabCompleter {
             }
         }
         return completions;
+    }
+
+    private static int nextThreshold(List<Integer> thresholds, int current) {
+        for (int t : thresholds) if (t > current) return t;
+        return -1;
     }
 }

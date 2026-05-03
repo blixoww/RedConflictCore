@@ -2,42 +2,36 @@ package fr.originsfight.bounty;
 
 import java.util.UUID;
 
-/**
- * Représente une prime placée sur un joueur.
- */
+/** Prime automatique posée par le serveur sur un joueur en killstreak élevé. */
 public class BountyInfo {
 
-    private final UUID setter;
-    private final String setterName;
-    private final UUID target;
+    private final UUID   target;
     private final String targetName;
-    private final long amount;
-    private final long timestamp;
+    private long  amount;
+    private final int    killstreakAtCreation;
+    private int   thresholdIndex;
+    private final long   createdAt;
 
-    /** Constructeur principal : timestamp = maintenant. */
-    public BountyInfo(UUID setter, String setterName, UUID target, String targetName, long amount) {
-        this(setter, setterName, target, targetName, amount, System.currentTimeMillis());
+    public BountyInfo(UUID target, String targetName, long amount, int killstreak, int thresholdIndex) {
+        this(target, targetName, amount, killstreak, thresholdIndex, System.currentTimeMillis());
     }
 
-    /** Constructeur de désérialisation (restauration depuis DB). */
-    public BountyInfo(UUID setter, String setterName, UUID target, String targetName, long amount, long timestamp) {
-        this.setter = setter;
-        this.setterName = setterName;
-        this.target = target;
-        this.targetName = targetName;
-        this.amount = amount;
-        this.timestamp = timestamp;
+    public BountyInfo(UUID target, String targetName, long amount, int killstreak, int thresholdIndex, long createdAt) {
+        this.target              = target;
+        this.targetName          = targetName;
+        this.amount              = amount;
+        this.killstreakAtCreation = killstreak;
+        this.thresholdIndex      = thresholdIndex;
+        this.createdAt           = createdAt;
     }
 
-    public UUID getSetter()      { return setter; }
-    public String getSetterName(){ return setterName; }
-    public UUID getTarget()      { return target; }
-    public String getTargetName(){ return targetName; }
-    public long getAmount()      { return amount; }
-    public long getTimestamp()   { return timestamp; }
+    public UUID   getTarget()              { return target; }
+    public String getTargetName()          { return targetName; }
+    public long   getAmount()              { return amount; }
+    public int    getKillstreakAtCreation(){ return killstreakAtCreation; }
+    public int    getThresholdIndex()      { return thresholdIndex; }
+    public long   getCreatedAt()           { return createdAt; }
 
-    /** Temps restant en millisecondes (peut être négatif si expiré). */
-    public long getRemainingMs(long durationMs) {
-        return (timestamp + durationMs) - System.currentTimeMillis();
-    }
+    public void setAmount(long amount)             { this.amount = amount; }
+    public void setThresholdIndex(int idx)         { this.thresholdIndex = idx; }
 }

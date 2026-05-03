@@ -1,9 +1,11 @@
 package fr.originsfight.death;
 
+import fr.originsfight.annonyme.AnonymeManager;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -12,6 +14,14 @@ import org.bukkit.inventory.ItemStack;
 
 public class DeathMessages implements Listener {
 
+    private static final String ANON_NAME = ChatColor.MAGIC + "PLAYER" + ChatColor.RESET;
+
+    private final AnonymeManager anonymeManager;
+
+    public DeathMessages(AnonymeManager anonymeManager) {
+        this.anonymeManager = anonymeManager;
+    }
+
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player death = event.getEntity();
@@ -19,11 +29,14 @@ public class DeathMessages implements Listener {
 
         if (killer == null) return;
 
+        String deathName  = anonymeManager.isAnonymous(death)  ? ANON_NAME : death.getName();
+        String killerName = anonymeManager.isAnonymous(killer) ? ANON_NAME : killer.getName();
+
         ItemStack killItem = killer.getItemInHand();
         event.setDeathMessage(null);
 
         // Construire le message avec TextComponent
-        TextComponent message = new TextComponent("§6✦ §e" + death.getName() + " §7a été tué par §c" + killer.getName());
+        TextComponent message = new TextComponent("§6✦ §e" + deathName + " §7a été tué par §c" + killerName);
 
         if (killItem != null && killItem.hasItemMeta()
                 && killItem.getItemMeta().hasDisplayName()

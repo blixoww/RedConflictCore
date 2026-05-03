@@ -83,6 +83,10 @@ commands:
     description: Répond au dernier message privé reçu
     usage: /r <message>
     aliases: [reply]
+  annonyme:
+    description: Cacher le pseudo
+    usage: /annonyme
+    aliases: [a]
   msgspy:
     description: Toggle la surveillance des messages privés (staff)
     usage: /msgspy

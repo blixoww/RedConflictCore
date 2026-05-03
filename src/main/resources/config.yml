@@ -153,10 +153,31 @@ clearlagg:
   # ── Debug ─────────────────────────────────────────────────────────────────
   debug: false
 
-# ── Système de primes (Bounty) ────────────────────────────────────────────────
+# ── Système de primes (Bounty) & Killstreak ──────────────────────────────────
 bounty:
-  # Montant minimum requis pour placer une prime (en $)
-  minimum-amount: 100
+
+  # Paliers de killstreak qui déclenchent une prime automatique.
+  # Quand un joueur atteint exactement N kills d'affilée, une prime est posée.
+  # Si un nouveau palier est franchi sans mourir, la prime est multipliée
+  # par escalation-multiplier au lieu d'en créer une nouvelle.
+  thresholds:
+    - killstreak: 5
+      amount: 100
+    - killstreak: 10
+      amount: 200
+    - killstreak: 20
+      amount: 400
+
+  # Multiplicateur appliqué à la prime existante quand un nouveau palier est franchi.
+  escalation-multiplier: 1.5
+
+  # Réinitialiser le killstreak quand un joueur se déconnecte.
+  reset-on-disconnect: true
+
+  # Anti-bypass faction : si un joueur a quitté la faction de sa victime
+  # dans les N jours, son kill n'est pas comptabilisé.
+  # Mettre à 0 pour désactiver cette protection.
+  faction-leave-days: 7
 
 commands:
   # Commandes TOUJOURS désactivées pour les non-op (sans le "/" devant)
