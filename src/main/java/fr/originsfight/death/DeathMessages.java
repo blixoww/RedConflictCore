@@ -5,7 +5,6 @@ import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -14,7 +13,7 @@ import org.bukkit.inventory.ItemStack;
 
 public class DeathMessages implements Listener {
 
-    private static final String ANON_NAME = ChatColor.MAGIC + "PLAYER" + ChatColor.RESET;
+    private static final String ANON_NAME = "Identité masquée";
 
     private final AnonymeManager anonymeManager;
 

@@ -4,7 +4,6 @@ import fr.originsfight.OriginsFightCore;
 import fr.originsfight.annonyme.AnonymeManager; // Import AnonymeManager
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor; // Import ChatColor
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
@@ -66,7 +65,7 @@ public class FactionDataSender implements Runnable {
                 // l'ancien tag réel reste affiché jusqu'à expiration (10s).
                 String targetName = target.getName();
                 if (anonymeManager.isAnonymous(target) && !viewer.hasPermission("staff.annonyme")) {
-                    targetFaction = ChatColor.MAGIC.toString() + "FACTION" + ChatColor.RESET.toString();
+                    targetFaction = "Faction masquée";
                 }
 
                 plugin.getLogger().fine("[FactionData] " + viewer.getName() + " -> " + target.getName()

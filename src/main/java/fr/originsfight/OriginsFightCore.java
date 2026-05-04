@@ -189,7 +189,7 @@ public class OriginsFightCore extends JavaPlugin {
         if (this.staffPlugin != null)    this.staffPlugin.disable();
         if (this.bountyManager != null)  this.bountyManager.disable();
         if (this.friendManager != null)  this.friendManager.disable();
-        if (this.anonymeManager != null) this.anonymeManager.disable(); // Call disable on AnonymeManager
+        if (this.anonymeManager != null) this.anonymeManager.disable();
         for (Player p : Bukkit.getOnlinePlayers()) {
             Long joinTime = KsListener.getJoinTime(p.getUniqueId());
             if (joinTime != null) {

@@ -78,7 +78,7 @@ public class PlayerListManager {
             // "anonymous" du main scoreboard n'est jamais consult\u00e9e.
             String lpPrefix = "";
             if (isAnonymous) {
-                lpPrefix = "\u00a7k";
+                lpPrefix = "";
             } else if (vaultChat != null) {
                 try {
                     String raw = vaultChat.getPlayerPrefix(p);

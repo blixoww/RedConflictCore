@@ -2,7 +2,6 @@ package fr.originsfight.annonyme;
 
 import fr.originsfight.OriginsFightCore;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -68,16 +67,14 @@ public class AnonymeManager {
                 }
                 // Le faction plugin peut aussi réécrire le displayName / playerListName,
                 // on les ré-applique ici.
-                String obf = ChatColor.MAGIC.toString() + "PLAYER" + ChatColor.RESET.toString();
+                String obf = "Identité masquée";
                 if (!obf.equals(player.getDisplayName())) {
                     player.setDisplayName(obf);
                 }
                 if (!obf.equals(player.getPlayerListName())) {
                     try {
                         player.setPlayerListName(obf);
-                    } catch (IllegalArgumentException ignored) {
-                        // setPlayerListName est limité à 16 chars en 1.8 — "§kPLAYER§r" = 10, OK
-                    }
+                    } catch (IllegalArgumentException ignored) {}
                 }
             }
         }, 10L, 10L);
@@ -89,10 +86,10 @@ public class AnonymeManager {
         if (anonymousTeam == null) {
             anonymousTeam = scoreboard.registerNewTeam("anonymous");
         }
-        anonymousTeam.setPrefix(ChatColor.MAGIC.toString()); // &k
-        anonymousTeam.setSuffix(ChatColor.RESET.toString()); // Reset color after &k
+        anonymousTeam.setPrefix("");
+        anonymousTeam.setSuffix("");
         anonymousTeam.setCanSeeFriendlyInvisibles(false);
-        anonymousTeam.setNameTagVisibility(NameTagVisibility.ALWAYS);
+        anonymousTeam.setNameTagVisibility(NameTagVisibility.NEVER);
     }
 
     private void setupAnonymousPlayersFile() {
@@ -157,9 +154,9 @@ public class AnonymeManager {
         
         anonymousTeam.addEntry(player.getName());
 
-        // Store original display name and set obfuscated one
+        // Store original display name and set masked one
         originalDisplayNames.put(player.getUniqueId(), player.getDisplayName());
-        String obf = ChatColor.MAGIC.toString() + "PLAYER" + ChatColor.RESET.toString();
+        String obf = "Identité masquée";
         player.setDisplayName(obf);
         try {
             player.setPlayerListName(obf);
@@ -196,8 +193,8 @@ public class AnonymeManager {
             // Re-apply anonymity settings on join
             anonymousTeam.addEntry(player.getName());
             // Ensure display name is obfuscated on join
-            originalDisplayNames.put(player.getUniqueId(), player.getDisplayName()); // Store current display name
-            String obf = ChatColor.MAGIC.toString() + "PLAYER" + ChatColor.RESET.toString();
+            originalDisplayNames.put(player.getUniqueId(), player.getDisplayName());
+            String obf = "Identité masquée";
             player.setDisplayName(obf);
             try {
                 player.setPlayerListName(obf);
