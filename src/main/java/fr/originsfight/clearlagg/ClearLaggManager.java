@@ -9,6 +9,7 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.lang.reflect.Method;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Système ClearLagg — supprime périodiquement les entités indésirables.
@@ -97,6 +98,13 @@ public class ClearLaggManager {
 
     /** Timestamp (ms) du prochain clearlagg. */
     private long nextClearMs = -1;
+
+    /**
+     * Set des avertissements (en secondes) déjà envoyés pour le cycle en cours.
+     * Réinitialisé à chaque début de cycle pour éviter les doublons.
+     * Utilisation de ConcurrentHashMap.newKeySet() pour la thread-safety.
+     */
+    private final Set<Integer> sentWarnings = ConcurrentHashMap.newKeySet();
 
     public ClearLaggManager(OriginsFightCore plugin) {
         this.plugin = plugin;
@@ -200,6 +208,7 @@ public class ClearLaggManager {
 
     private void scheduleAll() {
         cancelTasks();
+        sentWarnings.clear();
 
         long intervalMs    = (long) intervalMinutes * 60 * 1000L;
         long intervalTicks = (long) intervalMinutes * 60 * 20L;
@@ -207,20 +216,24 @@ public class ClearLaggManager {
         nextClearMs = System.currentTimeMillis() + intervalMs;
 
         mainTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            // Réinitialise les warnings pour le nouveau cycle AVANT de lancer le clear
+            sentWarnings.clear();
             runClearLagg();
             nextClearMs = System.currentTimeMillis() + intervalMs;
         }, intervalTicks, intervalTicks);
 
-        // Warning scheduling: we create a repeating task every second that checks if any configured
-        // warning time matches the remaining seconds. This approach is simple and handles multiple
-        // warning times per interval.
+        // Warning scheduling: tâche toutes les secondes qui vérifie si un warning doit être envoyé.
+        // On utilise secsLeft <= warn (au lieu de ==) pour ne pas manquer un tick en cas de lag serveur.
+        // sentWarnings empêche d'envoyer plusieurs fois le même avertissement.
         if (!warningSecondsList.isEmpty()) {
             warningTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
                 long secsLeft = getSecondsUntilNext();
                 if (secsLeft <= 0) return;
-                // If any configured warning equals secsLeft, send it.
                 for (int warn : warningSecondsList) {
-                    if (secsLeft == warn) {
+                    // Déclenche le warning dès qu'on est à <= warn secondes,
+                    // et qu'il n'a pas encore été envoyé pour ce cycle.
+                    if (secsLeft <= warn && !sentWarnings.contains(warn)) {
+                        sentWarnings.add(warn);
                         sendWarning(warn);
                     }
                 }
@@ -231,6 +244,7 @@ public class ClearLaggManager {
     private void cancelTasks() {
         if (mainTask    != null) { mainTask.cancel();    mainTask    = null; }
         if (warningTask != null) { warningTask.cancel(); warningTask = null; }
+        sentWarnings.clear();
     }
 
     // ── Avertissement ─────────────────────────────────────────────────────────
