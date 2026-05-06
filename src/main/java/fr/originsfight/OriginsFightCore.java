@@ -2,7 +2,7 @@ package fr.originsfight;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import fr.originsfight.annonyme.AnonymeCommand;
-import fr.originsfight.annonyme.AnonymeListener; // Import AnonymeListener
+import fr.originsfight.annonyme.AnonymeListener;
 import fr.originsfight.annonyme.AnonymeManager;
 import fr.originsfight.automsg.AutoMessageManager;
 import fr.originsfight.bounty.BountyCommand;
@@ -48,6 +48,7 @@ import fr.originsfight.rtp.RTPListener;
 import fr.originsfight.staff.StaffPlugin;
 import fr.originsfight.trade.TradeCommand;
 import fr.originsfight.trade.TradeListener;
+import fr.originsfight.profil.ProfilCommand;
 import fr.originsfight.useful.BaltopCommand;
 import fr.originsfight.useful.CobbleCommand;
 import fr.originsfight.useful.CommandsCommand;
@@ -131,6 +132,10 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("ks").setExecutor(ksCmd);
             getCommand("ks").setTabCompleter(ksCmd);
             getServer().getPluginManager().registerEvents(new KsListener(ksDatabase), this);
+            // Commande /profil (fiche publique complète d'un joueur — ouvre le GUI client)
+            ProfilCommand profilCmd = new ProfilCommand(this);
+            getCommand("profil").setExecutor(profilCmd);
+            getCommand("profil").setTabCompleter(profilCmd);
             getLogger().info("[KS] Système KS initialisé avec succès !");
         } else {
             getLogger().severe("[KS] Échec de l'initialisation du système KS !");
@@ -371,7 +376,13 @@ public class OriginsFightCore extends JavaPlugin {
             getLogger().severe("[Vault] Vault n'est pas installé ! Certaines fonctionnalités seront désactivées.");
             return null;
         }
-        Economy econ = Bukkit.getServicesManager().getRegistration(Economy.class).getProvider();
+        org.bukkit.plugin.RegisteredServiceProvider<Economy> rsp =
+                Bukkit.getServicesManager().getRegistration(Economy.class);
+        if (rsp == null) {
+            getLogger().severe("[Vault] Aucun provider Economy enregistré ! Certaines fonctionnalités seront désactivées.");
+            return null;
+        }
+        Economy econ = rsp.getProvider();
         if (econ == null) {
             getLogger().severe("[Vault] Aucune implémentation d'Economy trouvée ! Certaines fonctionnalités seront désactivées.");
             return null;

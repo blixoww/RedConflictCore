@@ -93,7 +93,6 @@ public class ClearLaggManager {
     // ── État interne ──────────────────────────────────────────────────────────
 
     private final OriginsFightCore plugin;
-    private BukkitTask mainTask;
     private BukkitTask warningTask;
 
     /** Timestamp (ms) du prochain clearlagg. */
@@ -210,39 +209,32 @@ public class ClearLaggManager {
         cancelTasks();
         sentWarnings.clear();
 
-        long intervalMs    = (long) intervalMinutes * 60 * 1000L;
-        long intervalTicks = (long) intervalMinutes * 60 * 20L;
+        long intervalMs = (long) intervalMinutes * 60 * 1000L;
 
         nextClearMs = System.currentTimeMillis() + intervalMs;
 
-        mainTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            // Réinitialise les warnings pour le nouveau cycle AVANT de lancer le clear
-            sentWarnings.clear();
-            runClearLagg();
-            nextClearMs = System.currentTimeMillis() + intervalMs;
-        }, intervalTicks, intervalTicks);
+        warningTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            long secsLeft = getSecondsUntilNext();
 
-        // Warning scheduling: tâche toutes les secondes qui vérifie si un warning doit être envoyé.
-        // On utilise secsLeft <= warn (au lieu de ==) pour ne pas manquer un tick en cas de lag serveur.
-        // sentWarnings empêche d'envoyer plusieurs fois le même avertissement.
-        if (!warningSecondsList.isEmpty()) {
-            warningTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-                long secsLeft = getSecondsUntilNext();
-                if (secsLeft <= 0) return;
-                for (int warn : warningSecondsList) {
-                    // Déclenche le warning dès qu'on est à <= warn secondes,
-                    // et qu'il n'a pas encore été envoyé pour ce cycle.
-                    if (secsLeft <= warn && !sentWarnings.contains(warn)) {
-                        sentWarnings.add(warn);
-                        sendWarning(warn);
-                    }
+            // Heure du clear !
+            if (secsLeft <= 0) {
+                sentWarnings.clear();
+                nextClearMs = System.currentTimeMillis() + intervalMs;
+                runClearLagg();
+                return;
+            }
+
+            // Warnings
+            for (int warn : warningSecondsList) {
+                if (secsLeft <= warn && !sentWarnings.contains(warn)) {
+                    sentWarnings.add(warn);
+                    sendWarning(warn);
                 }
-            }, 20L, 20L); // run every 1 second
-        }
+            }
+        }, 20L, 20L); // toutes les secondes (temps réel)
     }
 
     private void cancelTasks() {
-        if (mainTask    != null) { mainTask.cancel();    mainTask    = null; }
         if (warningTask != null) { warningTask.cancel(); warningTask = null; }
         sentWarnings.clear();
     }
@@ -259,35 +251,101 @@ public class ClearLaggManager {
         Bukkit.broadcastMessage(chat);
 
         if (warningUseTitle) {
-            String title = "§6§lClearLagg";
+            String title    = "§6§lClearLagg";
             String subtitle = "§eDans " + timeText;
-            // send title to all online players (use reflection for compatibility)
             for (Player p : Bukkit.getOnlinePlayers()) {
-                boolean sent = false;
-                try {
-                    Method m = p.getClass().getMethod("sendTitle", String.class, String.class, int.class, int.class, int.class);
-                    m.invoke(p, title, subtitle, titleFadeIn, titleStay, titleFadeOut);
-                    sent = true;
-                } catch (NoSuchMethodException ignored) {
-                    // try older signature
-                    try {
-                        Method m2 = p.getClass().getMethod("sendTitle", String.class, String.class);
-                        m2.invoke(p, title, subtitle);
-                        sent = true;
-                    } catch (NoSuchMethodException ignored2) {
-                        // nothing
-                    } catch (Exception ex) {
-                        // fallback to chat
-                    }
-                } catch (Exception e) {
-                    // reflection failed, fallback
-                }
-
-                if (!sent) {
-                    p.sendMessage("§6[ClearLagg] §e" + subtitle);
-                }
+                sendTitle(p, title, subtitle);
             }
         }
+    }
+
+    /**
+     * Envoie un title/subtitle au joueur.
+     * Spigot 1.8.8 expose Player#sendTitle(String, String) directement sur l'interface.
+     * On essaie d'abord la signature avec fade-times (Spigot 1.9+), puis sans (Spigot 1.8),
+     * puis NMS en dernier recours, avant de tomber sur le chat.
+     */
+    private void sendTitle(Player p, String title, String subtitle) {
+        // 1) Spigot ≥1.9 : sendTitle(String, String, int, int, int)
+        try {
+            p.getClass().getMethod("sendTitle", String.class, String.class, int.class, int.class, int.class)
+             .invoke(p, title, subtitle, titleFadeIn, titleStay, titleFadeOut);
+            return;
+        } catch (NoSuchMethodException ignored) {
+            // pas disponible sur cette version
+        } catch (Exception e) {
+            if (debugMode) plugin.getLogger().warning("[ClearLagg] sendTitle (5-arg) erreur : " + e.getMessage());
+        }
+
+        // 2) Spigot 1.8 : sendTitle(String, String)
+        try {
+            p.getClass().getMethod("sendTitle", String.class, String.class)
+             .invoke(p, title, subtitle);
+            return;
+        } catch (NoSuchMethodException ignored) {
+            // pas disponible sur cette version
+        } catch (Exception e) {
+            if (debugMode) plugin.getLogger().warning("[ClearLagg] sendTitle (2-arg) erreur : " + e.getMessage());
+        }
+
+        // 3) NMS PacketPlayOutTitle (fonctionne sur CraftBukkit/Spigot 1.8.x)
+        try {
+            String ver = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
+            Object handle = p.getClass().getMethod("getHandle").invoke(p);
+            Object conn   = handle.getClass().getField("playerConnection").get(handle);
+
+            Class<?> chatSerClass  = Class.forName("net.minecraft.server." + ver + ".ChatSerializer");
+            if (!doesClassExist("net.minecraft.server." + ver + ".ChatSerializer"))
+                chatSerClass = Class.forName("net.minecraft.server." + ver + ".IChatBaseComponent$ChatSerializer");
+
+            Class<?> iChatClass    = Class.forName("net.minecraft.server." + ver + ".IChatBaseComponent");
+            Class<?> packetClass   = Class.forName("net.minecraft.server." + ver + ".PacketPlayOutTitle");
+            Class<?> packetClass2  = Class.forName("net.minecraft.server." + ver + ".Packet");
+
+            Class<?> enumClass = null;
+            for (Class<?> c : packetClass.getDeclaredClasses()) {
+                if (c.isEnum()) { enumClass = c; break; }
+            }
+            if (enumClass == null) throw new IllegalStateException("EnumTitleAction introuvable");
+
+            Method a = chatSerClass.getMethod("a", String.class);
+            Method sendPkt = conn.getClass().getMethod("sendPacket", packetClass2);
+
+            // TIMES
+            Object timesPacket = packetClass
+                .getConstructor(enumClass, iChatClass, int.class, int.class, int.class)
+                .newInstance(Enum.valueOf((Class<Enum>) enumClass, "TIMES"), null, titleFadeIn, titleStay, titleFadeOut);
+            sendPkt.invoke(conn, timesPacket);
+
+            // TITLE
+            Object titleComp = a.invoke(null, "{\"text\":\"" + escapeJson(title) + "\"}");
+            Object titlePacket = packetClass
+                .getConstructor(enumClass, iChatClass)
+                .newInstance(Enum.valueOf((Class<Enum>) enumClass, "TITLE"), titleComp);
+            sendPkt.invoke(conn, titlePacket);
+
+            // SUBTITLE
+            Object subComp = a.invoke(null, "{\"text\":\"" + escapeJson(subtitle) + "\"}");
+            Object subPacket = packetClass
+                .getConstructor(enumClass, iChatClass)
+                .newInstance(Enum.valueOf((Class<Enum>) enumClass, "SUBTITLE"), subComp);
+            sendPkt.invoke(conn, subPacket);
+            return;
+        } catch (Exception e) {
+            if (debugMode) plugin.getLogger().warning("[ClearLagg] sendTitle NMS erreur : " + e.getMessage());
+        }
+
+        // 4) Fallback chat
+        p.sendMessage("§6[ClearLagg] " + subtitle);
+    }
+
+    private boolean doesClassExist(String name) {
+        try { Class.forName(name); return true; } catch (ClassNotFoundException e) { return false; }
+    }
+
+    /** Échappe les guillemets pour le JSON du composant de chat NMS. */
+    private String escapeJson(String s) {
+        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     // ── Clearlagg ─────────────────────────────────────────────────────────────
@@ -324,25 +382,7 @@ public class ClearLaggManager {
                 String title = "§6§lClearLagg";
                 String subtitle = "§aNettoyage terminé — §f" + total + "§a entité(s)";
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    boolean sent = false;
-                    try {
-                        Method m = p.getClass().getMethod("sendTitle", String.class, String.class, int.class, int.class, int.class);
-                        m.invoke(p, title, subtitle, titleFadeIn, titleStay, titleFadeOut);
-                        sent = true;
-                    } catch (NoSuchMethodException ignored) {
-                        try {
-                            Method m2 = p.getClass().getMethod("sendTitle", String.class, String.class);
-                            m2.invoke(p, title, subtitle);
-                            sent = true;
-                        } catch (NoSuchMethodException ignored2) {
-                        } catch (Exception ex) {
-                        }
-                    } catch (Exception e) {
-                    }
-
-                    if (!sent) {
-                        p.sendMessage("§6[ClearLagg] §aNettoyage terminé — §f" + total + " §aentité(s)");
-                    }
+                    sendTitle(p, title, subtitle);
                 }
             }
         }

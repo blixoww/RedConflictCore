@@ -46,7 +46,11 @@ commands:
   ks:
     description: Affiche vos statistiques de combat (kills, deaths, ratio, temps de jeu)
     usage: /ks [joueur]
-    aliases: [stats, killscore]
+    aliases: [killscore]
+  profil:
+    description: Ouvre la fiche de réputation graphique d'un joueur — kills, K/D, faction, prime, killstreak, monnaie
+    usage: /profil [joueur]
+    aliases: [stats, ep, fiche]
   giveall:
     description: Distribue des items à tous les joueurs (staff)
     usage: /giveall
