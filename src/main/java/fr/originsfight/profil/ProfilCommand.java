@@ -254,25 +254,48 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
             Object targetFaction = null;
             for (Object f : allFactions) {
                 String tag = (String) f.getClass().getMethod("getTag").invoke(f);
-                if (targetTag.equals(tag)) { targetFaction = f; break; }
+                if (targetTag.equalsIgnoreCase(tag)) { targetFaction = f; break; }
             }
-            if (targetFaction == null) return 4;
+            if (targetFaction == null) {
+                plugin.getLogger().warning("[ProfilCmd] faction tag not found among " + allFactions.size() + " factions: '" + targetTag + "'");
+                return 4;
+            }
 
+            // Cherche getRelationTo(Faction) — on filtre par isInstance pour éviter de prendre getRelationTo(FPlayer)
             java.lang.reflect.Method relMethod = null;
             for (java.lang.reflect.Method m : fp.getClass().getMethods()) {
                 if (m.getName().equals("getRelationTo") && m.getParameterCount() == 1) {
-                    relMethod = m; break;
+                    if (m.getParameterTypes()[0].isInstance(targetFaction)) {
+                        relMethod = m;
+                        break;
+                    }
+                }
+            }
+            // Fallback : prend n'importe quelle surcharge à 1 param si aucune n'accepte directement targetFaction
+            if (relMethod == null) {
+                for (java.lang.reflect.Method m : fp.getClass().getMethods()) {
+                    if (m.getName().equals("getRelationTo") && m.getParameterCount() == 1) {
+                        relMethod = m; break;
+                    }
                 }
             }
             if (relMethod == null) return 4;
-            Object rel = relMethod.invoke(fp, targetFaction);
+            Object rel = null;
+            try { rel = relMethod.invoke(fp, targetFaction); } catch (Exception ignored) {}
             if (rel == null) return 4;
-            String relName = rel.toString();
+            // toString() est overridé dans Saber-Factions (retourne "§7ennemi" etc.)
+            // name() retourne le nom de la constante enum : ENEMY, ALLY, TRUCE, MEMBER
+            String relName;
+            try { relName = (String) rel.getClass().getMethod("name").invoke(rel); }
+            catch (Exception e) { relName = rel.toString(); }
+            plugin.getLogger().info("[ProfilCmd] relation=" + relName + " own=" + ownTag + " target=" + targetTag);
             if (relName.equalsIgnoreCase("MEMBER"))  return 0;
             if (relName.equalsIgnoreCase("ALLY"))    return 1;
             if (relName.equalsIgnoreCase("TRUCE"))   return 2;
             if (relName.equalsIgnoreCase("ENEMY"))   return 3;
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            plugin.getLogger().warning("[ProfilCmd] resolveRequesterRelation error: " + e);
+        }
         return 4;
     }
 

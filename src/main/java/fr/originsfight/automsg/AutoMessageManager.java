@@ -29,49 +29,68 @@ public class AutoMessageManager {
 
     /** Liste des messages affichés en rotation. Modifiez-les librement. */
     private static final List<String> MESSAGES = Arrays.asList(
-        // Message 1 : Boutique
+
+        // 1 — Présentation générale
         SEP + "\n" +
-        PRE + "§eAccédez à l'Hotel des Ventes avec §f/hdv §e!\n" +
-        "  §8| §7Vendez et achetez des items entre joueurs.\n" +
+        PRE + "§6§l★ §eNouvel ici ? Tapez §f/commands §epour voir tout ce que vous pouvez faire !\n" +
+        "  §8| §7PvP, factions, duels, économie, événements — §ftout §7est là.\n" +
         SEP,
 
-        // Message 2 : /commands mis en avant
+        // 2 — Duels
         SEP + "\n" +
-        PRE + "§6§l★ §eTapez §f/commands §epour voir toutes les commandes disponibles !\n" +
-        "  §8| §f/friend   §7— Système d'amis (pas de dégâts entre amis)\n" +
-        "  §8| §f/prime    §7— Placer une prime sur un joueur\n" +
-        "  §8| §f/trade    §7— Échanger des items en sécurité\n" +
-        "  §8| §f/shop     §7— Boutique dynamique du serveur\n" +
+        PRE + "§c§l⚔ §eSystème de §fDuels §edisponible !\n" +
+        "  §8| §f/duel <joueur>        §7— Duel avec votre équipement\n" +
+        "  §8| §f/duelk <joueur>       §7— Duel avec un kit défini\n" +
+        "  §8| §f/duelrandom           §7— Duel aléatoire avec votre stuff\n" +
+        "  §8| §f/duelkrandom          §7— Duel aléatoire avec kit\n" +
         SEP,
 
-        // Message 3 : Amis
+        // 3 — Profil & statistiques
         SEP + "\n" +
-        PRE + "§a§l♥ §eSystème d'amis !\n" +
-        "  §8| §7Ajoutez jusqu'à §f5 amis §7avec §f/friend add <joueur>§7.\n" +
-        "  §8| §7Vous ne pouvez pas vous faire de dégâts entre amis.\n" +
-        "  §8| §7Consultez votre liste avec §f/friend list§7.\n" +
+        PRE + "§e§lVos stats de combat sont accessibles en temps réel !\n" +
+        "  §8| §f/ks              ��7— Vos kills, morts, ratio et temps de jeu\n" +
+        "  §8| §f/profil <joueur> §7— Voir le profil complet d'un joueur\n" +
+        "  §8| §f/ct              §7— Vérifier votre statut de combat\n" +
         SEP,
 
-        // Message 4 : Réparer ses items
+        // 4 — Économie
         SEP + "\n" +
-        PRE + "§eVos items sont endommagés ?\n" +
-        "  §8| §7Utilisez §f/repairall §7pour tout réparer §8(cooldown 24h)§7.\n" +
+        PRE + "§6§l$ §eÉconomie du serveur !\n" +
+        "  §8| §f/hdv             §7— Hôtel des Ventes : achat/vente entre joueurs\n" +
+        "  §8| §f/shop            §7— Boutique du serveur\n" +
+        "  §8| §f/baltop          §7— Classement des plus riches\n" +
         SEP,
 
-        // Message 5 : Primes (bounty)
+        // 5 — Primes & Loto
         SEP + "\n" +
-        PRE + "§6§l\u2620 §eSystème de primes !\n" +
-        "  §8| §7Placez une prime sur un joueur avec §f/prime <joueur> <montant>§7.\n" +
-        "  §8| §7Le joueur qui le tue récupère la somme !\n" +
-        "  §8| §7Une seule prime à la fois. Durée : §f24 heures§7.\n" +
+        PRE + "§6§l☠ §ePrimes & §6§l★ §eLoto !\n" +
+        "  §8| §f/prime <joueur> <montant> §7— Mettre une prime sur un joueur\n" +
+        "  §8| §f/loto <montant>            §7— Parier pendant le loto\n" +
+        "  §8| §f/loto next                 §7— Savoir quand arrive le prochain loto\n" +
         SEP,
 
-        // Message 6 : Loto
+        // 6 — Amis & Trade
         SEP + "\n" +
-        PRE + "§6§l\u2B50 §eLoto automatique !\n" +
-        "  §8| §7Un loto se lance régulièrement sur le serveur.\n" +
-        "  §8| §7Pariez avec §f/loto <montant> §7quand il est ouvert !\n" +
-        "  §8| §7Plus il y a de joueurs, plus le multiplicateur est élevé.\n" +
+        PRE + "§a§l♥ §eAmis & Échanges !\n" +
+        "  §8| §f/friend add <joueur>  §7— Ajouter un ami §8(pas de dégâts mutuels)\n" +
+        "  §8| §f/friend list          §7— Voir votre liste d'amis\n" +
+        "  §8| §f/trade <joueur>       §7— Échange sécurisé d'items\n" +
+        SEP,
+
+        // 7 — Événements & Plannings
+        SEP + "\n" +
+        PRE + "§d§l✦ §eÉvénements & Plannings !\n" +
+        "  §8| §f/plannings  §7— Voir les prochains événements prévus sur le serveur\n" +
+        "  §8| §7Tournois, events PvP, lotos spéciaux — restez connectés !\n" +
+        SEP,
+
+        // 8 — Utilitaires
+        SEP + "\n" +
+        PRE + "§7§lUtilitaires pratiques !\n" +
+        "  §8| §f/repairall  §7— Réparer tout votre équipement §8(cooldown 24h)\n" +
+        "  §8| §f/cobble     §7— Filtrer la cobblestone automatiquement\n" +
+        "  §8| §f/furnace    §7— Cuire sans four §8(§f/furnace this §8/ §f/furnace all§8)\n" +
+        "  §8| §f/bottlexp   §7— Embouteiller vos niveaux d'XP\n" +
         SEP
     );
 

@@ -115,6 +115,8 @@ public class RC {
     public static final String BOUNTY_ECO_ERROR          = PRE + "§cErreur d'économie — contactez un administrateur.";
     public static final String BOUNTY_NO_LAST_KILLER     = PRE + "§cVous ne pouvez placer une prime que sur votre dernier tueur. §7Vous n'en avez pas encore.";
     public static final String BOUNTY_WRONG_TARGET       = PRE + "§cVous ne pouvez cibler que votre dernier tueur : §f%s§c.";
+    public static final String BOUNTY_FRIENDLY_TARGET    = PRE + "§cImpossible de poser une prime sur un membre de votre faction, un allié ou un ami.";
+    public static final String BOUNTY_TARGET_COOLDOWN    = PRE + "§cUne prime a déjà été posée sur §f%s §crécemment. Attendez §f%s §cavant de recommencer.";
     public static final String BOUNTY_UNKNOWN            = "Inconnu";
     public static final String BOUNTY_PLACED             = PRE + "§aPrime placée sur §f%s §apour §f%d$ §a!";
     public static final String BOUNTY_CANCELLED          = PRE + "§ePrime sur §f%s §eannulée. §f+%d$ §eremboursé.";
