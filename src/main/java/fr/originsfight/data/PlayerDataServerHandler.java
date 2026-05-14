@@ -1,7 +1,8 @@
 package fr.originsfight.data;
 
 import fr.originsfight.OriginsFightCore;
-import fr.originsfight.ks.KsDatabase;
+import fr.originsfight.data.PlayerDatabase;
+import fr.originsfight.ks.KsListener;
 import fr.originsfight.packets.PacketBuilder;
 import fr.originsfight.packets.PacketReader;
 import net.milkbowl.vault.chat.Chat;
@@ -41,29 +42,28 @@ public class PlayerDataServerHandler implements PluginMessageListener {
      */
     private void sendProfileOpen(Player player) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            // Kills / Deaths / Playtime
+            PlayerDatabase db = plugin.getPlayerDatabase();
+
+            // ── Kills / Deaths / Playtime — depuis PlayerDatabase ────────────────
             int kills = 0, deaths = 0, ptMin = 0;
-            KsDatabase ksDb = plugin.getKsDatabase();
-            if (ksDb != null) {
-                KsDatabase.KsStats stats = ksDb.getStats(player.getUniqueId());
-                if (stats != null) {
-                    long sessionSec = 0;
-                    Long joinTime = fr.originsfight.ks.KsListener.getJoinTime(player.getUniqueId());
-                    if (joinTime != null) sessionSec = (System.currentTimeMillis() - joinTime) / 1000;
-                    kills  = stats.kills;
-                    deaths = stats.deaths;
-                    ptMin  = (int) ((stats.playtimeSeconds + sessionSec) / 60);
-                }
+            PlayerDatabase.PlayerProfile cached = db != null ? db.getProfile(player.getUniqueId()) : null;
+            if (cached != null) {
+                long sessionSec = 0;
+                Long joinTime = KsListener.getJoinTime(player.getUniqueId());
+                if (joinTime != null) sessionSec = (System.currentTimeMillis() - joinTime) / 1000;
+                kills  = cached.kills;
+                deaths = cached.deaths;
+                ptMin  = (int) ((cached.playtimeSeconds + sessionSec) / 60);
             }
 
-            // Balance
+            // ── Balance — fraîche depuis Vault ───────────────────────────────────
             long balance = 0L;
             Economy eco = plugin.getEconomy();
             if (eco != null) {
                 try { balance = (long) eco.getBalance(player); } catch (Exception ignored) {}
             }
 
-            // Rank via Vault Chat
+            // ── Rang — frais depuis Vault Chat ───────────────────────────────────
             String rank = "Joueur";
             try {
                 RegisteredServiceProvider<Chat> rsp = Bukkit.getServicesManager().getRegistration(Chat.class);
@@ -81,7 +81,7 @@ public class PlayerDataServerHandler implements PluginMessageListener {
                 }
             } catch (Exception ignored) {}
 
-            // Faction (propre faction du joueur)
+            // ── Faction — fraîche depuis Factions ────────────────────────────────
             String faction = "";
             try {
                 Class<?> fpClass = Class.forName("com.massivecraft.factions.FPlayers");
@@ -99,7 +99,7 @@ public class PlayerDataServerHandler implements PluginMessageListener {
                 }
             } catch (Exception ignored) {}
 
-            // Streak & Bounty
+            // ── Streak & Bounty — managers in-memory ─────────────────────────────
             int streak = 0;
             long bounty = 0L;
             fr.originsfight.bounty.KillstreakManager ksm = fr.originsfight.bounty.KillstreakManager.getInstance();
@@ -110,12 +110,20 @@ public class PlayerDataServerHandler implements PluginMessageListener {
                 if (bi != null) bounty = bi.getAmount();
             }
 
+            // ── Persistance des snapshots dans PlayerDatabase ─────────────────────
+            if (db != null) {
+                db.updateBalance(player.getUniqueId(), balance);
+                db.updateRank(player.getUniqueId(), rank);
+                db.updateFaction(player.getUniqueId(), faction);
+                db.setStreak(player.getUniqueId(), streak);
+                db.setBounty(player.getUniqueId(), bounty);
+            }
+
             final String fFaction = faction, fRank = rank;
             final int fKills = kills, fDeaths = deaths, fPtMin = ptMin, fStreak = streak;
             final long fBalance = balance, fBounty = bounty;
 
             Bukkit.getScheduler().runTask(plugin, () -> {
-                // paquet PROFILE_OPEN = 0x90
                 byte[] data = PacketBuilder.create(0x90)
                         .writeString(truncate(player.getName(), 32))
                         .writeString(truncate(fFaction, 32))
@@ -145,8 +153,9 @@ public class PlayerDataServerHandler implements PluginMessageListener {
 
     public static void sendAllPlayerData(Player player) {
         OriginsFightCore plugin = OriginsFightCore.getInstance();
+        PlayerDatabase db = plugin.getPlayerDatabase();
 
-        // Rank via Vault Chat (prefix du joueur)
+        // ── Rang — frais depuis Vault Chat ───────────────────────────────────────
         String rank = "Joueur";
         try {
             RegisteredServiceProvider<Chat> rsp = Bukkit.getServicesManager().getRegistration(Chat.class);
@@ -159,14 +168,11 @@ public class PlayerDataServerHandler implements PluginMessageListener {
                 }
                 if (prefix != null && !prefix.trim().isEmpty()) {
                     String plain = prefix.replaceAll("(?i)§.", "").replaceAll("(?i)&.", "").trim();
-                    if (!plain.isEmpty()) {
-                        rank = prefix.trim();
-                    }
+                    if (!plain.isEmpty()) rank = prefix.trim();
                 }
             }
         } catch (Exception ignored) {}
 
-        // Exception PlaceholderAPI
         if ("Joueur".equals(rank)) {
             try {
                 Class<?> papi = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
@@ -182,29 +188,31 @@ public class PlayerDataServerHandler implements PluginMessageListener {
             } catch (Exception ignored) {}
         }
 
-        // Balance via Vault Economy
+        // ── Balance — fraîche depuis Vault ───────────────────────────────────────
         long balance = 0L;
         Economy eco = plugin.getEconomy();
         if (eco != null) {
             balance = (long) eco.getBalance(player);
         }
 
-        // Kills / Deaths / Playtime via KsDatabase
-        int kills = 0;
-        int deaths = 0;
-        int playTimeMin = 0;
-        KsDatabase ksDb = plugin.getKsDatabase();
-        if (ksDb != null) {
-            KsDatabase.KsStats stats = ksDb.getStats(player.getUniqueId());
-            if (stats != null) {
+        // ── Kills / Deaths / Playtime — depuis PlayerDatabase ────────────────────
+        int kills = 0, deaths = 0, playTimeMin = 0;
+        if (db != null) {
+            PlayerDatabase.PlayerProfile cached = db.getProfile(player.getUniqueId());
+            if (cached != null) {
                 long sessionSec = 0;
-                Long joinTime = fr.originsfight.ks.KsListener.getJoinTime(player.getUniqueId());
+                Long joinTime = KsListener.getJoinTime(player.getUniqueId());
                 if (joinTime != null) sessionSec = (System.currentTimeMillis() - joinTime) / 1000;
-                
-                kills = stats.kills;
-                deaths = stats.deaths;
-                playTimeMin = (int) ((stats.playtimeSeconds + sessionSec) / 60);
+                kills       = cached.kills;
+                deaths      = cached.deaths;
+                playTimeMin = (int) ((cached.playtimeSeconds + sessionSec) / 60);
             }
+        }
+
+        // ── Persistance des snapshots ─────────────────────────────────────────────
+        if (db != null) {
+            db.updateBalance(player.getUniqueId(), balance);
+            db.updateRank(player.getUniqueId(), rank);
         }
 
         byte[] data = PacketBuilder.create(82).writeString(rank).writeLong(balance).writeVarInt(kills).writeVarInt(deaths).writeVarInt(playTimeMin).build();

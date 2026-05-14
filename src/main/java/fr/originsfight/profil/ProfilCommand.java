@@ -4,7 +4,8 @@ import fr.originsfight.OriginsFightCore;
 import fr.originsfight.bounty.BountyInfo;
 import fr.originsfight.bounty.BountyManager;
 import fr.originsfight.bounty.KillstreakManager;
-import fr.originsfight.ks.KsDatabase;
+import fr.originsfight.data.PlayerDatabase;
+import fr.originsfight.ks.KsListener;
 import fr.originsfight.packets.PacketBuilder;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.economy.Economy;
@@ -37,11 +38,11 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
     private final Map<UUID, CachedPayload> payloadCache = new ConcurrentHashMap<>();
 
     private final OriginsFightCore plugin;
-    private final KsDatabase ksDatabase;
+    private final PlayerDatabase playerDatabase;
 
     public ProfilCommand(OriginsFightCore plugin) {
         this.plugin = plugin;
-        this.ksDatabase = plugin.getKsDatabase();
+        this.playerDatabase = plugin.getPlayerDatabase();
     }
 
     @Override
@@ -92,44 +93,42 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
     }
 
     private ProfilePayload buildPayload(UUID uuid, String name) {
-        int kills = 0;
-        int deaths = 0;
-        int ptMin = 0;
-        if (ksDatabase != null) {
-            KsDatabase.KsStats stats = ksDatabase.getStats(uuid);
-            if (stats != null) {
-                long sessionSec = 0;
-                Long joinTime = fr.originsfight.ks.KsListener.getJoinTime(uuid);
-                if (joinTime != null) sessionSec = (System.currentTimeMillis() - joinTime) / 1000;
-                
-                kills = stats.kills;
-                deaths = stats.deaths;
-                ptMin = (int) ((stats.playtimeSeconds + sessionSec) / 60);
-            }
+        // ── Kills / Deaths / Playtime — depuis PlayerDatabase (source unique) ──────
+        int kills = 0, deaths = 0, ptMin = 0;
+        PlayerDatabase.PlayerProfile cached = playerDatabase.getProfile(uuid);
+        if (cached != null) {
+            // Ajouter la session en cours (temps non encore sauvegardé en base)
+            long sessionSec = 0;
+            Long joinTime = KsListener.getJoinTime(uuid);
+            if (joinTime != null) sessionSec = (System.currentTimeMillis() - joinTime) / 1000;
+            kills  = cached.kills;
+            deaths = cached.deaths;
+            ptMin  = (int) ((cached.playtimeSeconds + sessionSec) / 60);
         }
 
+        // ── Balance — fraîche depuis Vault, mise à jour en base ──────────────────
         long balance = 0L;
         Economy eco = plugin.getEconomy();
         if (eco != null) {
             OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
             if (op != null) {
-                try {
-                    balance = (long) eco.getBalance(op);
-                } catch (Exception ignored) {}
+                try { balance = (long) eco.getBalance(op); } catch (Exception ignored) {}
             }
         }
 
+        // ── Rang — frais depuis Vault Chat, mise à jour en base ──────────────────
         String rank = resolveRankPrefix(uuid, name);
 
+        // ── Faction — fraîche depuis le plugin, mise à jour en base ─────────────
         String faction = "";
         Player onlineP = Bukkit.getPlayer(uuid);
         if (onlineP != null) {
             faction = getFactionTag(onlineP);
         } else {
-            // Joueur hors-ligne : lookup par UUID directement dans l'API Factions
             faction = getFactionTagByUUID(uuid);
         }
 
+        // ── Streak & Bounty — depuis les managers in-memory ──────────────────────
         int streak = 0;
         long bounty = 0L;
         KillstreakManager ksm = KillstreakManager.getInstance();
@@ -139,6 +138,13 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
             BountyInfo bi = bm.getBounty(uuid);
             if (bi != null) bounty = bi.getAmount();
         }
+
+        // ── Persistance des snapshots dans PlayerDatabase ─────────────────────────
+        playerDatabase.updateBalance(uuid, balance);
+        playerDatabase.updateRank(uuid, rank);
+        playerDatabase.updateFaction(uuid, faction);
+        playerDatabase.setStreak(uuid, streak);
+        playerDatabase.setBounty(uuid, bounty);
 
         return new ProfilePayload(name, faction, rank, kills, deaths, ptMin, balance, streak, bounty);
     }

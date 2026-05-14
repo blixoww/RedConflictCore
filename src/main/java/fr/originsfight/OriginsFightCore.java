@@ -35,8 +35,8 @@ import fr.originsfight.hdv.HdvServerHandler;
 import fr.originsfight.shop.ShopCommand;
 import fr.originsfight.shop.ShopManager;
 import fr.originsfight.shop.ShopServerHandler;
+import fr.originsfight.data.PlayerDatabase;
 import fr.originsfight.ks.KsCommand;
-import fr.originsfight.ks.KsDatabase;
 import fr.originsfight.ks.KsListener;
 import fr.originsfight.listeners.*;
 import fr.originsfight.listeners.WelcomeListener;
@@ -86,7 +86,7 @@ public class OriginsFightCore extends JavaPlugin {
     private HdvManager hdvManager;
     private ShopManager shopManager;
     private StaffPlugin staffPlugin;
-    private KsDatabase ksDatabase;
+    private PlayerDatabase playerDatabase;
     private BountyManager bountyManager;
     private FriendManager friendManager;
     private LotoManager lotoManager;
@@ -127,20 +127,20 @@ public class OriginsFightCore extends JavaPlugin {
         if (!this.staffPlugin.enable()) {
             getLogger().severe("[Staff] Échec de l'initialisation du système staff !");
         }
-        // Système KS (kill score / stats PvP)
-        this.ksDatabase = new KsDatabase(this);
-        if (this.ksDatabase.init()) {
-            KsCommand ksCmd = new KsCommand(ksDatabase);
+        // Système KS (kill score / stats PvP) — données centralisées dans PlayerDatabase
+        this.playerDatabase = new PlayerDatabase(this);
+        if (this.playerDatabase.init()) {
+            KsCommand ksCmd = new KsCommand(playerDatabase);
             getCommand("ks").setExecutor(ksCmd);
             getCommand("ks").setTabCompleter(ksCmd);
-            getServer().getPluginManager().registerEvents(new KsListener(ksDatabase), this);
+            getServer().getPluginManager().registerEvents(new KsListener(playerDatabase, this), this);
             // Commande /profil (fiche publique complète d'un joueur — ouvre le GUI client)
             ProfilCommand profilCmd = new ProfilCommand(this);
             getCommand("profil").setExecutor(profilCmd);
             getCommand("profil").setTabCompleter(profilCmd);
-            getLogger().info("[KS] Système KS initialisé avec succès !");
+            getLogger().info("[PlayerDB] Base de données joueurs initialisée avec succès !");
         } else {
-            getLogger().severe("[KS] Échec de l'initialisation du système KS !");
+            getLogger().severe("[PlayerDB] Échec de l'initialisation de la base de données joueurs !");
         }
         // Système de primes (bounty) + killstreak
         KillstreakManager killstreakManager = new KillstreakManager();
@@ -201,10 +201,10 @@ public class OriginsFightCore extends JavaPlugin {
             Long joinTime = KsListener.getJoinTime(p.getUniqueId());
             if (joinTime != null) {
                 long seconds = (System.currentTimeMillis() - joinTime) / 1000;
-                ksDatabase.addPlaytime(p.getUniqueId(), seconds);
+                playerDatabase.addPlaytime(p.getUniqueId(), seconds);
             }
         }
-        if (this.ksDatabase  != null) this.ksDatabase.close();
+        if (this.playerDatabase != null) this.playerDatabase.close();
         unloadPackets();
     }
 
@@ -383,8 +383,14 @@ public class OriginsFightCore extends JavaPlugin {
         return instance;
     }
 
-    public KsDatabase getKsDatabase() {
-        return this.ksDatabase;
+    public PlayerDatabase getPlayerDatabase() {
+        return this.playerDatabase;
+    }
+
+    /** @deprecated Utiliser {@link #getPlayerDatabase()} */
+    @Deprecated
+    public PlayerDatabase getKsDatabase() {
+        return this.playerDatabase;
     }
 
     public AnonymeManager getAnonymeManager() {

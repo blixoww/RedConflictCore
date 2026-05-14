@@ -2,6 +2,7 @@ package fr.originsfight.useful;
 
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.annonyme.AnonymeManager;
+import fr.originsfight.data.PlayerDatabase;
 import fr.originsfight.ks.KsDatabase;
 import fr.originsfight.staff.StaffManager;
 import net.milkbowl.vault.chat.Chat;
@@ -128,9 +129,9 @@ public class PlayerListManager {
             int kills = 0;
             int deaths = 0;
             String ratio = "0.00";
-            KsDatabase ksDb = plugin.getKsDatabase();
-            if (ksDb != null) {
-                KsDatabase.KsStats stats = ksDb.getStats(p.getUniqueId());
+            PlayerDatabase playerDatabase = plugin.getPlayerDatabase();
+            if (playerDatabase != null) {
+                PlayerDatabase.KsStats stats = playerDatabase.getStats(p.getUniqueId());
                 if (stats != null) {
                     kills = stats.kills;
                     deaths = stats.deaths;

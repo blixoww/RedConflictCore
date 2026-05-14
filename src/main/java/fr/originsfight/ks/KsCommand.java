@@ -1,6 +1,7 @@
 package fr.originsfight.ks;
 
 import fr.originsfight.RC;
+import fr.originsfight.data.PlayerDatabase;
 import org.bukkit.Bukkit;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -14,9 +15,9 @@ import java.util.List;
  */
 public class KsCommand implements CommandExecutor, TabCompleter {
 
-    private final KsDatabase db;
+    private final PlayerDatabase db;
 
-    public KsCommand(KsDatabase db) { this.db = db; }
+    public KsCommand(PlayerDatabase db) { this.db = db; }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -43,14 +44,13 @@ public class KsCommand implements CommandExecutor, TabCompleter {
     // ── Affichage des stats personnelles ──────────────────────────────────────
 
     private void showStats(Player viewer, Player target) {
-        KsDatabase.KsStats stats = db.getStats(target.getUniqueId());
+        PlayerDatabase.KsStats stats = db.getStats(target.getUniqueId());
         if (stats == null) { viewer.sendMessage(RC.PRE + "§cAucune statistique trouvée pour §f" + target.getName() + "§c."); return; }
 
-        // Ajouter la session en cours (temps non encore sauvegardé)
         long sessionSec = 0;
         Long joinTime = KsListener.getJoinTime(target.getUniqueId());
         if (joinTime != null) sessionSec = (System.currentTimeMillis() - joinTime) / 1000;
-        KsDatabase.KsStats live = new KsDatabase.KsStats(stats.name, stats.kills, stats.deaths, stats.playtimeSeconds + sessionSec);
+        PlayerDatabase.KsStats live = new PlayerDatabase.KsStats(stats.name, stats.kills, stats.deaths, stats.playtimeSeconds + sessionSec);
 
         int rank = db.getRank(target.getUniqueId());
         String rankStr = rank > 0 ? "§e#" + rank : "§8N/A";
@@ -69,7 +69,7 @@ public class KsCommand implements CommandExecutor, TabCompleter {
     // ── Affichage du top 10 ───────────────────────────────────────────────────
 
     private void showTop(Player viewer) {
-        java.util.List<KsDatabase.KsStats> top = db.getTopKs(10);
+        java.util.List<PlayerDatabase.KsStats> top = db.getTopKs(10);
         viewer.sendMessage(RC.SEP);
         viewer.sendMessage("§c§l  Classement KS §8| §7Top " + top.size());
         viewer.sendMessage(RC.SEP);
@@ -77,7 +77,7 @@ public class KsCommand implements CommandExecutor, TabCompleter {
             viewer.sendMessage("  §7Aucun joueur classé pour l'instant.");
         } else {
             for (int i = 0; i < top.size(); i++) {
-                KsDatabase.KsStats s = top.get(i);
+                PlayerDatabase.KsStats s = top.get(i);
                 int pos = i + 1;
                 String medal;
                 if (pos == 1)      medal = "§6#1";
@@ -106,4 +106,3 @@ public class KsCommand implements CommandExecutor, TabCompleter {
         return list;
     }
 }
-
