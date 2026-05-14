@@ -108,7 +108,9 @@ public class OriginsFightCore extends JavaPlugin {
         this.anonymeManager = new AnonymeManager(this); // Initialize AnonymeManager
 
         registerCommands();
+        applyPermissionMessages();
         registerListeners();
+        registerTradeChannels();
         loadPackets();
         // Système anti lag-switch
         this.lagSwitchManager = new LagSwitchManager(this);
@@ -242,6 +244,24 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("annonyme").setExecutor(anonymeCommand);
             getCommand("annonyme").setTabCompleter(anonymeCommand);
         }
+    }
+
+    private void registerTradeChannels() {
+        getServer().getMessenger().registerIncomingPluginChannel(
+                this, fr.originsfight.trade.TradeC2SHandler.CHANNEL_C2S,
+                new fr.originsfight.trade.TradeC2SHandler(this));
+        getServer().getMessenger().registerOutgoingPluginChannel(
+                this, fr.originsfight.trade.TradePacketSender.CHANNEL_S2C);
+        getLogger().info("[Trade] Canaux trade enregistrés.");
+    }
+
+    private void applyPermissionMessages() {
+        getDescription().getCommands().keySet().forEach(name -> {
+            org.bukkit.command.PluginCommand cmd = getCommand(name);
+            if (cmd != null && cmd.getPermission() != null) {
+                cmd.setPermissionMessage(RC.ERR_NO_PERM);
+            }
+        });
     }
 
     private void registerListeners() {

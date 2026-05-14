@@ -1,6 +1,10 @@
 package fr.originsfight.trade;
 
 import fr.originsfight.RC;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -43,7 +47,31 @@ public class TradeCommand implements CommandExecutor, TabCompleter {
         }
         if (!manager.invite(player, target)) { player.sendMessage(RC.TRADE_ALREADY); return; }
         player.sendMessage(RC.fmt(RC.TRADE_SENT, target.getName()));
-        target.sendMessage(RC.fmt(RC.TRADE_RECEIVED, player.getName()));
+        sendInteractiveInvite(target, player.getName());
+    }
+
+    /**
+     * Envoie au destinataire un message d'invitation avec deux boutons cliquables
+     * [✔ ACCEPTER] / [✖ REFUSER] qui lancent /trade accept ou /trade deny.
+     */
+    private void sendInteractiveInvite(Player target, String inviterName) {
+        target.sendMessage(RC.PRE + "§e" + inviterName + " §7vous propose un échange.");
+
+        TextComponent indent = new TextComponent("                  ");
+
+        TextComponent accept = new TextComponent("§a§l[✔ ACCEPTER]");
+        accept.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/trade accept"));
+        accept.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                new ComponentBuilder("§aAccepter l'échange").create()));
+
+        TextComponent gap = new TextComponent("   ");
+
+        TextComponent deny = new TextComponent("§c§l[✖ REFUSER]");
+        deny.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/trade deny"));
+        deny.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                new ComponentBuilder("§cRefuser l'échange").create()));
+
+        target.spigot().sendMessage(indent, accept, gap, deny);
     }
 
     private void handleAccept(Player player) {

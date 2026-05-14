@@ -14,6 +14,9 @@ public class FurnaceCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
         Player player = (Player) sender;
+        if (!player.isOp() && !player.hasPermission("redconflict.furnace")) {
+            player.sendMessage(RC.ERR_NO_PERM); return true;
+        }
 
         if (args.length == 0) {
             player.sendMessage(RC.FURNACE_HELP_HEADER);
