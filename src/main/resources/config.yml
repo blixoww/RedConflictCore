@@ -198,4 +198,17 @@ commands:
     - hdv
     - ah
     - lmsr
-    - bottlexp
+    - pbshop
+    - boutique
+
+# ── Monnaie ───────────────────────────────────────────────────────────────────
+monnaie:
+  symbole: "€"
+
+# ── Système Points Boutique (PB) ──────────────────────────────────────────────
+# Échelle officielle : 1€ = 10 PB.
+pb:
+  # Seuil au-dessus duquel toute opération PB (add/remove/set) est diffusée
+  # aux membres du staff connectés (permission : staff.pb-alerts ou staff.staff).
+  alert-threshold: 500
+

@@ -32,7 +32,8 @@ public final class TradePacketSender {
 
     public static void sendUpdate(Player player, List<ItemStack> myOffer, List<ItemStack> partnerOffer,
                                   boolean myConfirmed, boolean partnerConfirmed,
-                                  long myMoney, long partnerMoney) {
+                                  long myMoney, long partnerMoney,
+                                  int  myPB,    int  partnerPB) {
         byte[] payload = build(out -> {
             writeVarInt(out, TRADE_UPDATE);
             out.writeBoolean(myConfirmed);
@@ -43,8 +44,19 @@ public final class TradePacketSender {
             for (ItemStack item : partnerOffer) writeItem(out, item);
             out.writeLong(myMoney);
             out.writeLong(partnerMoney);
+            // PB ajoutés à la fin pour rester backward-compatible (lecture try/catch côté client)
+            writeVarInt(out, Math.max(0, myPB));
+            writeVarInt(out, Math.max(0, partnerPB));
         });
         send(player, payload);
+    }
+
+    /** Overload pour appels existants (rétro-compatibilité du code serveur). */
+    public static void sendUpdate(Player player, List<ItemStack> myOffer, List<ItemStack> partnerOffer,
+                                  boolean myConfirmed, boolean partnerConfirmed,
+                                  long myMoney, long partnerMoney) {
+        sendUpdate(player, myOffer, partnerOffer, myConfirmed, partnerConfirmed,
+                myMoney, partnerMoney, 0, 0);
     }
 
     public static void sendClose(Player player, boolean success) {

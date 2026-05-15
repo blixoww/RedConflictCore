@@ -1,0 +1,305 @@
+# ── Boutique /pbshop ──────────────────────────────────────────────────────────
+boutique:
+  titre: "&c&lBoutique RedConflict"
+
+  grades:
+    - id: "elite"
+      nom: "&b&lGrade Elite"
+      icone: DIAMOND
+      description:
+        - "&7/back - /craft - /furnace - /vision"
+        - "&7/kit elite - 6 homes"
+        - "&7Grade superieur debloquant de nouvelles commandes"
+      commande: "lp user %player% parent settemp elite 30d"
+      commande_perm: "lp user %player% parent add elite"
+      prix_monnaie: 30000
+      prix_pb: 500
+      prix_monnaie_perm: 100000
+      prix_pb_perm: 1500
+      duree: 2592000
+    - id: "immortel"
+      nom: "&6&lGrade Immortel"
+      icone: NETHER_STAR
+      description:
+        - "&7/near - /ec - /repairall"
+        - "&7/kit immortel - 10 homes"
+        - "&7Grade premium - le plus eleve du serveur"
+      commande: "lp user %player% parent settemp immortel 30d"
+      commande_perm: "lp user %player% parent add immortel"
+      prix_monnaie: 75000
+      prix_pb: 1000
+      prix_monnaie_perm: 250000
+      prix_pb_perm: 2500
+      duree: 2592000
+
+  commandes:
+    - id: "ec"
+      nom: "&5Commande /ec"
+      icone: ENDER_CHEST
+      description:
+        - "&7Ouvrez votre EnderChest partout"
+      commande: "lp user %player% permission settemp redconflict.ec true 30d"
+      commande_perm: "lp user %player% permission set redconflict.ec true"
+      prix_monnaie: 5000
+      prix_pb: 500
+      prix_monnaie_perm: 25000
+      prix_pb_perm: 2500
+      duree: 2592000
+    - id: "craft"
+      nom: "&bCommande /craft"
+      icone: crafting_table
+      description:
+        - "&7Table de craft virtuelle partout"
+      commande: "lp user %player% permission settemp redconflict.craft true 30d"
+      commande_perm: "lp user %player% permission set redconflict.craft true"
+      prix_monnaie: 3000
+      prix_pb: 300
+      prix_monnaie_perm: 15000
+      prix_pb_perm: 1500
+      duree: 2592000
+    - id: "furnace"
+      nom: "&eCommande /furnace"
+      icone: FURNACE
+      description:
+        - "&7Cuit vos items sans four"
+      commande: "lp user %player% permission settemp redconflict.furnace true 30d"
+      commande_perm: "lp user %player% permission set redconflict.furnace true"
+      prix_monnaie: 2000
+      prix_pb: 200
+      prix_monnaie_perm: 10000
+      prix_pb_perm: 1000
+      duree: 2592000
+    - id: "vision"
+      nom: "&fCommande /vision"
+      icone: ENDER_EYE
+      description:
+        - "&7Vision nocturne permanente"
+      commande: "lp user %player% permission settemp redconflict.vision true 30d"
+      commande_perm: "lp user %player% permission set redconflict.vision true"
+      prix_monnaie: 2000
+      prix_pb: 200
+      prix_monnaie_perm: 10000
+      prix_pb_perm: 1000
+      duree: 2592000
+    - id: "repairall"
+      nom: "&eRepairAll"
+      icone: ANVIL
+      description:
+        - "&7Repare tout votre stuff"
+      commande: "lp user %player% permission settemp redconflict.repair true 30d"
+      commande_perm: "lp user %player% permission set redconflict.repair true"
+      prix_monnaie: 5000
+      prix_pb: 500
+      prix_monnaie_perm: 25000
+      prix_pb_perm: 2500
+      duree: 2592000
+    - id: "back"
+      nom: "&aCommande /back"
+      icone: COMPASS
+      description:
+        - "&7Retour a la derniere position"
+      commande: "lp user %player% permission settemp essentials.back true 30d"
+      commande_perm: "lp user %player% permission set essentials.back true"
+      prix_monnaie: 3000
+      prix_pb: 300
+      prix_monnaie_perm: 15000
+      prix_pb_perm: 1500
+      duree: 2592000
+    - id: "feed"
+      nom: "&6Commande /feed"
+      icone: COOKED_BEEF
+      description:
+        - "&7Restaurez votre faim"
+      commande: "lp user %player% permission settemp essentials.feed true 30d"
+      commande_perm: "lp user %player% permission set essentials.feed true"
+      prix_monnaie: 2000
+      prix_pb: 200
+      prix_monnaie_perm: 10000
+      prix_pb_perm: 1000
+      duree: 2592000
+    - id: "near"
+      nom: "&dCommande /near"
+      icone: COMPASS
+      description:
+        - "&7Affiche les joueurs proches"
+      commande: "lp user %player% permission settemp redconflict.near true 30d"
+      commande_perm: "lp user %player% permission set redconflict.near true"
+      prix_monnaie: 3000
+      prix_pb: 300
+      prix_monnaie_perm: 15000
+      prix_pb_perm: 1500
+      duree: 2592000
+
+  kits:
+    - id: "kit-debutant"
+      nom: "&aKit Debutant"
+      icone: CHEST
+      description:
+        - "&7Armure en fer complete"
+        - "&7Outils en fer + nourriture"
+        - "&7Ideal pour bien demarrer"
+      commande: "givekitboutique %player% kit_debutant"
+      prix_monnaie: 5000
+      prix_pb: 75
+    - id: "kit-guerrier"
+      nom: "&cKit Guerrier"
+      icone: IRON_SWORD
+      description:
+        - "&7Armure en diamant Standard"
+        - "&7Epee en diamant + arc"
+        - "&7Potions de combat"
+      commande: "givekitboutique %player% kit_guerrier"
+      prix_monnaie: 25000
+      prix_pb: 350
+    - id: "kit-archer"
+      nom: "&eKit Archer"
+      icone: BOW
+      description:
+        - "&7Arc Power V + Infiniti"
+        - "&7500 fleches + armure legere"
+        - "&7Potions de vitesse"
+      commande: "givekitboutique %player% kit_archer"
+      prix_monnaie: 20000
+      prix_pb: 280
+    - id: "kit-pvp"
+      nom: "&4Kit PvP"
+      icone: DIAMOND_SWORD
+      description:
+        - "&7Full diamant enchante"
+        - "&7Epee Sharpness V + potions"
+        - "&7Kit de combat avance"
+      commande: "givekitboutique %player% kit_pvp"
+      prix_monnaie: 50000
+      prix_pb: 700
+    - id: "kit-mineur"
+      nom: "&6Kit Mineur"
+      icone: DIAMOND_PICKAXE
+      description:
+        - "&7Pioche Fortune III Eff V"
+        - "&7Pelle + hache enchantees"
+        - "&7Torches + nourriture"
+      commande: "givekitboutique %player% kit_mineur"
+      prix_monnaie: 15000
+      prix_pb: 200
+    - id: "kit-vip"
+      nom: "&bKit VIP"
+      icone: NETHER_STAR
+      description:
+        - "&7Coffre rempli de ressources"
+        - "&7Items rares exclusifs VIP"
+        - "&bReserve aux membres premium"
+      commande: "givekitboutique %player% kit_vip"
+      prix_monnaie: 75000
+      prix_pb: 1000
+
+  spawners:
+    - id: "zombie"
+      nom: "&2Spawner Zombie"
+      mob: "ZOMBIE"
+      description:
+        - "&7Un spawner de Zombie"
+      prix_monnaie: 20000
+      prix_pb: 750
+      commande: "mspa %player% add ZOMBIE 1"
+    - id: "skeleton"
+      nom: "&fSpawner Skeleton"
+      mob: "SKELETON"
+      description:
+        - "&7Un spawner de Skeleton"
+      prix_monnaie: 25000
+      prix_pb: 1000
+      commande: "mspa %player% add SKELETON 1"
+    - id: "spider"
+      nom: "&8Spawner Spider"
+      mob: "SPIDER"
+      description:
+        - "&7Un spawner de Spider"
+      prix_monnaie: 25000
+      prix_pb: 1000
+      commande: "mspa %player% add SPIDER 1"
+    - id: "pig-zombie"
+      nom: "&6Spawner Pig Zombie"
+      mob: "ZOMBIE_PIGMAN"
+      description:
+        - "&7Un spawner de Pig Zombie"
+      prix_monnaie: 35000
+      prix_pb: 1400
+      commande: "mspa %player% add ZOMBIE_PIGMAN 1"
+    - id: "blaze"
+      nom: "&eSpawner Blaze"
+      mob: "BLAZE"
+      description:
+        - "&7Un spawner de Blaze"
+      prix_monnaie: 40000
+      prix_pb: 1600
+      commande: "mspa %player% add BLAZE 1"
+
+# ── Offres speciales (edition limitee) ────────────────────────────────────────
+offres_speciales:
+  # Probabilite qu'une offre apparaisse (1.0 = toujours, 0.0 = jamais)
+  chance_apparition: 0.7
+  # Intervalle de verification (expiration / rupture / changement de jour)
+  intervalle_check_seconds: 60
+  offres:
+    - id: "epee-cobalt"
+      actif: true
+      item: DIAMOND_SWORD
+      data: 0
+      nom: "&b&lEpee Cobalt"
+      lore:
+        - "&7Forgee dans les mines de Cobalt"
+        - "&7Arme exclusive de haute puissance"
+        - "&bEdition limitee"
+      enchantements:
+        - "DAMAGE_ALL:5"
+        - "DURABILITY:3"
+        - "FIRE_ASPECT:2"
+        - "KNOCKBACK:2"
+      prix_monnaie: 50000
+      prix_pb: 800
+      duree: 86400
+      quantite_stock: 5
+    - id: "pomme-cheat"
+      actif: true
+      item: GOLDEN_APPLE
+      data: 1
+      nom: "&c&lPomme Cheat"
+      lore:
+        - "&7La pomme des legendes"
+        - "&cAbsorption IV - Regeneration II"
+        - "&cResistance - Effet de feu"
+      prix_monnaie: 15000
+      prix_pb: 300
+      duree: 43200
+      quantite_stock: 20
+    - id: "ruby-gem"
+      actif: true
+      item: EMERALD
+      data: 0
+      nom: "&c&lRuby"
+      lore:
+        - "&7Pierre precieuse niveau 3"
+        - "&7Utilisable dans les Box Ruby"
+        - "&cTres rare"
+      prix_monnaie: 30000
+      prix_pb: 600
+      duree: 86400
+      quantite_stock: 15
+    - id: "plastron-cobalt"
+      actif: true
+      item: DIAMOND_CHESTPLATE
+      data: 0
+      nom: "&b&lPlastron Cobalt"
+      lore:
+        - "&7Armure forgee en alliage Cobalt"
+        - "&7Protection maximale"
+        - "&bEdition exclusive"
+      enchantements:
+        - "PROTECTION_ENVIRONMENTAL:4"
+        - "DURABILITY:3"
+        - "THORNS:2"
+      prix_monnaie: 75000
+      prix_pb: 1200
+      duree: 86400
+      quantite_stock: 3
+

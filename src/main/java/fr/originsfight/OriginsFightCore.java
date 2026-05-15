@@ -36,6 +36,14 @@ import fr.originsfight.shop.ShopCommand;
 import fr.originsfight.shop.ShopManager;
 import fr.originsfight.shop.ShopServerHandler;
 import fr.originsfight.data.PlayerDatabase;
+import fr.originsfight.pb.PBCommand;
+import fr.originsfight.pb.PBLogger;
+import fr.originsfight.pb.PBManager;
+import fr.originsfight.pb.StaffAlertManager;
+import fr.originsfight.boutique.BoutiqueCommand;
+import fr.originsfight.boutique.BoutiqueClientServerHandler;
+import fr.originsfight.boutique.BoutiquePacketSender;
+import fr.originsfight.boutique.OffresManager;
 import fr.originsfight.ks.KsCommand;
 import fr.originsfight.ks.KsListener;
 import fr.originsfight.listeners.*;
@@ -65,12 +73,18 @@ import java.util.Map;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.FurnaceRecipe;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
+import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public class OriginsFightCore extends JavaPlugin {
     private static OriginsFightCore instance;
@@ -93,6 +107,11 @@ public class OriginsFightCore extends JavaPlugin {
     private LagSwitchManager lagSwitchManager;
     private ClearLaggManager clearLaggManager;
     private AnonymeManager anonymeManager; // Added AnonymeManager
+    private PBManager pbManager;
+    private PBLogger pbLogger;
+    private StaffAlertManager pbStaffAlerts;
+    private OffresManager offresManager;
+    private FileConfiguration boutiqueConfig;
 
     public void onEnable() {
         instance = this;
@@ -100,6 +119,8 @@ public class OriginsFightCore extends JavaPlugin {
 
         this.worldGuard = (WorldGuardPlugin)getServer().getPluginManager().getPlugin("WorldGuard");
         saveDefaultConfig();
+        saveBoutiqueConfig();
+        loadBoutiqueConfig();
         loadRecipes();
         this.alwaysDisabledCommands = getConfig().getStringList("commands.always-disabled");
         this.disabledInCombatCommands = getConfig().getStringList("commands.disabled-in-combat");
@@ -139,6 +160,35 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("profil").setExecutor(profilCmd);
             getCommand("profil").setTabCompleter(profilCmd);
             getLogger().info("[PlayerDB] Base de données joueurs initialisée avec succès !");
+
+            // ── Système Points Boutique (PB) ─────────────────────────────────
+            this.pbLogger = new PBLogger(this);
+            this.pbStaffAlerts = new StaffAlertManager(this);
+            this.pbManager = new PBManager(this, this.playerDatabase, this.pbLogger, this.pbStaffAlerts);
+            PBCommand pbCmd = new PBCommand(this.pbManager);
+            if (getCommand("pb") != null) {
+                getCommand("pb").setExecutor(pbCmd);
+                getCommand("pb").setTabCompleter(pbCmd);
+            }
+            getLogger().info("[PB] Système Points Boutique initialisé (seuil alerte staff : "
+                    + this.pbStaffAlerts.getThreshold() + " PB).");
+
+            // ── /pbshop (boutique en inventaire) ─────────────────────────────
+            this.offresManager = new OffresManager(this);
+            this.offresManager.start();
+            BoutiqueCommand bCmd = new BoutiqueCommand(this);
+            if (getCommand("pbshop") != null) {
+                getCommand("pbshop").setExecutor(bCmd);
+                getCommand("pbshop").setTabCompleter(bCmd);
+            }
+            // Boutique client-side : canaux packet (S2C / C2S)
+            getServer().getMessenger().registerIncomingPluginChannel(this,
+                    BoutiqueClientServerHandler.CHANNEL_C2S,
+                    new BoutiqueClientServerHandler(this));
+            getServer().getMessenger().registerOutgoingPluginChannel(this,
+                    BoutiquePacketSender.CHANNEL_S2C);
+            getLogger().info("[PBShop] Boutique PB (client-side) initialisée ("
+                    + this.offresManager.listIds().size() + " offres définies).");
         } else {
             getLogger().severe("[PlayerDB] Échec de l'initialisation de la base de données joueurs !");
         }
@@ -197,6 +247,7 @@ public class OriginsFightCore extends JavaPlugin {
         if (this.bountyManager != null)  this.bountyManager.disable();
         if (this.friendManager != null)  this.friendManager.disable();
         if (this.anonymeManager != null) this.anonymeManager.disable();
+        if (this.offresManager != null) this.offresManager.stop();
         for (Player p : Bukkit.getOnlinePlayers()) {
             Long joinTime = KsListener.getJoinTime(p.getUniqueId());
             if (joinTime != null) {
@@ -385,6 +436,43 @@ public class OriginsFightCore extends JavaPlugin {
 
     public PlayerDatabase getPlayerDatabase() {
         return this.playerDatabase;
+    }
+
+    public PBManager getPBManager() {
+        return this.pbManager;
+    }
+
+    public StaffAlertManager getPBStaffAlerts() {
+        return this.pbStaffAlerts;
+    }
+
+    public OffresManager getOffresManager() {
+        return this.offresManager;
+    }
+
+    public FileConfiguration getBoutiqueConfig() {
+        return this.boutiqueConfig;
+    }
+
+    private void saveBoutiqueConfig() {
+        File file = new File(getDataFolder(), "boutique.yml");
+        if (!file.exists()) saveResource("boutique.yml", false);
+    }
+
+    private void loadBoutiqueConfig() {
+        File file = new File(getDataFolder(), "boutique.yml");
+        YamlConfiguration loaded = YamlConfiguration.loadConfiguration(file);
+        InputStream defStream = getResource("boutique.yml");
+        if (defStream != null) {
+            YamlConfiguration defaults = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(defStream, StandardCharsets.UTF_8));
+            loaded.setDefaults(defaults);
+        }
+        this.boutiqueConfig = loaded;
+    }
+
+    public void reloadBoutiqueConfig() {
+        loadBoutiqueConfig();
     }
 
     /** @deprecated Utiliser {@link #getPlayerDatabase()} */

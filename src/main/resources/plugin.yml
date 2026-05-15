@@ -27,7 +27,15 @@ commands:
   shop:
     description: Boutique du serveur (prix dynamiques)
     usage: /shop [open]
-    aliases: [boutique, magasin]
+    aliases: [magasin]
+  pb:
+    description: Consulter ou administrer les Points Boutique
+    usage: /pb [joueur] | /pb add|remove|set <joueur> <montant>
+    aliases: [points]
+  pbshop:
+    description: Ouvre la boutique PB (grades, commandes, spawners, offres spéciales)
+    usage: /pbshop [offre <id> enable|disable|reroll] | /pbshop reload
+    aliases: [boutique, pbboutique]
   shopdebug:
     description: Commandes de debug du shop (admin)
     usage: /shopdebug <tick all|info|reset>

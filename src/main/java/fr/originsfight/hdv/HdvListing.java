@@ -19,6 +19,9 @@ public class HdvListing {
 
     private boolean sold;
 
+    /** true = l'acheteur paie en PB, false = monnaie ($). */
+    private boolean payPB;
+
     public HdvListing() {}
 
     public HdvListing(int id, String sellerUuid, String sellerName, ItemStack item, long totalPrice, int quantity, long expiresAt) {
@@ -30,6 +33,7 @@ public class HdvListing {
         this.quantity = quantity;
         this.expiresAt = expiresAt;
         this.sold = false;
+        this.payPB = false;
     }
 
     public int getId() {
@@ -94,6 +98,14 @@ public class HdvListing {
 
     public void setSold(boolean s) {
         this.sold = s;
+    }
+
+    public boolean isPayPB() {
+        return this.payPB;
+    }
+
+    public void setPayPB(boolean p) {
+        this.payPB = p;
     }
 
     public boolean isExpired() {

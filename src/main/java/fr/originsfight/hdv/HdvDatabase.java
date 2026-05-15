@@ -77,16 +77,18 @@ public class HdvDatabase {
 
     private void createTables() throws SQLException {
         try (Statement stmt = this.connection.createStatement()) {
-            stmt.execute("CREATE TABLE IF NOT EXISTS hdv_listings (  id INTEGER PRIMARY KEY AUTOINCREMENT,  seller_uuid TEXT NOT NULL,  seller_name TEXT NOT NULL,  item_data   BLOB NOT NULL,  price_per_unit INTEGER NOT NULL,  quantity    INTEGER NOT NULL,  expires_at  INTEGER NOT NULL,  sold        INTEGER NOT NULL DEFAULT 0,  cancelled   INTEGER NOT NULL DEFAULT 0);");
+            stmt.execute("CREATE TABLE IF NOT EXISTS hdv_listings (  id INTEGER PRIMARY KEY AUTOINCREMENT,  seller_uuid TEXT NOT NULL,  seller_name TEXT NOT NULL,  item_data   BLOB NOT NULL,  price_per_unit INTEGER NOT NULL,  quantity    INTEGER NOT NULL,  expires_at  INTEGER NOT NULL,  sold        INTEGER NOT NULL DEFAULT 0,  cancelled   INTEGER NOT NULL DEFAULT 0,  pay_pb      INTEGER NOT NULL DEFAULT 0);");
             stmt.execute("CREATE TABLE IF NOT EXISTS hdv_earnings (  uuid        TEXT PRIMARY KEY,  player_name TEXT NOT NULL,  amount      INTEGER NOT NULL DEFAULT 0);");
             stmt.execute("CREATE TABLE IF NOT EXISTS hdv_transactions (  id           INTEGER PRIMARY KEY AUTOINCREMENT,  ts           INTEGER NOT NULL,  buyer_name   TEXT NOT NULL,  seller_name  TEXT NOT NULL,  item_name    TEXT NOT NULL,  quantity     INTEGER NOT NULL,  price        INTEGER NOT NULL);");
         }
         // Migration : ajouter la colonne cancelled si elle n'existe pas encore (base existante)
         try (Statement stmt = this.connection.createStatement()) {
             stmt.execute("ALTER TABLE hdv_listings ADD COLUMN cancelled INTEGER NOT NULL DEFAULT 0");
-        } catch (SQLException ignored) {
-            // La colonne existe déjà, on ignore
-        }
+        } catch (SQLException ignored) {}
+        // Migration : ajouter la colonne pay_pb
+        try (Statement stmt = this.connection.createStatement()) {
+            stmt.execute("ALTER TABLE hdv_listings ADD COLUMN pay_pb INTEGER NOT NULL DEFAULT 0");
+        } catch (SQLException ignored) {}
     }
 
     public void logTransaction(String buyerName, String sellerName, String itemName, int quantity, long price) {
@@ -132,7 +134,7 @@ public class HdvDatabase {
         return result;
     }
 
-    public int createListing(String sellerUuid, String sellerName, ItemStack item, long totalPrice, int quantity) {
+    public int createListing(String sellerUuid, String sellerName, ItemStack item, long totalPrice, int quantity, boolean payPB) {
         try {
             int active = countActiveListings(sellerUuid);
             if (active >= 5)
@@ -141,7 +143,7 @@ public class HdvDatabase {
             byte[] itemData = serializeItemStatic(item);
             if (itemData == null)
                 return -1;
-            String sql = "INSERT INTO hdv_listings (seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at) VALUES (?,?,?,?,?,?)";
+            String sql = "INSERT INTO hdv_listings (seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb) VALUES (?,?,?,?,?,?,?)";
             try (PreparedStatement ps = this.connection.prepareStatement(sql, 1)) {
                 ps.setString(1, sellerUuid);
                 ps.setString(2, sellerName);
@@ -149,6 +151,7 @@ public class HdvDatabase {
                 ps.setLong(4, totalPrice);
                 ps.setInt(5, quantity);
                 ps.setLong(6, expiresAt);
+                ps.setInt(7, payPB ? 1 : 0);
                 ps.executeUpdate();
                 try (ResultSet keys = ps.getGeneratedKeys()) {
                     if (keys.next())
@@ -161,10 +164,15 @@ public class HdvDatabase {
         return -1;
     }
 
+    /** Compat : ancienne signature sans payPB → false par défaut. */
+    public int createListing(String sellerUuid, String sellerName, ItemStack item, long totalPrice, int quantity) {
+        return createListing(sellerUuid, sellerName, item, totalPrice, quantity, false);
+    }
+
     public List<HdvListing> getActiveListings(int page, int pageSize, String filter) {
         List<HdvListing> result = new ArrayList<>();
         long now = System.currentTimeMillis() / 1000L;
-        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at FROM hdv_listings WHERE sold=0 AND expires_at > ? ORDER BY id DESC LIMIT ? OFFSET ?";
+        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb FROM hdv_listings WHERE sold=0 AND expires_at > ? ORDER BY id DESC LIMIT ? OFFSET ?";
         try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
             ps.setLong(1, now);
             ps.setInt(2, pageSize);
@@ -211,7 +219,7 @@ public class HdvDatabase {
 
     public HdvListing getListingById(int id) {
         try {
-            String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at FROM hdv_listings WHERE id=? AND sold=0";
+            String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb FROM hdv_listings WHERE id=? AND sold=0";
             try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
                 ps.setInt(1, id);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -525,8 +533,7 @@ public class HdvDatabase {
     public List<HdvListing> getExpiredListingsForPlayer(String sellerUuid) {
         List<HdvListing> result = new ArrayList<>();
         long now = System.currentTimeMillis() / 1000L;
-        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at"
-                + " FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND cancelled=0 AND expires_at <= ?"
+        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND cancelled=0 AND expires_at <= ?"
                 + " ORDER BY id DESC LIMIT 10";
         try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
             ps.setString(1, sellerUuid);
@@ -547,7 +554,7 @@ public class HdvDatabase {
     public List<HdvListing> getActiveListingsForPlayer(String sellerUuid) {
         List<HdvListing> result = new ArrayList<>();
         long now = System.currentTimeMillis() / 1000L;
-        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND expires_at > ? ORDER BY id DESC";
+        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND expires_at > ? ORDER BY id DESC";
         try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
             ps.setString(1, sellerUuid);
             ps.setLong(2, now);
@@ -626,6 +633,7 @@ public class HdvDatabase {
             listing.setTotalPrice(rs.getLong("price_per_unit"));
             listing.setQuantity(rs.getInt("quantity"));
             listing.setExpiresAt(rs.getLong("expires_at"));
+            try { listing.setPayPB(rs.getInt("pay_pb") == 1); } catch (SQLException ignored) {}
             return listing;
         } catch (SQLException e) {
             return null;

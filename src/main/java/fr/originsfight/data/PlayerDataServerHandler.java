@@ -215,7 +215,16 @@ public class PlayerDataServerHandler implements PluginMessageListener {
             db.updateRank(player.getUniqueId(), rank);
         }
 
-        byte[] data = PacketBuilder.create(82).writeString(rank).writeLong(balance).writeVarInt(kills).writeVarInt(deaths).writeVarInt(playTimeMin).build();
+        // PB — solde Points Boutique
+        int pb = 0;
+        if (plugin.getPBManager() != null) {
+            try { pb = plugin.getPBManager().get(player); } catch (Exception ignored) {}
+        }
+        byte[] data = PacketBuilder.create(82)
+                .writeString(rank).writeLong(balance)
+                .writeVarInt(kills).writeVarInt(deaths).writeVarInt(playTimeMin)
+                .writeVarInt(pb)
+                .build();
         player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
     }
 
@@ -228,6 +237,13 @@ public class PlayerDataServerHandler implements PluginMessageListener {
     public static void sendRank(Player player, String rank) {
         OriginsFightCore plugin = OriginsFightCore.getInstance();
         byte[] data = PacketBuilder.create(81).writeString(rank).build();
+        player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
+    }
+
+    /** Envoie le solde PB courant du joueur (packet PLAYER_PB = 0x53). */
+    public static void sendPB(Player player, int pb) {
+        OriginsFightCore plugin = OriginsFightCore.getInstance();
+        byte[] data = PacketBuilder.create(0x53).writeVarInt(pb).build();
         player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
     }
 }

@@ -18,6 +18,7 @@ public class TradeC2SHandler implements PluginMessageListener {
     private static final int TRADE_CONFIRM = 0xA2;
     private static final int TRADE_CANCEL  = 0xA3;
     private static final int TRADE_MONEY   = 0xA4;
+    private static final int TRADE_PB      = 0xA5;
 
     private final TradeManager manager = TradeManager.getInstance();
     private final OriginsFightCore plugin;
@@ -64,6 +65,11 @@ public class TradeC2SHandler implements PluginMessageListener {
             case TRADE_MONEY: {
                 long amount = in.readLong();
                 session.setMoneyOffer(player, amount);
+                break;
+            }
+            case TRADE_PB: {
+                int amount = readVarInt(in);
+                session.setPBOffer(player, amount);
                 break;
             }
         }

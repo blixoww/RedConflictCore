@@ -79,9 +79,108 @@ public class PlayerDatabase {
             "  rank        TEXT    NOT NULL DEFAULT 'Joueur'," +
             "  faction     TEXT    NOT NULL DEFAULT ''," +
             "  streak      INTEGER NOT NULL DEFAULT 0," +
-            "  bounty      INTEGER NOT NULL DEFAULT 0" +
+            "  bounty      INTEGER NOT NULL DEFAULT 0," +
+            "  pb          INTEGER NOT NULL DEFAULT 0" +
             ")"
         );
+        // Migration : ajoute la colonne pb si la table préexistait sans elle
+        try { conn().createStatement().executeUpdate("ALTER TABLE player_profiles ADD COLUMN pb INTEGER NOT NULL DEFAULT 0"); }
+        catch (SQLException ignored) {}
+    }
+
+    // ── Points Boutique (PB) ──────────────────────────────────────────────────
+
+    /** Solde PB d'un joueur. 0 si absent. */
+    public int getPB(UUID uuid) {
+        try {
+            PreparedStatement ps = conn().prepareStatement(
+                "SELECT pb FROM player_profiles WHERE uuid = ?");
+            ps.setString(1, uuid.toString());
+            ResultSet rs = ps.executeQuery();
+            int v = rs.next() ? rs.getInt("pb") : 0;
+            rs.close(); ps.close();
+            return v;
+        } catch (SQLException e) { log("getPB: " + e.getMessage()); return 0; }
+    }
+
+    /** S'assure que la ligne existe (pour les joueurs offline manipulés via /pb). */
+    public void ensurePlayer(UUID uuid, String name) {
+        try {
+            PreparedStatement ins = conn().prepareStatement(
+                "INSERT OR IGNORE INTO player_profiles (uuid, name) VALUES (?, ?)");
+            ins.setString(1, uuid.toString());
+            ins.setString(2, name != null ? name : "");
+            ins.executeUpdate(); ins.close();
+        } catch (SQLException e) { log("ensurePlayer(uuid): " + e.getMessage()); }
+    }
+
+    /** Définit le solde PB. Garantit >= 0. */
+    public void setPB(UUID uuid, int value) {
+        try {
+            PreparedStatement ps = conn().prepareStatement(
+                "UPDATE player_profiles SET pb = ? WHERE uuid = ?");
+            ps.setInt(1, Math.max(0, value));
+            ps.setString(2, uuid.toString());
+            ps.executeUpdate(); ps.close();
+        } catch (SQLException e) { log("setPB: " + e.getMessage()); }
+    }
+
+    /** Ajoute des PB. Atomique. */
+    public boolean addPB(UUID uuid, int amount) {
+        if (amount <= 0) return false;
+        try {
+            PreparedStatement ps = conn().prepareStatement(
+                "UPDATE player_profiles SET pb = pb + ? WHERE uuid = ?");
+            ps.setInt(1, amount);
+            ps.setString(2, uuid.toString());
+            int r = ps.executeUpdate(); ps.close();
+            return r > 0;
+        } catch (SQLException e) { log("addPB: " + e.getMessage()); return false; }
+    }
+
+    /** Retire des PB seulement si le solde le permet. Atomique. */
+    public boolean removePB(UUID uuid, int amount) {
+        if (amount <= 0) return false;
+        try {
+            conn().setAutoCommit(false);
+            int current;
+            PreparedStatement sel = conn().prepareStatement(
+                "SELECT pb FROM player_profiles WHERE uuid = ?");
+            sel.setString(1, uuid.toString());
+            ResultSet rs = sel.executeQuery();
+            current = rs.next() ? rs.getInt("pb") : 0;
+            rs.close(); sel.close();
+
+            if (current < amount) { conn().rollback(); conn().setAutoCommit(true); return false; }
+
+            PreparedStatement upd = conn().prepareStatement(
+                "UPDATE player_profiles SET pb = pb - ? WHERE uuid = ?");
+            upd.setInt(1, amount);
+            upd.setString(2, uuid.toString());
+            upd.executeUpdate(); upd.close();
+
+            conn().commit();
+            conn().setAutoCommit(true);
+            return true;
+        } catch (SQLException e) {
+            try { conn().rollback(); conn().setAutoCommit(true); } catch (SQLException ignored) {}
+            log("removePB: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** UUID d'un joueur connu de la base via son pseudo (case-insensitive). */
+    public UUID getUUIDByName(String name) {
+        try {
+            PreparedStatement ps = conn().prepareStatement(
+                "SELECT uuid FROM player_profiles WHERE name = ? COLLATE NOCASE");
+            ps.setString(1, name);
+            ResultSet rs = ps.executeQuery();
+            UUID r = null;
+            if (rs.next()) { try { r = UUID.fromString(rs.getString("uuid")); } catch (Exception ignored) {} }
+            rs.close(); ps.close();
+            return r;
+        } catch (SQLException e) { log("getUUIDByName: " + e.getMessage()); return null; }
     }
 
     // ── Écriture — données KS (mises à jour temps réel) ──────────────────────

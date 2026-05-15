@@ -210,6 +210,7 @@ public class HdvManager {
         pb.writeLong(l.getTotalPrice());
         pb.writeVarInt(l.getQuantity());
         pb.writeLong(l.getExpiresAt());
+        pb.writeBoolean(l.isPayPB());
         return pb.buildRaw();
     }
 
@@ -233,6 +234,7 @@ public class HdvManager {
                 pb.writeVarInt(l.getQuantity());
                 pb.writeLong(l.getExpiresAt());
                 pb.writeBoolean(false); // not sold
+                pb.writeBoolean(l.isPayPB());
                 serialized.add(pb.buildRaw());
             } catch (Exception e) {
                 LOG.warning("[HDV] sendMyListings active error: " + e.getMessage());
@@ -249,6 +251,7 @@ public class HdvManager {
                 pb.writeVarInt(l.getQuantity());
                 pb.writeLong(l.getExpiresAt()); // expiresAt in the past → client isExpired() = true
                 pb.writeBoolean(false); // not sold, just expired
+                pb.writeBoolean(l.isPayPB());
                 serialized.add(pb.buildRaw());
             } catch (Exception e) {
                 LOG.warning("[HDV] sendMyListings expired error: " + e.getMessage());
@@ -269,6 +272,7 @@ public class HdvManager {
                 pb.writeVarInt(l.getQuantity());
                 pb.writeLong(l.getExpiresAt());
                 pb.writeBoolean(true); // sold
+                pb.writeBoolean(l.isPayPB());
                 serialized.add(pb.buildRaw());
             } catch (Exception e) {
                 LOG.warning("[HDV] sendMyListings sold error: " + e.getMessage());
@@ -309,8 +313,6 @@ public class HdvManager {
     }
 
     public void handleBuy(Player player, int listingId) {
-        if (this.economy == null)
-            return;
         HdvListing listing = this.database.getListingById(listingId);
         if (listing == null) {
             HdvServerHandler.sendActionResult(player, false, "Annonce introuvable ou vendue.");
@@ -321,39 +323,83 @@ public class HdvManager {
             return;
         }
         long price = listing.getTotalPrice();
-        if (price < 0L)
-            return;
-        if (this.economy.getBalance(player) < price) {
-            HdvServerHandler.sendActionResult(player, false, "Fonds insuffisants.");
-            return;
-        }
-        boolean success = this.database.buyListing(listingId, listing.getQuantity());
-        if (success) {
-            this.economy.withdraw(player, price);
-            giveItem(player, listing.getItem(), listing.getQuantity());
-            String itemName = (listing.getItem().hasItemMeta() && listing.getItem().getItemMeta().hasDisplayName())
-                    ? listing.getItem().getItemMeta().getDisplayName()
-                    : listing.getItem().getType().name();
-            this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), price);
-            HdvServerHandler.sendActionResult(player, true, "Achat effectue !");
-            // Notifier le vendeur s'il est en ligne
-            Player seller = Bukkit.getPlayerExact(listing.getSellerName());
-            if (seller != null && seller.isOnline()) {
-                byte[] notif = PacketBuilder.create(0x26)
-                        .writeString(itemName.length() > 64 ? itemName.substring(0, 64) : itemName)
-                        .writeVarInt(listing.getQuantity())
-                        .writeLong(price)
-                        .build();
-                seller.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", notif);
+        if (price < 0L) return;
+
+        if (listing.isPayPB()) {
+            // ── Achat en PB ────────────────────────────────────────────────
+            fr.originsfight.pb.PBManager pbMgr = plugin.getPBManager();
+            if (pbMgr == null) { HdvServerHandler.sendActionResult(player, false, "Système PB indisponible."); return; }
+            int buyerPB = pbMgr.get(player);
+            if (buyerPB < (int) price) {
+                HdvServerHandler.sendActionResult(player, false, "PB insuffisants (" + buyerPB + " / " + price + ").");
+                return;
             }
-            sendListings(player, 0, "");
+            boolean success = this.database.buyListingNoEarnings(listingId, listing.getQuantity());
+            if (success) {
+                pbMgr.remove(player, (int) price, "Achat en PB");
+                // Créditer le vendeur directement dans la DB (marche hors-ligne)
+                try {
+                    java.util.UUID sellerUUID = java.util.UUID.fromString(listing.getSellerUuid());
+                    plugin.getPlayerDatabase().addPB(sellerUUID, (int) price);
+                } catch (Exception e) {
+                    LOG.warning("[HDV] Erreur credit PB vendeur: " + e.getMessage());
+                }
+                String itemName = nameOf(listing.getItem());
+                this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), price);
+                giveItem(player, listing.getItem(), listing.getQuantity());
+                HdvServerHandler.sendActionResult(player, true, "Achat effectue en PB !");
+                // Notifier le vendeur si en ligne
+                Player seller = Bukkit.getPlayerExact(listing.getSellerName());
+                if (seller != null && seller.isOnline()) {
+                    byte[] notif = PacketBuilder.create(0x26)
+                            .writeString(itemName.length() > 64 ? itemName.substring(0, 64) : itemName)
+                            .writeVarInt(listing.getQuantity())
+                            .writeLong(price)
+                            .build();
+                    seller.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", notif);
+                }
+                sendListings(player, 0, "");
+            } else {
+                HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
+            }
         } else {
-            HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
+            // ── Achat en monnaie ($) ───────────────────────────────────────
+            if (this.economy == null) return;
+            if (this.economy.getBalance(player) < price) {
+                HdvServerHandler.sendActionResult(player, false, "Fonds insuffisants.");
+                return;
+            }
+            boolean success = this.database.buyListing(listingId, listing.getQuantity());
+            if (success) {
+                this.economy.withdraw(player, price);
+                giveItem(player, listing.getItem(), listing.getQuantity());
+                String itemName = nameOf(listing.getItem());
+                this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), price);
+                HdvServerHandler.sendActionResult(player, true, "Achat effectue !");
+                Player seller = Bukkit.getPlayerExact(listing.getSellerName());
+                if (seller != null && seller.isOnline()) {
+                    byte[] notif = PacketBuilder.create(0x26)
+                            .writeString(itemName.length() > 64 ? itemName.substring(0, 64) : itemName)
+                            .writeVarInt(listing.getQuantity())
+                            .writeLong(price)
+                            .build();
+                    seller.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", notif);
+                }
+                sendListings(player, 0, "");
+            } else {
+                HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
+            }
         }
     }
 
-    public void handlePostOffer(Player player, ItemStack item, long totalPrice, int quantity) {
-        if (this.economy == null) {
+    private static String nameOf(ItemStack item) {
+        if (item == null) return "Inconnu";
+        if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) return item.getItemMeta().getDisplayName();
+        return item.getType().name();
+    }
+
+    public void handlePostOffer(Player player, ItemStack item, long totalPrice, int quantity, boolean payPB) {
+        if (!payPB && this.economy == null) {
             player.sendMessage("§cHDV indisponible.");
             return;
         }
@@ -378,7 +424,7 @@ public class HdvManager {
         if (EnchantUtils.isEnchantedBook(item)) {
             EnchantUtils.applyFrenchMeta(item);
         }
-        int id = this.database.createListing(player.getUniqueId().toString(), player.getName(), item, totalPrice, quantity);
+        int id = this.database.createListing(player.getUniqueId().toString(), player.getName(), item, totalPrice, quantity, payPB);
         if (id > 0) {
             HdvServerHandler.sendActionResult(player, true, "Mise en vente reussie !");
             sendListings(player, 0, "");
