@@ -13,9 +13,9 @@ boutique:
       commande: "lp user %player% parent settemp elite 30d"
       commande_perm: "lp user %player% parent add elite"
       prix_monnaie: 30000
-      prix_pb: 500
+      prix_pb: 50
       prix_monnaie_perm: 100000
-      prix_pb_perm: 1500
+      prix_pb_perm: 150
       duree: 2592000
     - id: "immortel"
       nom: "&6&lGrade Immortel"
@@ -27,9 +27,9 @@ boutique:
       commande: "lp user %player% parent settemp immortel 30d"
       commande_perm: "lp user %player% parent add immortel"
       prix_monnaie: 75000
-      prix_pb: 1000
+      prix_pb: 100
       prix_monnaie_perm: 250000
-      prix_pb_perm: 2500
+      prix_pb_perm: 250
       duree: 2592000
 
   commandes:
@@ -41,9 +41,9 @@ boutique:
       commande: "lp user %player% permission settemp redconflict.ec true 30d"
       commande_perm: "lp user %player% permission set redconflict.ec true"
       prix_monnaie: 5000
-      prix_pb: 500
+      prix_pb: 50
       prix_monnaie_perm: 25000
-      prix_pb_perm: 2500
+      prix_pb_perm: 250
       duree: 2592000
     - id: "craft"
       nom: "&bCommande /craft"
@@ -53,9 +53,9 @@ boutique:
       commande: "lp user %player% permission settemp redconflict.craft true 30d"
       commande_perm: "lp user %player% permission set redconflict.craft true"
       prix_monnaie: 3000
-      prix_pb: 300
+      prix_pb: 30
       prix_monnaie_perm: 15000
-      prix_pb_perm: 1500
+      prix_pb_perm: 150
       duree: 2592000
     - id: "furnace"
       nom: "&eCommande /furnace"
@@ -65,9 +65,9 @@ boutique:
       commande: "lp user %player% permission settemp redconflict.furnace true 30d"
       commande_perm: "lp user %player% permission set redconflict.furnace true"
       prix_monnaie: 2000
-      prix_pb: 200
+      prix_pb: 20
       prix_monnaie_perm: 10000
-      prix_pb_perm: 1000
+      prix_pb_perm: 100
       duree: 2592000
     - id: "vision"
       nom: "&fCommande /vision"
@@ -77,9 +77,9 @@ boutique:
       commande: "lp user %player% permission settemp redconflict.vision true 30d"
       commande_perm: "lp user %player% permission set redconflict.vision true"
       prix_monnaie: 2000
-      prix_pb: 200
+      prix_pb: 20
       prix_monnaie_perm: 10000
-      prix_pb_perm: 1000
+      prix_pb_perm: 100
       duree: 2592000
     - id: "repairall"
       nom: "&eRepairAll"
@@ -89,9 +89,9 @@ boutique:
       commande: "lp user %player% permission settemp redconflict.repair true 30d"
       commande_perm: "lp user %player% permission set redconflict.repair true"
       prix_monnaie: 5000
-      prix_pb: 500
+      prix_pb: 50
       prix_monnaie_perm: 25000
-      prix_pb_perm: 2500
+      prix_pb_perm: 250
       duree: 2592000
     - id: "back"
       nom: "&aCommande /back"
@@ -101,9 +101,9 @@ boutique:
       commande: "lp user %player% permission settemp essentials.back true 30d"
       commande_perm: "lp user %player% permission set essentials.back true"
       prix_monnaie: 3000
-      prix_pb: 300
+      prix_pb: 30
       prix_monnaie_perm: 15000
-      prix_pb_perm: 1500
+      prix_pb_perm: 150
       duree: 2592000
     - id: "feed"
       nom: "&6Commande /feed"
@@ -113,9 +113,9 @@ boutique:
       commande: "lp user %player% permission settemp essentials.feed true 30d"
       commande_perm: "lp user %player% permission set essentials.feed true"
       prix_monnaie: 2000
-      prix_pb: 200
+      prix_pb: 20
       prix_monnaie_perm: 10000
-      prix_pb_perm: 1000
+      prix_pb_perm: 100
       duree: 2592000
     - id: "near"
       nom: "&dCommande /near"
@@ -125,72 +125,42 @@ boutique:
       commande: "lp user %player% permission settemp redconflict.near true 30d"
       commande_perm: "lp user %player% permission set redconflict.near true"
       prix_monnaie: 3000
-      prix_pb: 300
+      prix_pb: 30
       prix_monnaie_perm: 15000
-      prix_pb_perm: 1500
+      prix_pb_perm: 150
       duree: 2592000
 
   kits:
-    - id: "kit-debutant"
-      nom: "&aKit Debutant"
+    - id: "kit-starter"
+      nom: "&aKit Starter"
       icone: CHEST
       description:
-        - "&7Armure en fer complete"
-        - "&7Outils en fer + nourriture"
-        - "&7Ideal pour bien demarrer"
-      commande: "givekitboutique %player% kit_debutant"
-      prix_monnaie: 5000
-      prix_pb: 75
-    - id: "kit-guerrier"
-      nom: "&cKit Guerrier"
-      icone: IRON_SWORD
+        - "&7Kit de demarrage pour bien commencer"
+        - "&7Equipement de base solide"
+        - "&7Ideal pour les nouveaux joueurs"
+      commande: "givekitboutique %player% kit_starter"
+      prix_monnaie: 8000
+      prix_pb: 10
+    - id: "kit-bonus"
+      nom: "&6Kit Bonus"
+      icone: DIAMOND_CHESTPLATE
       description:
-        - "&7Armure en diamant Standard"
-        - "&7Epee en diamant + arc"
-        - "&7Potions de combat"
-      commande: "givekitboutique %player% kit_guerrier"
-      prix_monnaie: 25000
-      prix_pb: 350
-    - id: "kit-archer"
-      nom: "&eKit Archer"
-      icone: BOW
+        - "&7Equipement intermediaire ameliore"
+        - "&7Armure et outils de qualite superieure"
+        - "&7Passez au niveau au-dessus"
+      commande: "givekitboutique %player% kit_bonus"
+      prix_monnaie: 30000
+      prix_pb: 40
+    - id: "kit-potion"
+      nom: "&dKit Potion"
+      icone: POTION
       description:
-        - "&7Arc Power V + Infiniti"
-        - "&7500 fleches + armure legere"
-        - "&7Potions de vitesse"
-      commande: "givekitboutique %player% kit_archer"
-      prix_monnaie: 20000
-      prix_pb: 280
-    - id: "kit-pvp"
-      nom: "&4Kit PvP"
-      icone: DIAMOND_SWORD
-      description:
-        - "&7Full diamant enchante"
-        - "&7Epee Sharpness V + potions"
-        - "&7Kit de combat avance"
-      commande: "givekitboutique %player% kit_pvp"
+        - "&7Kit combat avec potions avancees"
+        - "&7Potions de force, vitesse, regeneration"
+        - "&7Dominez chaque combat"
+      commande: "givekitboutique %player% kit_potion"
       prix_monnaie: 50000
-      prix_pb: 700
-    - id: "kit-mineur"
-      nom: "&6Kit Mineur"
-      icone: DIAMOND_PICKAXE
-      description:
-        - "&7Pioche Fortune III Eff V"
-        - "&7Pelle + hache enchantees"
-        - "&7Torches + nourriture"
-      commande: "givekitboutique %player% kit_mineur"
-      prix_monnaie: 15000
-      prix_pb: 200
-    - id: "kit-vip"
-      nom: "&bKit VIP"
-      icone: NETHER_STAR
-      description:
-        - "&7Coffre rempli de ressources"
-        - "&7Items rares exclusifs VIP"
-        - "&bReserve aux membres premium"
-      commande: "givekitboutique %player% kit_vip"
-      prix_monnaie: 75000
-      prix_pb: 1000
+      prix_pb: 65
 
   spawners:
     - id: "zombie"
@@ -199,7 +169,7 @@ boutique:
       description:
         - "&7Un spawner de Zombie"
       prix_monnaie: 20000
-      prix_pb: 750
+      prix_pb: 75
       commande: "mspa %player% add ZOMBIE 1"
     - id: "skeleton"
       nom: "&fSpawner Skeleton"
@@ -207,7 +177,7 @@ boutique:
       description:
         - "&7Un spawner de Skeleton"
       prix_monnaie: 25000
-      prix_pb: 1000
+      prix_pb: 100
       commande: "mspa %player% add SKELETON 1"
     - id: "spider"
       nom: "&8Spawner Spider"
@@ -215,7 +185,7 @@ boutique:
       description:
         - "&7Un spawner de Spider"
       prix_monnaie: 25000
-      prix_pb: 1000
+      prix_pb: 100
       commande: "mspa %player% add SPIDER 1"
     - id: "pig-zombie"
       nom: "&6Spawner Pig Zombie"
@@ -223,7 +193,7 @@ boutique:
       description:
         - "&7Un spawner de Pig Zombie"
       prix_monnaie: 35000
-      prix_pb: 1400
+      prix_pb: 140
       commande: "mspa %player% add ZOMBIE_PIGMAN 1"
     - id: "blaze"
       nom: "&eSpawner Blaze"
@@ -231,8 +201,75 @@ boutique:
       description:
         - "&7Un spawner de Blaze"
       prix_monnaie: 40000
-      prix_pb: 1600
+      prix_pb: 160
       commande: "mspa %player% add BLAZE 1"
+
+  packs:
+    - id: "starter"
+      nom: "&b&lPack Starter"
+      icone: iron_chestplate
+      description:
+        - "&bGrade Elite &7(Permanent)"
+        - "&74 Spawners : 2 Zombie + 2 Squelette"
+        - "&7Armure complete Prot.3 en Emeraude"
+        - "&7Epee Ruby Tranchant IV"
+        - "&7Pioche Ruby Efficacite IV Incassable III"
+        - "&74 stacks d'Obsidienne"
+        - "&aKit Starter &7(Permanent)"
+        - "&73 Cles en Acier"
+      # Composantes individuelles ~540 PB en perm → pack à 300 PB (-44%)
+      prix_pb: 200
+      prix_pb_perm: 300
+      commandes:
+        - "lp user %player% parent add elite"
+        - "mspa %player% add ZOMBIE 2"
+        - "mspa %player% add SKELETON 2"
+        - "givekitboutique %player% kit_starter"
+        - "givekey %player% steel_key 3"
+    - id: "avance"
+      nom: "&6&lPack Avance"
+      icone: diamond_chestplate
+      description:
+        - "&bGrade Elite &7(Permanent)"
+        - "&76 Spawners : 2 Zombie + 2 Pig Zombie + 2 Squelette"
+        - "&7Stuff complet Prot.3 en Ruby"
+        - "&7Epee Cobalt Tranchant IV"
+        - "&7Pioche Cobalt Efficacite IV Incassable III"
+        - "&76 stacks d'Obsidienne"
+        - "&aKit Bonus &7(Permanent)"
+        - "&73 Cles en Ruby"
+      # Composantes individuelles ~870 PB en perm → pack à 400 PB (-54%)
+      prix_pb: 300
+      prix_pb_perm: 400
+      commandes:
+        - "lp user %player% parent add elite"
+        - "mspa %player% add ZOMBIE 2"
+        - "mspa %player% add ZOMBIE_PIGMAN 2"
+        - "mspa %player% add SKELETON 2"
+        - "givekitboutique %player% kit_bonus"
+        - "givekey %player% ruby_key 3"
+    - id: "mega"
+      nom: "&c&l&nMEGA PACK"
+      icone: nether_star
+      description:
+        - "&6Grade Immortel &7(Permanent)"
+        - "&78 Spawners : 2 Zombie + 4 Pig Zombie + 2 Squelette"
+        - "&7Stuff complet Prot.4 Ruby Incassable III"
+        - "&7Epee Cobalt Tranchant V"
+        - "&7Pioche Cobalt Efficacite V Incassable III"
+        - "&710 stacks d'Obsidienne"
+        - "&dKit Potion &7(Permanent)"
+        - "&73 Cles en Cobalt"
+      # Composantes individuelles ~1305 PB en perm → pack à 500 PB (-62%, cap 50€)
+      prix_pb: 400
+      prix_pb_perm: 500
+      commandes:
+        - "lp user %player% parent add immortel"
+        - "mspa %player% add ZOMBIE 2"
+        - "mspa %player% add ZOMBIE_PIGMAN 4"
+        - "mspa %player% add SKELETON 2"
+        - "givekitboutique %player% kit_potion"
+        - "givekey %player% cobalt_key 3"
 
 # ── Offres speciales (edition limitee) ────────────────────────────────────────
 offres_speciales:
@@ -256,7 +293,7 @@ offres_speciales:
         - "FIRE_ASPECT:2"
         - "KNOCKBACK:2"
       prix_monnaie: 50000
-      prix_pb: 800
+      prix_pb: 80
       duree: 86400
       quantite_stock: 5
     - id: "pomme-cheat"
@@ -269,22 +306,9 @@ offres_speciales:
         - "&cAbsorption IV - Regeneration II"
         - "&cResistance - Effet de feu"
       prix_monnaie: 15000
-      prix_pb: 300
+      prix_pb: 30
       duree: 43200
       quantite_stock: 20
-    - id: "ruby-gem"
-      actif: true
-      item: EMERALD
-      data: 0
-      nom: "&c&lRuby"
-      lore:
-        - "&7Pierre precieuse niveau 3"
-        - "&7Utilisable dans les Box Ruby"
-        - "&cTres rare"
-      prix_monnaie: 30000
-      prix_pb: 600
-      duree: 86400
-      quantite_stock: 15
     - id: "plastron-cobalt"
       actif: true
       item: DIAMOND_CHESTPLATE
@@ -299,7 +323,7 @@ offres_speciales:
         - "DURABILITY:3"
         - "THORNS:2"
       prix_monnaie: 75000
-      prix_pb: 1200
+      prix_pb: 120
       duree: 86400
       quantite_stock: 3
 

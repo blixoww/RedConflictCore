@@ -63,6 +63,7 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
             case 2: buyConfig(player, "boutique.commandes", "cmd",     id, payPB, temporary);  break;
             case 3: buyConfig(player, "boutique.spawners",  "spawner", id, payPB, false);      break;
             case 4: buyOffre(player, id, payPB); break;
+            case 5: buyPack(player, id, payPB);  break;
             default:
                 BoutiquePacketSender.sendResult(player, false, "Categorie inconnue.");
         }
@@ -139,6 +140,44 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
         mgr.consumeStock();
         BoutiquePacketSender.sendResult(player, true, "Offre spéciale acquise !");
         BoutiquePacketSender.sendData(player);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void buyPack(Player player, String id, boolean payPB) {
+        List<?> entries = plugin.getBoutiqueConfig().getList("boutique.packs");
+        if (entries == null) {
+            BoutiquePacketSender.sendResult(player, false, "Aucun pack disponible.");
+            return;
+        }
+        for (Object o : entries) {
+            if (!(o instanceof Map)) continue;
+            Map<String, Object> m = (Map<String, Object>) o;
+            if (!id.equalsIgnoreCase(String.valueOf(m.get("id")))) continue;
+
+            int  prixPB = asInt(m.get("prix_pb"));
+            long prixM  = asLong(m.get("prix_monnaie"));
+
+            boolean effectivePB;
+            if (prixM > 0 && prixPB > 0) effectivePB = payPB;
+            else if (prixPB > 0)         effectivePB = true;
+            else                         effectivePB = false;
+            long price = effectivePB ? prixPB : prixM;
+            if (price <= 0) {
+                BoutiquePacketSender.sendResult(player, false, "Mode de paiement indisponible.");
+                return;
+            }
+            if (!charge(player, effectivePB, price, "pack:" + id)) return;
+
+            // Exécuter toutes les récompenses du pack
+            Object cmds = m.get("commandes");
+            if (cmds instanceof List) {
+                for (Object c : (List<Object>) cmds) dispatch(player, String.valueOf(c));
+            }
+            BoutiquePacketSender.sendResult(player, true, "Pack achete : " + stripColor(String.valueOf(m.get("nom"))));
+            BoutiquePacketSender.sendData(player);
+            return;
+        }
+        BoutiquePacketSender.sendResult(player, false, "Pack introuvable.");
     }
 
     // ── Paiement ─────────────────────────────────────────────────────────────

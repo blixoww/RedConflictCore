@@ -89,6 +89,10 @@ public class HdvDatabase {
         try (Statement stmt = this.connection.createStatement()) {
             stmt.execute("ALTER TABLE hdv_listings ADD COLUMN pay_pb INTEGER NOT NULL DEFAULT 0");
         } catch (SQLException ignored) {}
+        // Migration : ajouter la colonne price_pb (double-devise)
+        try (Statement stmt = this.connection.createStatement()) {
+            stmt.execute("ALTER TABLE hdv_listings ADD COLUMN price_pb INTEGER NOT NULL DEFAULT 0");
+        } catch (SQLException ignored) {}
     }
 
     public void logTransaction(String buyerName, String sellerName, String itemName, int quantity, long price) {
@@ -135,6 +139,10 @@ public class HdvDatabase {
     }
 
     public int createListing(String sellerUuid, String sellerName, ItemStack item, long totalPrice, int quantity, boolean payPB) {
+        return createListing(sellerUuid, sellerName, item, totalPrice, quantity, payPB, 0L);
+    }
+
+    public int createListing(String sellerUuid, String sellerName, ItemStack item, long totalPrice, int quantity, boolean payPB, long pricePB) {
         try {
             int active = countActiveListings(sellerUuid);
             if (active >= 5)
@@ -143,7 +151,7 @@ public class HdvDatabase {
             byte[] itemData = serializeItemStatic(item);
             if (itemData == null)
                 return -1;
-            String sql = "INSERT INTO hdv_listings (seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb) VALUES (?,?,?,?,?,?,?)";
+            String sql = "INSERT INTO hdv_listings (seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb, price_pb) VALUES (?,?,?,?,?,?,?,?)";
             try (PreparedStatement ps = this.connection.prepareStatement(sql, 1)) {
                 ps.setString(1, sellerUuid);
                 ps.setString(2, sellerName);
@@ -152,6 +160,7 @@ public class HdvDatabase {
                 ps.setInt(5, quantity);
                 ps.setLong(6, expiresAt);
                 ps.setInt(7, payPB ? 1 : 0);
+                ps.setLong(8, pricePB);
                 ps.executeUpdate();
                 try (ResultSet keys = ps.getGeneratedKeys()) {
                     if (keys.next())
@@ -172,7 +181,7 @@ public class HdvDatabase {
     public List<HdvListing> getActiveListings(int page, int pageSize, String filter) {
         List<HdvListing> result = new ArrayList<>();
         long now = System.currentTimeMillis() / 1000L;
-        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb FROM hdv_listings WHERE sold=0 AND expires_at > ? ORDER BY id DESC LIMIT ? OFFSET ?";
+        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb, price_pb FROM hdv_listings WHERE sold=0 AND expires_at > ? ORDER BY id DESC LIMIT ? OFFSET ?";
         try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
             ps.setLong(1, now);
             ps.setInt(2, pageSize);
@@ -200,15 +209,19 @@ public class HdvDatabase {
                         }
                         if (!searchStr.contains(f)) match = false;
                     }
-                    if (match)
-                        result.add(new HdvListing(rs
-                                .getInt("id"), rs
-                                .getString("seller_uuid"), rs
-                                .getString("seller_name"), item, rs
-
-                                .getLong("price_per_unit"), rs
-                                .getInt("quantity"), rs
-                                .getLong("expires_at")));
+                    if (match) {
+                        HdvListing l = new HdvListing(
+                                rs.getInt("id"),
+                                rs.getString("seller_uuid"),
+                                rs.getString("seller_name"),
+                                item,
+                                rs.getLong("price_per_unit"),
+                                rs.getInt("quantity"),
+                                rs.getLong("expires_at"));
+                        l.setPayPB(rs.getInt("pay_pb") == 1);
+                        l.setPricePB(rs.getLong("price_pb"));
+                        result.add(l);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -219,7 +232,7 @@ public class HdvDatabase {
 
     public HdvListing getListingById(int id) {
         try {
-            String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb FROM hdv_listings WHERE id=? AND sold=0";
+            String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb, price_pb FROM hdv_listings WHERE id=? AND sold=0";
             try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
                 ps.setInt(1, id);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -533,7 +546,7 @@ public class HdvDatabase {
     public List<HdvListing> getExpiredListingsForPlayer(String sellerUuid) {
         List<HdvListing> result = new ArrayList<>();
         long now = System.currentTimeMillis() / 1000L;
-        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND cancelled=0 AND expires_at <= ?"
+        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb, price_pb FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND cancelled=0 AND expires_at <= ?"
                 + " ORDER BY id DESC LIMIT 10";
         try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
             ps.setString(1, sellerUuid);
@@ -554,7 +567,7 @@ public class HdvDatabase {
     public List<HdvListing> getActiveListingsForPlayer(String sellerUuid) {
         List<HdvListing> result = new ArrayList<>();
         long now = System.currentTimeMillis() / 1000L;
-        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND expires_at > ? ORDER BY id DESC";
+        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb, price_pb FROM hdv_listings WHERE seller_uuid=? AND sold=0 AND expires_at > ? ORDER BY id DESC";
         try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
             ps.setString(1, sellerUuid);
             ps.setLong(2, now);
@@ -576,7 +589,7 @@ public class HdvDatabase {
     public List<HdvListing> getSoldListingsForPlayer(String sellerUuid) {
         List<HdvListing> result = new ArrayList<>();
         // cancelled=0 : vraiment vendues par un acheteur (pas retirées par le vendeur)
-        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at FROM hdv_listings WHERE seller_uuid=? AND sold=1 AND cancelled=0 ORDER BY id DESC LIMIT 10";
+        String sql = "SELECT id, seller_uuid, seller_name, item_data, price_per_unit, quantity, expires_at, pay_pb, price_pb FROM hdv_listings WHERE seller_uuid=? AND sold=1 AND cancelled=0 ORDER BY id DESC LIMIT 10";
         try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
             ps.setString(1, sellerUuid);
             try (ResultSet rs = ps.executeQuery()) {
@@ -590,6 +603,8 @@ public class HdvDatabase {
                         l.setTotalPrice(rs.getLong("price_per_unit"));
                         l.setQuantity(rs.getInt("quantity"));
                         l.setExpiresAt(rs.getLong("expires_at"));
+                        try { l.setPayPB(rs.getInt("pay_pb") == 1); } catch (SQLException ignored) {}
+                        try { l.setPricePB(rs.getLong("price_pb")); } catch (SQLException ignored) {}
                         l.setSold(true);
                         result.add(l);
                     } catch (Exception e) {
@@ -634,6 +649,7 @@ public class HdvDatabase {
             listing.setQuantity(rs.getInt("quantity"));
             listing.setExpiresAt(rs.getLong("expires_at"));
             try { listing.setPayPB(rs.getInt("pay_pb") == 1); } catch (SQLException ignored) {}
+            try { listing.setPricePB(rs.getLong("price_pb")); } catch (SQLException ignored) {}
             return listing;
         } catch (SQLException e) {
             return null;

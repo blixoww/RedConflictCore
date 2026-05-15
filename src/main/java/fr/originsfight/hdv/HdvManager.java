@@ -211,6 +211,7 @@ public class HdvManager {
         pb.writeVarInt(l.getQuantity());
         pb.writeLong(l.getExpiresAt());
         pb.writeBoolean(l.isPayPB());
+        pb.writeLong(l.getPricePB()); // double-devise
         return pb.buildRaw();
     }
 
@@ -235,6 +236,7 @@ public class HdvManager {
                 pb.writeLong(l.getExpiresAt());
                 pb.writeBoolean(false); // not sold
                 pb.writeBoolean(l.isPayPB());
+                pb.writeLong(l.getPricePB());
                 serialized.add(pb.buildRaw());
             } catch (Exception e) {
                 LOG.warning("[HDV] sendMyListings active error: " + e.getMessage());
@@ -252,6 +254,7 @@ public class HdvManager {
                 pb.writeLong(l.getExpiresAt()); // expiresAt in the past → client isExpired() = true
                 pb.writeBoolean(false); // not sold, just expired
                 pb.writeBoolean(l.isPayPB());
+                pb.writeLong(l.getPricePB());
                 serialized.add(pb.buildRaw());
             } catch (Exception e) {
                 LOG.warning("[HDV] sendMyListings expired error: " + e.getMessage());
@@ -273,6 +276,7 @@ public class HdvManager {
                 pb.writeLong(l.getExpiresAt());
                 pb.writeBoolean(true); // sold
                 pb.writeBoolean(l.isPayPB());
+                pb.writeLong(l.getPricePB());
                 serialized.add(pb.buildRaw());
             } catch (Exception e) {
                 LOG.warning("[HDV] sendMyListings sold error: " + e.getMessage());
@@ -312,7 +316,7 @@ public class HdvManager {
         return Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];
     }
 
-    public void handleBuy(Player player, int listingId) {
+    public void handleBuy(Player player, int listingId, boolean buyerPayPB) {
         HdvListing listing = this.database.getListingById(listingId);
         if (listing == null) {
             HdvServerHandler.sendActionResult(player, false, "Annonce introuvable ou vendue.");
@@ -322,73 +326,89 @@ public class HdvManager {
             HdvServerHandler.sendActionResult(player, false, "Vous ne pouvez pas acheter votre propre item !");
             return;
         }
-        long price = listing.getTotalPrice();
-        if (price < 0L) return;
+        if (listing.getTotalPrice() < 0L) return;
 
-        if (listing.isPayPB()) {
-            // ── Achat en PB ────────────────────────────────────────────────
-            fr.originsfight.pb.PBManager pbMgr = plugin.getPBManager();
-            if (pbMgr == null) { HdvServerHandler.sendActionResult(player, false, "Système PB indisponible."); return; }
-            int buyerPB = pbMgr.get(player);
-            if (buyerPB < (int) price) {
-                HdvServerHandler.sendActionResult(player, false, "PB insuffisants (" + buyerPB + " / " + price + ").");
-                return;
-            }
-            boolean success = this.database.buyListingNoEarnings(listingId, listing.getQuantity());
-            if (success) {
-                pbMgr.remove(player, (int) price, "Achat en PB");
-                // Créditer le vendeur directement dans la DB (marche hors-ligne)
-                try {
-                    java.util.UUID sellerUUID = java.util.UUID.fromString(listing.getSellerUuid());
-                    plugin.getPlayerDatabase().addPB(sellerUUID, (int) price);
-                } catch (Exception e) {
-                    LOG.warning("[HDV] Erreur credit PB vendeur: " + e.getMessage());
-                }
-                String itemName = nameOf(listing.getItem());
-                this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), price);
-                giveItem(player, listing.getItem(), listing.getQuantity());
-                HdvServerHandler.sendActionResult(player, true, "Achat effectue en PB !");
-                // Notifier le vendeur si en ligne
-                Player seller = Bukkit.getPlayerExact(listing.getSellerName());
-                if (seller != null && seller.isOnline()) {
-                    byte[] notif = PacketBuilder.create(0x26)
-                            .writeString(itemName.length() > 64 ? itemName.substring(0, 64) : itemName)
-                            .writeVarInt(listing.getQuantity())
-                            .writeLong(price)
-                            .build();
-                    seller.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", notif);
-                }
-                sendListings(player, 0, "");
-            } else {
-                HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
-            }
+        boolean isDual = listing.isDual();
+
+        if (isDual && buyerPayPB) {
+            // ── Annonce double-devise : acheteur choisit PB ───────────────
+            buyWithPB(player, listing, listing.getPricePB());
+        } else if (listing.isPayPB() && !isDual) {
+            // ── Annonce PB uniquement ─────────────────────────────────────
+            buyWithPB(player, listing, listing.getTotalPrice());
         } else {
-            // ── Achat en monnaie ($) ───────────────────────────────────────
-            if (this.economy == null) return;
-            if (this.economy.getBalance(player) < price) {
-                HdvServerHandler.sendActionResult(player, false, "Fonds insuffisants.");
-                return;
-            }
-            boolean success = this.database.buyListing(listingId, listing.getQuantity());
-            if (success) {
-                this.economy.withdraw(player, price);
-                giveItem(player, listing.getItem(), listing.getQuantity());
-                String itemName = nameOf(listing.getItem());
-                this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), price);
-                HdvServerHandler.sendActionResult(player, true, "Achat effectue !");
-                Player seller = Bukkit.getPlayerExact(listing.getSellerName());
-                if (seller != null && seller.isOnline()) {
-                    byte[] notif = PacketBuilder.create(0x26)
-                            .writeString(itemName.length() > 64 ? itemName.substring(0, 64) : itemName)
-                            .writeVarInt(listing.getQuantity())
-                            .writeLong(price)
-                            .build();
-                    seller.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", notif);
-                }
-                sendListings(player, 0, "");
-            } else {
-                HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
-            }
+            // ── Annonce monnaie seule OU double-devise en $ ───────────────
+            buyWithMoney(player, listing, listing.getTotalPrice());
+        }
+    }
+
+    // Compat : ancienne signature sans buyerPayPB (non-dual)
+    public void handleBuy(Player player, int listingId) {
+        handleBuy(player, listingId, false);
+    }
+
+    private void buyWithPB(Player player, HdvListing listing, long pbPrice) {
+        fr.originsfight.pb.PBManager pbMgr = plugin.getPBManager();
+        if (pbMgr == null) { HdvServerHandler.sendActionResult(player, false, "Systeme PB indisponible."); return; }
+        if (pbMgr.get(player) < (int) pbPrice) {
+            HdvServerHandler.sendActionResult(player, false, "PB insuffisants (" + pbMgr.get(player) + " / " + pbPrice + ").");
+            return;
+        }
+        boolean success = this.database.buyListingNoEarnings(listing.getId(), listing.getQuantity());
+        if (success) {
+            pbMgr.remove(player, (int) pbPrice, "Achat HDV en PB");
+            creditSellerPB(listing, (int) pbPrice);
+            String itemName = nameOf(listing.getItem());
+            this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), pbPrice);
+            giveItem(player, listing.getItem(), listing.getQuantity());
+            HdvServerHandler.sendActionResult(player, true, "Achat effectue en PB !");
+            sendSoldNotif(listing, pbPrice, true);
+            sendListings(player, 0, "");
+        } else {
+            HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
+        }
+    }
+
+    private void buyWithMoney(Player player, HdvListing listing, long moneyPrice) {
+        if (this.economy == null) return;
+        if (this.economy.getBalance(player) < moneyPrice) {
+            HdvServerHandler.sendActionResult(player, false, "Fonds insuffisants.");
+            return;
+        }
+        boolean success = this.database.buyListing(listing.getId(), listing.getQuantity());
+        if (success) {
+            this.economy.withdraw(player, moneyPrice);
+            giveItem(player, listing.getItem(), listing.getQuantity());
+            String itemName = nameOf(listing.getItem());
+            this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), moneyPrice);
+            HdvServerHandler.sendActionResult(player, true, "Achat effectue !");
+            sendSoldNotif(listing, moneyPrice, false);
+            sendListings(player, 0, "");
+        } else {
+            HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
+        }
+    }
+
+    private void creditSellerPB(HdvListing listing, int amount) {
+        try {
+            java.util.UUID sellerUUID = java.util.UUID.fromString(listing.getSellerUuid());
+            plugin.getPlayerDatabase().addPB(sellerUUID, amount);
+        } catch (Exception e) {
+            LOG.warning("[HDV] Erreur credit PB vendeur: " + e.getMessage());
+        }
+    }
+
+    private void sendSoldNotif(HdvListing listing, long price, boolean payPB) {
+        Player seller = Bukkit.getPlayerExact(listing.getSellerName());
+        if (seller != null && seller.isOnline()) {
+            String itemName = nameOf(listing.getItem());
+            byte[] notif = PacketBuilder.create(0x26)
+                    .writeString(itemName.length() > 64 ? itemName.substring(0, 64) : itemName)
+                    .writeVarInt(listing.getQuantity())
+                    .writeLong(price)
+                    .writeBoolean(payPB)
+                    .build();
+            seller.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", notif);
         }
     }
 
@@ -399,17 +419,21 @@ public class HdvManager {
     }
 
     public void handlePostOffer(Player player, ItemStack item, long totalPrice, int quantity, boolean payPB) {
+        handlePostOffer(player, item, totalPrice, quantity, payPB, 0L);
+    }
+
+    public void handlePostOffer(Player player, ItemStack item, long totalPrice, int quantity, boolean payPB, long pricePB) {
         if (!payPB && this.economy == null) {
-            player.sendMessage("§cHDV indisponible.");
+            player.sendMessage("\u00a7cHDV (monnaie) indisponible.");
             return;
         }
         // Vérifier via NMS ID (support items moddés dont getType()==AIR côté Bukkit)
         if (item == null || CustomPacketServerHandler.getNmsItemId(item) == 0) {
-            player.sendMessage("§cVous ne pouvez pas vendre de l'air !");
+            player.sendMessage("\u00a7cVous ne pouvez pas vendre de l'air !");
             return;
         }
         if (totalPrice <= 0L) {
-            player.sendMessage("§cLe prix total doit tre sup!rieur 0.");
+            player.sendMessage("\u00a7cLe prix total doit etre superieur a 0.");
             return;
         }
         int avail = countItemsNms(player, item);
@@ -424,7 +448,7 @@ public class HdvManager {
         if (EnchantUtils.isEnchantedBook(item)) {
             EnchantUtils.applyFrenchMeta(item);
         }
-        int id = this.database.createListing(player.getUniqueId().toString(), player.getName(), item, totalPrice, quantity, payPB);
+        int id = this.database.createListing(player.getUniqueId().toString(), player.getName(), item, totalPrice, quantity, payPB, pricePB);
         if (id > 0) {
             HdvServerHandler.sendActionResult(player, true, "Mise en vente reussie !");
             sendListings(player, 0, "");

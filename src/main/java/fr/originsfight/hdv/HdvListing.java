@@ -22,6 +22,9 @@ public class HdvListing {
     /** true = l'acheteur paie en PB, false = monnaie ($). */
     private boolean payPB;
 
+    /** Prix en PB pour annonce double-devise (>0 => dual). 0 sinon. */
+    private long pricePB;
+
     public HdvListing() {}
 
     public HdvListing(int id, String sellerUuid, String sellerName, ItemStack item, long totalPrice, int quantity, long expiresAt) {
@@ -107,6 +110,12 @@ public class HdvListing {
     public void setPayPB(boolean p) {
         this.payPB = p;
     }
+
+    public long getPricePB() { return this.pricePB; }
+    public void setPricePB(long p) { this.pricePB = p; }
+
+    /** Vrai si l'annonce propose les deux devises (acheteur au choix). */
+    public boolean isDual() { return !this.payPB && this.pricePB > 0 && this.totalPrice > 0; }
 
     public boolean isExpired() {
         return (this.expiresAt > 0L && this.expiresAt < System.currentTimeMillis() / 1000L);

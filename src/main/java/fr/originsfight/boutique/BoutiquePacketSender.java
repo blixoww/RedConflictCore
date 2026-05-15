@@ -59,6 +59,9 @@ public final class BoutiquePacketSender {
             pb.writeLong(of.expiresAt);
         }
 
+        // Packs — extension en fin de paquet (lue via try/catch côté client pour compat.)
+        writeCategory(pb, plugin.getBoutiqueConfig().getList("boutique.packs"), "commandes");
+
         player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
     }
 

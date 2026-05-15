@@ -37,19 +37,25 @@ public class HdvServerHandler implements PluginMessageListener {
                     break;
                 case 20:
                     listingId[0] = reader.readVarInt();
-                    this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.handleBuy(player, listingId[0]));
+                    boolean buyerPBChoice = false;
+                    try { buyerPBChoice = reader.readBoolean(); } catch (Exception ignored) {}
+                    final boolean bpc = buyerPBChoice;
+                    this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.handleBuy(player, listingId[0], bpc));
                     break;
                 case 18:
                     item = reader.readItemStackNms();
                     totalPrice = reader.readLong();
                     quantity = reader.readVarInt();
                     boolean payPB = reader.readBoolean();
+                    long pricePBValue = 0L;
+                    try { pricePBValue = reader.readLong(); } catch (Exception ignored) {}
                     if (item == null) {
                         sendActionResult(player, false, "Item invalide recu.");
                         return;
                     }
                     final boolean payPBf = payPB;
-                    this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.handlePostOffer(player, item, totalPrice, quantity, payPBf));
+                    final long pricePBf = pricePBValue;
+                    this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.handlePostOffer(player, item, totalPrice, quantity, payPBf, pricePBf));
                     break;
                 case 19:
                     listingId[0] = reader.readVarInt();
