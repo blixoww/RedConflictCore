@@ -93,6 +93,14 @@ public class HdvDatabase {
         try (Statement stmt = this.connection.createStatement()) {
             stmt.execute("ALTER TABLE hdv_listings ADD COLUMN price_pb INTEGER NOT NULL DEFAULT 0");
         } catch (SQLException ignored) {}
+        // Migration : ajouter la colonne sold_in_pb (1 si l'annonce a été vendue contre des PB)
+        try (Statement stmt = this.connection.createStatement()) {
+            stmt.execute("ALTER TABLE hdv_listings ADD COLUMN sold_in_pb INTEGER NOT NULL DEFAULT 0");
+        } catch (SQLException ignored) {}
+        // Migration : ajouter la colonne amount_pb (gains PB en attente)
+        try (Statement stmt = this.connection.createStatement()) {
+            stmt.execute("ALTER TABLE hdv_earnings ADD COLUMN amount_pb INTEGER NOT NULL DEFAULT 0");
+        } catch (SQLException ignored) {}
     }
 
     public void logTransaction(String buyerName, String sellerName, String itemName, int quantity, long price) {
@@ -271,12 +279,12 @@ public class HdvDatabase {
             }
             int newQty = listing.getQuantity() - qtyToBuy;
             if (newQty <= 0) {
-                try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_listings SET quantity=0, sold=1 WHERE id=?")) {
+                try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_listings SET quantity=0, sold=1, sold_in_pb=1 WHERE id=?")) {
                     ps.setInt(1, listingId);
                     ps.executeUpdate();
                 }
             } else {
-                try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_listings SET quantity=? WHERE id=?")) {
+                try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_listings SET quantity=?, sold_in_pb=1 WHERE id=?")) {
                     ps.setInt(1, newQty);
                     ps.setInt(2, listingId);
                     ps.executeUpdate();
@@ -371,18 +379,38 @@ public class HdvDatabase {
 
     public void addEarnings(String uuid, String name, long amount) {
         try {
-            // Utiliser INSERT OR REPLACE compatible SQLite pour éviter les erreurs de syntaxe ON CONFLICT
-            String upsertSql = "INSERT OR REPLACE INTO hdv_earnings (uuid, player_name, amount) " +
-                    "VALUES (?, ?, COALESCE((SELECT amount FROM hdv_earnings WHERE uuid = ?), 0) + ?)";
+            // Préserve amount_pb existant
+            String upsertSql = "INSERT OR REPLACE INTO hdv_earnings (uuid, player_name, amount, amount_pb) " +
+                    "VALUES (?, ?, COALESCE((SELECT amount FROM hdv_earnings WHERE uuid = ?), 0) + ?, " +
+                    "COALESCE((SELECT amount_pb FROM hdv_earnings WHERE uuid = ?), 0))";
             try (PreparedStatement ps = this.connection.prepareStatement(upsertSql)) {
                 ps.setString(1, uuid);
                 ps.setString(2, name);
                 ps.setString(3, uuid);
                 ps.setLong(4, amount);
+                ps.setString(5, uuid);
                 ps.executeUpdate();
             }
         } catch (SQLException e) {
             LOG.severe("[HDV] addEarnings error: " + e.getMessage());
+        }
+    }
+
+    public void addPBEarnings(String uuid, String name, long amountPB) {
+        try {
+            String upsertSql = "INSERT OR REPLACE INTO hdv_earnings (uuid, player_name, amount, amount_pb) " +
+                    "VALUES (?, ?, COALESCE((SELECT amount FROM hdv_earnings WHERE uuid = ?), 0), " +
+                    "COALESCE((SELECT amount_pb FROM hdv_earnings WHERE uuid = ?), 0) + ?)";
+            try (PreparedStatement ps = this.connection.prepareStatement(upsertSql)) {
+                ps.setString(1, uuid);
+                ps.setString(2, name);
+                ps.setString(3, uuid);
+                ps.setString(4, uuid);
+                ps.setLong(5, amountPB);
+                ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            LOG.severe("[HDV] addPBEarnings error: " + e.getMessage());
         }
     }
 
@@ -399,24 +427,57 @@ public class HdvDatabase {
         return 0L;
     }
 
+    public long getPendingPBEarnings(String uuid) {
+        try (PreparedStatement ps = this.connection.prepareStatement("SELECT amount_pb FROM hdv_earnings WHERE uuid=?")) {
+            ps.setString(1, uuid);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            LOG.severe("[HDV] getPendingPBEarnings error: " + e.getMessage());
+        }
+        return 0L;
+    }
+
     public long collectEarnings(String uuid) {
         try {
             long amount = getPendingEarnings(uuid);
             if (amount <= 0L)
                 return 0L;
-            // Remet le solde en attente à 0
             try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_earnings SET amount=0 WHERE uuid=?")) {
                 ps.setString(1, uuid);
                 ps.executeUpdate();
             }
-            // Masque les annonces vendues : cancelled=1 pour qu'elles n'apparaissent plus dans "mes annonces"
-            try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_listings SET cancelled=1 WHERE seller_uuid=? AND sold=1 AND cancelled=0")) {
+            // Masque uniquement les annonces vendues en monnaie (sold_in_pb=0)
+            try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_listings SET cancelled=1 WHERE seller_uuid=? AND sold=1 AND cancelled=0 AND sold_in_pb=0")) {
                 ps.setString(1, uuid);
                 ps.executeUpdate();
             }
             return amount;
         } catch (SQLException e) {
             LOG.severe("[HDV] collectEarnings error: " + e.getMessage());
+            return 0L;
+        }
+    }
+
+    public long collectPBEarnings(String uuid) {
+        try {
+            long amountPB = getPendingPBEarnings(uuid);
+            if (amountPB <= 0L)
+                return 0L;
+            try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_earnings SET amount_pb=0 WHERE uuid=?")) {
+                ps.setString(1, uuid);
+                ps.executeUpdate();
+            }
+            // Masque uniquement les annonces vendues en PB
+            try (PreparedStatement ps = this.connection.prepareStatement("UPDATE hdv_listings SET cancelled=1 WHERE seller_uuid=? AND sold=1 AND cancelled=0 AND sold_in_pb=1")) {
+                ps.setString(1, uuid);
+                ps.executeUpdate();
+            }
+            return amountPB;
+        } catch (SQLException e) {
+            LOG.severe("[HDV] collectPBEarnings error: " + e.getMessage());
             return 0L;
         }
     }

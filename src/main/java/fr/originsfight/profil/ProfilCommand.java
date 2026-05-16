@@ -106,14 +106,20 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
             ptMin  = (int) ((cached.playtimeSeconds + sessionSec) / 60);
         }
 
-        // ── Balance — fraîche depuis Vault, mise à jour en base ──────────────────
+        // ── Balance — fraîche depuis Vault (online) ou snapshot DB (offline) ─────
         long balance = 0L;
+        boolean isOnline = Bukkit.getPlayer(uuid) != null;
         Economy eco = plugin.getEconomy();
         if (eco != null) {
             OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
             if (op != null) {
                 try { balance = (long) eco.getBalance(op); } catch (Exception ignored) {}
             }
+        }
+        // Fallback offline : Vault ne supporte pas toujours getBalance(OfflinePlayer)
+        // → on lit le dernier snapshot persisté dans PlayerDatabase.
+        if (!isOnline && balance == 0L && cached != null && cached.balance > 0L) {
+            balance = cached.balance;
         }
 
         // ── Rang — frais depuis Vault Chat, mise à jour en base ──────────────────
@@ -140,13 +146,25 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
         }
 
         // ── Persistance des snapshots dans PlayerDatabase ─────────────────────────
-        playerDatabase.updateBalance(uuid, balance);
+        // Note : on ne réécrit la balance que si on l'a lue depuis Vault, sinon on
+        // écraserait un snapshot valide par 0 (ex. joueur offline).
+        if (isOnline || balance > 0L) playerDatabase.updateBalance(uuid, balance);
         playerDatabase.updateRank(uuid, rank);
         playerDatabase.updateFaction(uuid, faction);
         playerDatabase.setStreak(uuid, streak);
         playerDatabase.setBounty(uuid, bounty);
 
-        return new ProfilePayload(name, faction, rank, kills, deaths, ptMin, balance, streak, bounty);
+        // ── PB — solde Points Boutique (toujours frais depuis la DB) ────────────
+        int pb = 0;
+        if (plugin.getPBManager() != null) {
+            try { pb = plugin.getPBManager().get(uuid); }
+            catch (Exception e) {
+                plugin.getLogger().warning("[/profil] PB lookup failed for " + name + ": " + e.getMessage());
+            }
+        }
+        plugin.getLogger().fine("[/profil] " + name + " uuid=" + uuid + " balance=" + balance + " pb=" + pb);
+
+        return new ProfilePayload(name, faction, rank, kills, deaths, ptMin, balance, streak, bounty, pb);
     }
 
     /**
@@ -229,6 +247,7 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
                 .writeVarInt(p.streak)
                 .writeLong(p.bounty)
                 .writeVarInt(factionRelation)
+                .writeVarInt(p.pb)
                 .build();
         recipient.sendPluginMessage(plugin, CHANNEL, data);
     }
@@ -412,12 +431,12 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
 
     private static class ProfilePayload {
         final String name, faction, rank;
-        final int kills, deaths, ptMin, streak;
+        final int kills, deaths, ptMin, streak, pb;
         final long balance, bounty;
 
         ProfilePayload(String name, String faction, String rank,
                        int kills, int deaths, int ptMin,
-                       long balance, int streak, long bounty) {
+                       long balance, int streak, long bounty, int pb) {
             this.name = name;
             this.faction = faction;
             this.rank = rank;
@@ -427,6 +446,7 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
             this.balance = balance;
             this.streak = streak;
             this.bounty = bounty;
+            this.pb = pb;
         }
     }
 }

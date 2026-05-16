@@ -1,8 +1,11 @@
 package fr.originsfight.pb;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.data.PlayerDataServerHandler;
 import fr.originsfight.data.PlayerDatabase;
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 
 import java.util.UUID;
 
@@ -59,6 +62,7 @@ public class PBManager {
             int bal = db.getPB(p.getUniqueId());
             logger.log("ADD", p.getName(), amount, bal, reason);
             alerts.notify("ADD", p.getName(), amount, reason);
+            pushBalance(p.getUniqueId(), bal);
         }
         return ok;
     }
@@ -69,7 +73,10 @@ public class PBManager {
         boolean ok = db.removePB(p.getUniqueId(), amount);
         int bal = db.getPB(p.getUniqueId());
         logger.log(ok ? "REMOVE" : "REMOVE_FAIL", p.getName(), amount, bal, reason);
-        if (ok) alerts.notify("REMOVE", p.getName(), amount, reason);
+        if (ok) {
+            alerts.notify("REMOVE", p.getName(), amount, reason);
+            pushBalance(p.getUniqueId(), bal);
+        }
         return ok;
     }
 
@@ -79,7 +86,18 @@ public class PBManager {
         db.setPB(p.getUniqueId(), amount);
         logger.log("SET", p.getName(), amount, amount, reason);
         alerts.notify("SET", p.getName(), amount, reason);
+        pushBalance(p.getUniqueId(), amount);
         return true;
+    }
+
+    /** Pousse le nouveau solde PB au client si le joueur est en ligne (packet 0x53). */
+    private void pushBalance(UUID uuid, int newBalance) {
+        try {
+            Player online = Bukkit.getPlayer(uuid);
+            if (online != null && online.isOnline()) {
+                PlayerDataServerHandler.sendPB(online, newBalance);
+            }
+        } catch (Exception ignored) {}
     }
 
     /**

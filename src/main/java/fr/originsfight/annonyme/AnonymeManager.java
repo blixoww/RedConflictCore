@@ -144,14 +144,14 @@ public class AnonymeManager {
 
     public void addAnonymous(Player player) {
         anonymousPlayers.add(player.getUniqueId());
-        
+
         // Store original team if player is already in a tea
         Team playerCurrentTeam = player.getScoreboard().getEntryTeam(player.getName());
         if (playerCurrentTeam != null) {
             originalTeams.put(player.getUniqueId(), playerCurrentTeam);
             playerCurrentTeam.removeEntry(player.getName());
         }
-        
+
         anonymousTeam.addEntry(player.getName());
 
         // Store original display name and set masked one
@@ -161,6 +161,8 @@ public class AnonymeManager {
         try {
             player.setPlayerListName(obf);
         } catch (IllegalArgumentException ignored) {}
+        // Push état au client (override du rendu pseudo/faction/grade)
+        AnonymousDataSender.broadcast(player, true);
     }
 
     public void removeAnonymous(Player player) {
@@ -182,6 +184,8 @@ public class AnonymeManager {
         try {
             player.setPlayerListName(null);
         } catch (IllegalArgumentException ignored) {}
+        // Force le client à effacer le cache anonyme pour ce joueur
+        AnonymousDataSender.broadcast(player, false);
     }
 
     public boolean isAnonymous(Player player) {
@@ -200,7 +204,12 @@ public class AnonymeManager {
                 player.setPlayerListName(obf);
             } catch (IllegalArgumentException ignored) {}
             player.sendMessage("§aVous êtes anonyme.");
+            // Avertit tous les viewers que ce joueur est anonyme
+            AnonymousDataSender.broadcast(player, true);
         }
+        // Synchronise vers ce viewer l'état de tous les joueurs anonymes en ligne
+        // (différé d'un tick pour laisser la connexion s'établir côté plugin channel).
+        Bukkit.getScheduler().runTaskLater(plugin, () -> AnonymousDataSender.syncAll(player), 5L);
     }
 
     public void onPlayerQuit(Player player) {

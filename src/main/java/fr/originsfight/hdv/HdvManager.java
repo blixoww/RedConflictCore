@@ -110,6 +110,9 @@ public class HdvManager {
 
     /** Envoie le packet HDV_OPEN (0x25) pour ouvrir l'interface côté client. */
     public void sendOpen(Player player) {
+        // Pousse les soldes à jour AVANT l'ouverture pour éviter qu'un cache obsolète
+        // (notamment PB) ne bloque les boutons d'achat.
+        sendPlayerBalance(player);
         byte[] pkt = PacketBuilder.create(0x25).build();
         player.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", pkt);
     }
@@ -130,6 +133,14 @@ public class HdvManager {
         long balance = (this.economy != null) ? this.economy.getBalance(player) : 0L;
         byte[] pkt = PacketBuilder.create(80).writeLong(balance).build();
         player.sendPluginMessage((Plugin)this.plugin, "CUSTOM:PDATA_S2C", pkt);
+        // Synchronise aussi le solde PB pour que les boutons d'achat PB
+        // se basent sur la vraie valeur DB et non sur le cache obsolète.
+        if (plugin.getPBManager() != null) {
+            try {
+                int pb = plugin.getPBManager().get(player);
+                fr.originsfight.data.PlayerDataServerHandler.sendPB(player, pb);
+            } catch (Exception ignored) {}
+        }
     }
 
     private byte[] serializeItemForNetwork(ItemStack item) {
@@ -222,6 +233,7 @@ public class HdvManager {
         List<HdvListing> expired = this.database.getExpiredListingsForPlayer(uuid);
         List<HdvListing> sold    = this.database.getSoldListingsForPlayer(uuid);
         long pendingEarnings    = this.database.getPendingEarnings(uuid);
+        long pendingPBEarnings  = this.database.getPendingPBEarnings(uuid);
 
         List<byte[]> serialized = new ArrayList<>();
         for (HdvListing l : active) {
@@ -288,13 +300,14 @@ public class HdvManager {
             byte[] pkt = PacketBuilder.create(0x24)
                     .writeVarInt(0)
                     .writeLong(pendingEarnings)
+                    .writeLong(pendingPBEarnings)
                     .build();
             player.sendPluginMessage((Plugin)this.plugin, "CUSTOM:HDV_S2C", pkt);
         } else {
             int start = 0;
             boolean first = true;
             while (start < serialized.size()) {
-                int end = start, size = first ? 12 : 4; // header (4 varint count + 8 long)
+                int end = start, size = first ? 20 : 4; // header (4 varint count + 8 long $ + 8 long PB)
                 while (end < serialized.size()) {
                     int n = serialized.get(end).length;
                     if (size + n > 28000 && end > start) break;
@@ -302,8 +315,14 @@ public class HdvManager {
                     end++;
                 }
                 PacketBuilder pb = PacketBuilder.create(0x24).writeVarInt(end - start);
-                if (first) { pb.writeLong(pendingEarnings); first = false; }
-                else { pb.writeLong(-1L); } // pas re-envoyé si multi-chunk
+                if (first) {
+                    pb.writeLong(pendingEarnings);
+                    pb.writeLong(pendingPBEarnings);
+                    first = false;
+                } else {
+                    pb.writeLong(-1L); // sentinels : pas re-envoyé si multi-chunk
+                    pb.writeLong(-1L);
+                }
                 for (int i = start; i < end; i++) pb.writeBytes(serialized.get(i));
                 player.sendPluginMessage((Plugin)this.plugin, "CUSTOM:HDV_S2C", pb.build());
                 start = end;
@@ -357,12 +376,12 @@ public class HdvManager {
         boolean success = this.database.buyListingNoEarnings(listing.getId(), listing.getQuantity());
         if (success) {
             pbMgr.remove(player, (int) pbPrice, "Achat HDV en PB");
-            creditSellerPB(listing, (int) pbPrice);
+            this.database.addPBEarnings(listing.getSellerUuid(), listing.getSellerName(), pbPrice);
             String itemName = nameOf(listing.getItem());
             this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), pbPrice);
             giveItem(player, listing.getItem(), listing.getQuantity());
             HdvServerHandler.sendActionResult(player, true, "Achat effectue en PB !");
-            sendSoldNotif(listing, pbPrice, true);
+            sendSoldNotif(listing, pbPrice, true, player.getName());
             sendListings(player, 0, "");
         } else {
             HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
@@ -382,7 +401,7 @@ public class HdvManager {
             String itemName = nameOf(listing.getItem());
             this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), moneyPrice);
             HdvServerHandler.sendActionResult(player, true, "Achat effectue !");
-            sendSoldNotif(listing, moneyPrice, false);
+            sendSoldNotif(listing, moneyPrice, false, player.getName());
             sendListings(player, 0, "");
         } else {
             HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
@@ -398,15 +417,19 @@ public class HdvManager {
         }
     }
 
-    private void sendSoldNotif(HdvListing listing, long price, boolean payPB) {
+    private void sendSoldNotif(HdvListing listing, long price, boolean payPB, String buyerName) {
         Player seller = Bukkit.getPlayerExact(listing.getSellerName());
         if (seller != null && seller.isOnline()) {
             String itemName = nameOf(listing.getItem());
+            String buyer = (buyerName != null) ? buyerName : "?";
+            if (buyer.length() > 32) buyer = buyer.substring(0, 32);
             byte[] notif = PacketBuilder.create(0x26)
                     .writeString(itemName.length() > 64 ? itemName.substring(0, 64) : itemName)
                     .writeVarInt(listing.getQuantity())
                     .writeLong(price)
                     .writeBoolean(payPB)
+                    .writeString(buyer)
+                    .writeBytes(serializeItemForNetwork(listing.getItem()))
                     .build();
             seller.sendPluginMessage((Plugin) this.plugin, "CUSTOM:HDV_S2C", notif);
         }
@@ -519,24 +542,38 @@ public class HdvManager {
     }
 
     public void handleCollect(Player player) {
-        long amount = this.database.collectEarnings(player.getUniqueId().toString());
-        if (amount <= 0L) {
+        String uuid = player.getUniqueId().toString();
+        long amount   = this.database.collectEarnings(uuid);
+        long amountPB = this.database.collectPBEarnings(uuid);
+        if (amount <= 0L && amountPB <= 0L) {
             HdvServerHandler.sendActionResult(player, false, "Aucun gain en attente.");
             player.sendMessage("§6[HDV] §7Aucun gain a collecter pour le moment.");
             return;
         }
-        if (this.economy != null)
+        if (amount > 0L && this.economy != null) {
             this.economy.deposit(player, amount);
+        }
+        if (amountPB > 0L && plugin.getPBManager() != null) {
+            plugin.getPBManager().add(player, (int) amountPB, "Collecte HDV (vente PB)");
+        }
         long newBalance = (this.economy != null) ? this.economy.getBalance(player) : 0L;
+        int  newPB      = (plugin.getPBManager() != null) ? plugin.getPBManager().get(player) : 0;
         // Message riche en jeu
         player.sendMessage("§6┌──────────────────────────────────┐");
         player.sendMessage("§6│  §e Gains HDV collectes            §6│");
         player.sendMessage("§6│                                    §6│");
-        player.sendMessage("§6│  §7Montant       : §a+" + fmt(amount) + " $");
-        player.sendMessage("§6│  §7Nouveau solde : §6" + fmt(newBalance) + " $");
+        if (amount > 0L)
+            player.sendMessage("§6│  §7Montant       : §a+" + fmt(amount) + " $");
+        if (amountPB > 0L)
+            player.sendMessage("§6│  §7Points Boutique : §a+" + fmt(amountPB) + " PB");
+        player.sendMessage("§6│  §7Nouveau solde : §6" + fmt(newBalance) + " $ §7| §e" + newPB + " PB");
         player.sendMessage("§6└──────────────────────────────────┘");
-        // Packet de confirmation (utilisé par le GUI pour afficher le message de statut)
-        HdvServerHandler.sendActionResult(player, true, "Gains collectes : +" + fmt(amount) + " $ !");
+        // Packet de confirmation
+        StringBuilder msg = new StringBuilder("Gains collectes :");
+        if (amount   > 0L) msg.append(" +").append(fmt(amount)).append(" $");
+        if (amountPB > 0L) msg.append((amount > 0L ? " et" : "") + " +").append(fmt(amountPB)).append(" PB");
+        msg.append(" !");
+        HdvServerHandler.sendActionResult(player, true, msg.toString());
         sendPlayerBalance(player);
         // Envoyer la liste mise a jour pour purger les items vendus du menu "Mes annonces"
         sendMyListings(player);
