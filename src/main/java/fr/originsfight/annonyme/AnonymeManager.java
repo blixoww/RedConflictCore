@@ -65,17 +65,8 @@ public class AnonymeManager {
                     }
                     anonymousTeam.addEntry(player.getName());
                 }
-                // Le faction plugin peut aussi réécrire le displayName / playerListName,
-                // on les ré-applique ici.
-                String obf = "Identité masquée";
-                if (!obf.equals(player.getDisplayName())) {
-                    player.setDisplayName(obf);
-                }
-                if (!obf.equals(player.getPlayerListName())) {
-                    try {
-                        player.setPlayerListName(obf);
-                    } catch (IllegalArgumentException ignored) {}
-                }
+                // Anonymat uniquement au-dessus de la tête (géré côté client) :
+                // pas de modif displayName (chat) ni playerListName (tab).
             }
         }, 10L, 10L);
     }
@@ -154,14 +145,9 @@ public class AnonymeManager {
 
         anonymousTeam.addEntry(player.getName());
 
-        // Store original display name and set masked one
-        originalDisplayNames.put(player.getUniqueId(), player.getDisplayName());
-        String obf = "Identité masquée";
-        player.setDisplayName(obf);
-        try {
-            player.setPlayerListName(obf);
-        } catch (IllegalArgumentException ignored) {}
-        // Push état au client (override du rendu pseudo/faction/grade)
+        // Anonymat uniquement au-dessus de la tête : on ne touche ni au displayName
+        // (chat) ni au playerListName (tab). Le rendu est overridé côté client mod
+        // via AnonymousCache + RenderPlayer.
         AnonymousDataSender.broadcast(player, true);
     }
 
@@ -175,15 +161,12 @@ public class AnonymeManager {
             originalTeam.addEntry(player.getName());
         }
 
-        // Restore original display name
+        // Restaure le displayName d'origine si on en avait stocké un (migration depuis
+        // un ancien build qui le modifiait — n'est plus modifié par addAnonymous).
         String originalName = originalDisplayNames.remove(player.getUniqueId());
-        if (originalName != null) {
+        if (originalName != null && !originalName.equals(player.getDisplayName())) {
             player.setDisplayName(originalName);
         }
-        // Restore tab list name (null = revert to actual player name)
-        try {
-            player.setPlayerListName(null);
-        } catch (IllegalArgumentException ignored) {}
         // Force le client à effacer le cache anonyme pour ce joueur
         AnonymousDataSender.broadcast(player, false);
     }
@@ -194,15 +177,8 @@ public class AnonymeManager {
 
     public void onPlayerJoin(Player player) {
         if (isAnonymous(player)) {
-            // Re-apply anonymity settings on join
+            // Re-apply anonymity settings on join (team de scoreboard seulement)
             anonymousTeam.addEntry(player.getName());
-            // Ensure display name is obfuscated on join
-            originalDisplayNames.put(player.getUniqueId(), player.getDisplayName());
-            String obf = "Identité masquée";
-            player.setDisplayName(obf);
-            try {
-                player.setPlayerListName(obf);
-            } catch (IllegalArgumentException ignored) {}
             player.sendMessage("§aVous êtes anonyme.");
             // Avertit tous les viewers que ce joueur est anonyme
             AnonymousDataSender.broadcast(player, true);

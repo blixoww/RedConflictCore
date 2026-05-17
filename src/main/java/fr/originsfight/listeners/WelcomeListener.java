@@ -29,7 +29,8 @@ public class WelcomeListener implements Listener {
     // Lignes pour la première connexion (joueur)
     private static final String[] FIRST_WELCOME = {
         SEP,
-        "§6§l  Première connexion détectée — Bienvenue §f%s §6§l!",
+        "§6§l  ★ Première connexion ★",
+        "§7  Bienvenue §f%s §7sur §c§lRedConflict §7!",
         "§7  Serveur §f1.8.9 §7| PvP / Survie",
         "§7  Lis les règles avant de jouer.",
         "§7  Discord §f: §bdiscord.gg/UMJUnfQq",

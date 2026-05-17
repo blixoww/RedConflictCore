@@ -157,12 +157,8 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
         // ── PB — solde Points Boutique (toujours frais depuis la DB) ────────────
         int pb = 0;
         if (plugin.getPBManager() != null) {
-            try { pb = plugin.getPBManager().get(uuid); }
-            catch (Exception e) {
-                plugin.getLogger().warning("[/profil] PB lookup failed for " + name + ": " + e.getMessage());
-            }
+            try { pb = plugin.getPBManager().get(uuid); } catch (Exception ignored) {}
         }
-        plugin.getLogger().fine("[/profil] " + name + " uuid=" + uuid + " balance=" + balance + " pb=" + pb);
 
         return new ProfilePayload(name, faction, rank, kills, deaths, ptMin, balance, streak, bounty, pb);
     }

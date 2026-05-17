@@ -32,8 +32,7 @@ public class AutoMessageManager {
 
         // 1 — Présentation générale
         SEP + "\n" +
-        PRE + "§6§l★ §eNouvel ici ? Tapez §f/commands §epour voir tout ce que vous pouvez faire !\n" +
-        "  §8| §7PvP, factions, duels, économie, événements — §ftout §7est là.\n" +
+        PRE + "§6§l★Tapez §f/commands §epour voir tout ce que vous pouvez faire !\n" +
         SEP,
 
         // 2 — Duels
