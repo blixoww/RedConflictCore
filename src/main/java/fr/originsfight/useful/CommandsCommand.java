@@ -23,46 +23,46 @@ public class CommandsCommand implements CommandExecutor {
         player.sendMessage(RC.PRE + "§eListe des commandes §f:");
         player.sendMessage("");
 
-        player.sendMessage("  §c§l⚔ Combat & Duels");
-        player.sendMessage("  §8| §f/duel <joueur>       §7— Défier un joueur §8(votre équipement)");
-        player.sendMessage("  §8| §f/duelk <joueur>      §7— Défier un joueur §8(kit défini)");
-        player.sendMessage("  §8| §f/duelrandom          §7— Duel aléatoire §8(votre équipement)");
-        player.sendMessage("  §8| §f/duelkrandom         §7— Duel aléatoire §8(kit défini)");
+        player.sendMessage("  §c§l⚔ §cCombat §8& §cDuels");
+        player.sendMessage("  §8| §f/duel §7<joueur> §8— §7Défier en duel §8(votre équipement)");
+        player.sendMessage("  §8| §f/duelk §7<joueur> §8— §7Défier en duel §8(kit défini)");
+        player.sendMessage("  §8| §f/duelrandom §8— §7Duel aléatoire §8(votre équipement)");
+        player.sendMessage("  §8| §f/duelkrandom §8— §7Duel aléatoire §8(kit défini)");
         player.sendMessage("");
 
-        player.sendMessage("  §e§l★ Stats & Profil");
-        player.sendMessage("  §8| §f/ks                  §7— Kills, morts, ratio, temps de jeu");
-        player.sendMessage("  §8| §f/profil <joueur>     §7— Voir le profil complet d'un joueur");
+        player.sendMessage("  §e§l★ §eStats §8& §eProfil");
+        player.sendMessage("  §8| §f/ks §8— §7Kills, morts, ratio, temps de jeu");
+        player.sendMessage("  §8| §f/profil §7<joueur> §8— §7Voir le profil complet d'un joueur");
         player.sendMessage("");
 
-        player.sendMessage("  §6§l$ Économie");
-        player.sendMessage("  §8| §f/hdv                 §7— Hôtel des Ventes §8(achat/vente)");
-        player.sendMessage("  §8| §f/shop                §7— Boutique du serveur");
-        player.sendMessage("  §8| §f/baltop              §7— Classement des plus riches");
-        player.sendMessage("  §8| §f/prime <joueur> <$>  §7— Placer une prime §8(§f/prime list§8)");
-        player.sendMessage("  §8| §f/loto <montant>      §7— Parier sur le loto §8(§f/loto help§8)");
+        player.sendMessage("  §6§l$ §6Économie");
+        player.sendMessage("  §8| §f/hdv §8— §7Hôtel des Ventes §8(achat/vente)");
+        player.sendMessage("  §8| §f/shop §8— §7Boutique du serveur");
+        player.sendMessage("  §8| §f/baltop §8— §7Classement des plus riches");
+        player.sendMessage("  §8| §f/prime §7<joueur> <$> §8— §7Placer une prime §8(§f/prime list§8)");
+        player.sendMessage("  §8| §f/loto §7<montant> §8— §7Parier sur le loto §8(§f/loto help§8)");
         player.sendMessage("");
 
-        player.sendMessage("  §a§l♥ Social");
-        player.sendMessage("  §8| §f/friend add <joueur> §7— Ajouter un ami §8(pas de dégâts mutuels)");
-        player.sendMessage("  §8| §f/friend list         §7— Voir vos amis");
-        player.sendMessage("  §8| §f/friend requests     §7— Demandes d'amis reçues");
-        player.sendMessage("  §8| §f/trade <joueur>      §7— Échange sécurisé d'items");
+        player.sendMessage("  §a§l♥ §aSocial");
+        player.sendMessage("  §8| §f/friend add §7<joueur> §8— §7Ajouter un ami §8(pas de dégâts mutuels)");
+        player.sendMessage("  §8| §f/friend list §8— §7Voir vos amis");
+        player.sendMessage("  §8| §f/friend requests §8— §7Demandes d'amis reçues");
+        player.sendMessage("  §8| §f/trade §7<joueur> §8— §7Échange sécurisé d'items");
         player.sendMessage("");
 
-        player.sendMessage("  §d§l✦ Événements");
-        player.sendMessage("  §8| §f/plannings           §7— Voir les prochains événements");
+        player.sendMessage("  §d§l✦ §dÉvénements");
+        player.sendMessage("  §8| §f/plannings §8— §7Voir les prochains événements");
         player.sendMessage("");
 
         player.sendMessage("  §7§lUtilitaires");
-        player.sendMessage("  §8| §f/repairall           §7— Réparer tous vos items §8(cooldown 24h)");
-        player.sendMessage("  §8| §f/cobble              §7— Filtrer la cobblestone automatiquement");
-        player.sendMessage("  §8| §f/furnace this|all    §7— Cuire des items sans four");
-        player.sendMessage("  §8| §f/bottlexp            §7— Embouteiller vos niveaux d'XP");
-        player.sendMessage("  §8| §f/poubelle            §7— Poubelle virtuelle");
-        player.sendMessage("  §8| §f/vision              §7— Vision nocturne");
+        player.sendMessage("  §8| §f/repairall §8— §7Réparer tous vos items §8(cooldown 24h)");
+        player.sendMessage("  §8| §f/cobble §8— §7Filtrer la cobblestone automatiquement");
+        player.sendMessage("  §8| §f/furnace §7<this|all> §8— §7Cuire des items sans four");
+        player.sendMessage("  §8| §f/bottlexp §8— §7Embouteiller vos niveaux d'XP");
+        player.sendMessage("  §8| §f/poubelle §8— §7Poubelle virtuelle");
+        player.sendMessage("  §8| §f/vision §8— §7Vision nocturne");
+        player.sendMessage("  §8| §f/guide §8— §7Ouvrir le guide de craft");
         player.sendMessage("");
-
         player.sendMessage(RC.SEP);
 
         return true;

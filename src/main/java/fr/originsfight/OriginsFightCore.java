@@ -61,10 +61,10 @@ import fr.originsfight.useful.BaltopCommand;
 import fr.originsfight.useful.CobbleCommand;
 import fr.originsfight.useful.CommandsCommand;
 import fr.originsfight.useful.FurnaceCommand;
+import fr.originsfight.useful.GuideCommand;
 import fr.originsfight.useful.MsgCommand;
 import fr.originsfight.useful.PoubelleCommand;
 import fr.originsfight.useful.VisionCommand;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -283,6 +283,8 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("vision").setExecutor(new VisionCommand());
         // Liste des commandes
         getCommand("commands").setExecutor(new CommandsCommand());
+        // Guide du serveur → ouvre le GuiCraftGuide côté client modifié
+        getCommand("guide").setExecutor(new GuideCommand(this));
         // Messagerie privée
         MsgCommand msg = new MsgCommand();
         getCommand("msg").setExecutor(msg);

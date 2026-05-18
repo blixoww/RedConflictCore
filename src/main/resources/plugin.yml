@@ -80,6 +80,10 @@ commands:
     description: Participer au loto, voir son état ou le prochain tirage
     usage: /loto <montant> | /loto info | /loto next | /loto help
     aliases: [lottery]
+  guide:
+    description: Affiche le guide du serveur RedConflict
+    usage: /guide
+    aliases: [aide]
   commands:
     description: Affiche la liste des commandes disponibles
     usage: /commands
