@@ -86,6 +86,110 @@ public class ShopDatabase {
                 "item_id INTEGER NOT NULL, type TEXT NOT NULL, quantity INTEGER NOT NULL," +
                 "price_unit INTEGER NOT NULL, timestamp INTEGER NOT NULL," +
                 "FOREIGN KEY (item_id) REFERENCES shop_items(id));");
+
+            // Événements boursiers (krach, inflation, aubaine)
+            s.execute("CREATE TABLE IF NOT EXISTS shop_events (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL," +
+                "start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL," +
+                "multiplier_buy REAL NOT NULL DEFAULT 1.0," +
+                "multiplier_sell REAL NOT NULL DEFAULT 1.0," +
+                "item_ids TEXT NOT NULL DEFAULT ''," +
+                "manual INTEGER NOT NULL DEFAULT 0," +
+                "announcement TEXT NOT NULL DEFAULT '');");
+        }
+    }
+
+    // ── Événements ────────────────────────────────────────────────────────────
+
+    public long insertEvent(String type, long startTs, long endTs,
+                            double multBuy, double multSell,
+                            String itemIdsCsv, boolean manual, String announcement) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO shop_events(type,start_ts,end_ts,multiplier_buy,multiplier_sell," +
+                "item_ids,manual,announcement) VALUES(?,?,?,?,?,?,?,?)",
+                Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, type); ps.setLong(2, startTs); ps.setLong(3, endTs);
+            ps.setDouble(4, multBuy); ps.setDouble(5, multSell);
+            ps.setString(6, itemIdsCsv == null ? "" : itemIdsCsv);
+            ps.setInt(7, manual ? 1 : 0);
+            ps.setString(8, announcement == null ? "" : announcement);
+            ps.executeUpdate();
+            try (ResultSet k = ps.getGeneratedKeys()) { if (k.next()) return k.getLong(1); }
+        } catch (SQLException e) { LOG.severe("[Shop] insertEvent: " + e.getMessage()); }
+        return -1L;
+    }
+
+    public List<ShopEventRow> getActiveEvents() {
+        long now = System.currentTimeMillis() / 1000L;
+        List<ShopEventRow> list = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM shop_events WHERE end_ts > ? ORDER BY start_ts ASC")) {
+            ps.setLong(1, now);
+            try (ResultSet rs = ps.executeQuery()) { while (rs.next()) list.add(readEvent(rs)); }
+        } catch (SQLException e) { LOG.severe("[Shop] getActiveEvents: " + e.getMessage()); }
+        return list;
+    }
+
+    public ShopEventRow getEventById(long id) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM shop_events WHERE id=?")) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) { if (rs.next()) return readEvent(rs); }
+        } catch (SQLException e) { LOG.severe("[Shop] getEventById: " + e.getMessage()); }
+        return null;
+    }
+
+    public void terminateEvent(long id) {
+        long now = System.currentTimeMillis() / 1000L;
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE shop_events SET end_ts=? WHERE id=? AND end_ts>?")) {
+            ps.setLong(1, now); ps.setLong(2, id); ps.setLong(3, now);
+            ps.executeUpdate();
+        } catch (SQLException e) { LOG.severe("[Shop] terminateEvent: " + e.getMessage()); }
+    }
+
+    public void purgeOldEvents() {
+        // Supprime les events terminés depuis > 30 jours
+        long cutoff = System.currentTimeMillis() / 1000L - 30L * 86400L;
+        try (PreparedStatement ps = connection.prepareStatement(
+                "DELETE FROM shop_events WHERE end_ts < ?")) {
+            ps.setLong(1, cutoff);
+            ps.executeUpdate();
+        } catch (SQLException ignored) {}
+    }
+
+    private ShopEventRow readEvent(ResultSet rs) throws SQLException {
+        ShopEventRow e = new ShopEventRow();
+        e.id              = rs.getLong("id");
+        e.type            = rs.getString("type");
+        e.startTs         = rs.getLong("start_ts");
+        e.endTs           = rs.getLong("end_ts");
+        e.multiplierBuy   = rs.getDouble("multiplier_buy");
+        e.multiplierSell  = rs.getDouble("multiplier_sell");
+        e.itemIdsCsv      = rs.getString("item_ids");
+        e.manual          = rs.getInt("manual") == 1;
+        e.announcement    = rs.getString("announcement");
+        return e;
+    }
+
+    public static class ShopEventRow {
+        public long id;
+        public String type;
+        public long startTs, endTs;
+        public double multiplierBuy, multiplierSell;
+        public String itemIdsCsv;
+        public boolean manual;
+        public String announcement;
+
+        public boolean isGlobal() { return itemIdsCsv == null || itemIdsCsv.isEmpty(); }
+
+        public java.util.Set<Integer> getItemIds() {
+            java.util.Set<Integer> set = new java.util.HashSet<>();
+            if (itemIdsCsv == null || itemIdsCsv.isEmpty()) return set;
+            for (String s : itemIdsCsv.split(",")) {
+                try { set.add(Integer.parseInt(s.trim())); } catch (NumberFormatException ignored) {}
+            }
+            return set;
         }
     }
 

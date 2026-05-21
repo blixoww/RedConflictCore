@@ -1,0 +1,79 @@
+# ───────────────────────────────────────────────────────────────────────────
+#  Configuration des événements boursiers (krach, inflation, aubaines)
+# ───────────────────────────────────────────────────────────────────────────
+# Les événements modifient temporairement les prix d'achat/vente :
+#   - KRACH      : tous les prix chutent (acheter coute moins, vendre rapporte moins)
+#   - INFLATION  : tous les prix grimpent (acheter coute plus, vendre rapporte plus)
+#   - AUBAINE    : un ou plusieurs items spécifiques voient leur prix dévier
+#
+# Les prix de base et l'historique des courbes ne sont PAS affectés :
+# l'event est une couche multiplicative au-dessus du prix naturel.
+#
+# Format des durées : en minutes (int). Probas en pourcent (double 0..100).
+# ───────────────────────────────────────────────────────────────────────────
+
+# Roll quotidien (à minuit serveur). Si l'event tire, sa durée est piochée
+# uniformément dans [duration_min, duration_max].
+
+krach:
+  enabled: true
+  # Probabilité (%) qu'un krach se déclenche lors du roll quotidien.
+  daily_chance: 7.0
+  # Durée en minutes (random uniforme).
+  duration_min: 120
+  duration_max: 360
+  # Multiplicateurs appliqués aux prix d'achat (player → shop : moins cher) et
+  # de vente (shop → player : on récupère moins).
+  multiplier_buy_min: 0.55
+  multiplier_buy_max: 0.75
+  multiplier_sell_min: 0.40
+  multiplier_sell_max: 0.60
+  # Annonces dans le chat
+  announce_start: "&4&l[KRACH BOURSIER] &cLes marchés s'effondrent ! Les prix d'achat et de vente chutent pendant {duration}."
+  announce_end:   "&6&l[BOURSE] &eLe krach est terminé, le marché revient à la normale."
+
+inflation:
+  enabled: true
+  daily_chance: 7.0
+  duration_min: 120
+  duration_max: 360
+  multiplier_buy_min: 1.40
+  multiplier_buy_max: 1.80
+  multiplier_sell_min: 1.30
+  multiplier_sell_max: 1.60
+  announce_start: "&6&l[INFLATION] &eFlambée des prix ! L'achat coute plus cher mais la vente rapporte plus pendant {duration}."
+  announce_end:   "&6&l[BOURSE] &eL'inflation est terminée, le marché se stabilise."
+
+aubaine:
+  enabled: true
+  daily_chance: 30.0
+  duration_min: 60
+  duration_max: 180
+  # Nombre d'items touchés (random uniforme).
+  items_min: 1
+  items_max: 3
+  # Probabilité (%) que l'aubaine soit une HAUSSE de vente vs une BAISSE d'achat.
+  # 0   = toujours baisse (achat avantageux)
+  # 100 = toujours hausse (vente avantageuse)
+  upward_chance: 50.0
+  # Multiplicateur magnitude (random uniforme dans la plage)
+  # Hausse (sell↑) : multiplier_sell augmenté, multiplier_buy à 1.0
+  upward_multiplier_min: 1.50
+  upward_multiplier_max: 2.50
+  # Baisse (buy↓) : multiplier_buy diminué, multiplier_sell à 1.0
+  downward_multiplier_min: 0.35
+  downward_multiplier_max: 0.60
+  announce_start_up:   "&a&l[AUBAINE] &eLes acheteurs s'arrachent : &6{items}&e ! Vendez tant que ça vaut le coup ({duration})."
+  announce_start_down: "&a&l[AUBAINE] &eOpportunité d'achat : &6{items}&e bradés ({duration})."
+  announce_end:        "&7&o[BOURSE] L'aubaine sur certains items est terminée."
+
+# Annonces communes
+announce:
+  prefix_broadcast: true   # broadcast à tout le serveur
+  send_title: true         # send title screen (gros texte centré 3s)
+  notify_on_join: true     # à la connexion, notifier des events actifs
+
+# Maximum d'events globaux simultanés (krach/inflation sont mutuellement exclusifs)
+# Les aubaines ne comptent pas dans cette limite.
+max_concurrent_global: 1
+max_concurrent_aubaines: 5

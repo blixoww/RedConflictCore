@@ -40,6 +40,10 @@ commands:
     description: Commandes de debug du shop (admin)
     usage: /shopdebug <tick all|info|reset>
     permission: shop.admin
+  shopevent:
+    description: Gestion des événements boursiers (krach, inflation, aubaine) — staff
+    usage: /shopevent <list|reload|krach|inflation|aubaine|stop> [...]
+    permission: shop.admin
   bottlexp:
     description: Embouteille tes niveaux d'XP (min 10)
     aliases: [bxp, bottle]

@@ -242,7 +242,11 @@ public class OriginsFightCore extends JavaPlugin {
         if (this.lagSwitchManager  != null) this.lagSwitchManager.disable();
         if (this.clearLaggManager  != null) this.clearLaggManager.disable();
         if (this.hdvManager != null)     this.hdvManager.disable();
-        if (this.shopManager != null)    this.shopManager.disable();
+        if (this.shopManager != null) {
+            fr.originsfight.shop.ShopEventManager eMgr = fr.originsfight.shop.ShopEventManager.getInstance();
+            if (eMgr != null) eMgr.disable();
+            this.shopManager.disable();
+        }
         if (this.staffPlugin != null)    this.staffPlugin.disable();
         if (this.bountyManager != null)  this.bountyManager.disable();
         if (this.friendManager != null)  this.friendManager.disable();
@@ -368,6 +372,29 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("shopdebug").setExecutor(shopCmd);
             getCommand("shopdebug").setTabCompleter(shopCmd);
         }
+        // ── Événements boursiers (krach, inflation, aubaines) ────────────────
+        fr.originsfight.shop.ShopEventManager eventMgr =
+                new fr.originsfight.shop.ShopEventManager(this, this.shopManager);
+        this.shopManager.setEventManager(eventMgr);
+        eventMgr.enable();
+        fr.originsfight.shop.ShopEventCommand eventCmd =
+                new fr.originsfight.shop.ShopEventCommand(eventMgr, this.shopManager.getDatabase());
+        if (getCommand("shopevent") != null) {
+            getCommand("shopevent").setExecutor(eventCmd);
+            getCommand("shopevent").setTabCompleter(eventCmd);
+        }
+        // Notifier les joueurs à la connexion
+        getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+                fr.originsfight.shop.ShopEventManager mgr = fr.originsfight.shop.ShopEventManager.getInstance();
+                if (mgr != null) {
+                    // Notif chat différée pour ne pas spammer pendant le join
+                    org.bukkit.Bukkit.getScheduler().runTaskLater(OriginsFightCore.this,
+                        () -> mgr.notifyJoin(e.getPlayer()), 40L);
+                }
+            }
+        }, this);
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:SHOP_C2S",
             (PluginMessageListener) new ShopServerHandler(this));
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PDATA_C2S", (PluginMessageListener)new fr.originsfight.data.PlayerDataServerHandler(this));

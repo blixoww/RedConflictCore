@@ -27,6 +27,7 @@ public class ShopManager {
     private static final int SHOP_TRANSACTION_RESULT   = 0x42;
     private static final int SHOP_MARKET_STATS         = 0x43;
     private static final int SHOP_OPEN                 = 0x44;
+    private static final int SHOP_EVENT_UPDATE         = 0x45;
 
     private static ShopManager instance;
 
@@ -36,6 +37,17 @@ public class ShopManager {
     private int priceSnapshotTaskId = -1;
     private int dailyRegressionTaskId = -1;
     private long nextRegressionTime = 0;
+    private ShopEventManager eventManager;
+
+    public ShopEventManager getEventManager() { return eventManager; }
+    public void setEventManager(ShopEventManager m) { this.eventManager = m; }
+
+    private long effBuy(ShopItem it) {
+        return eventManager != null ? eventManager.effectiveBuyPrice(it) : it.currentBuyPrice;
+    }
+    private long effSell(ShopItem it) {
+        return eventManager != null ? eventManager.effectiveSellPrice(it) : it.currentSellPrice;
+    }
 
     public static ShopManager getInstance() { return instance; }
 
@@ -175,8 +187,39 @@ public class ShopManager {
             pb.writeString(cat.iconItem);
         }
         player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
-        // Envoyer aussi les market stats
+        // Envoyer aussi les market stats + état des events boursiers
         sendMarketStats(player);
+        sendEventState(player);
+    }
+
+    /** Envoie au client la liste des events boursiers actifs (krach/inflation/aubaine). */
+    public void sendEventState(Player player) {
+        PacketBuilder pb = PacketBuilder.create(SHOP_EVENT_UPDATE);
+        List<ShopDatabase.ShopEventRow> events = (eventManager != null)
+                ? eventManager.getActiveEvents()
+                : java.util.Collections.<ShopDatabase.ShopEventRow>emptyList();
+        long now = System.currentTimeMillis() / 1000L;
+        pb.writeVarInt(events.size());
+        for (ShopDatabase.ShopEventRow e : events) {
+            pb.writeLong(e.id);
+            pb.writeString(e.type == null ? "" : e.type);
+            pb.writeLong(Math.max(0, e.endTs - now));  // secondes restantes
+            pb.writeDouble(e.multiplierBuy);
+            pb.writeDouble(e.multiplierSell);
+            // CSV item ids (vide = global)
+            pb.writeString(e.itemIdsCsv == null ? "" : e.itemIdsCsv);
+            pb.writeString(e.announcement == null ? "" : e.announcement);
+        }
+        player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
+    }
+
+    /** Diffuse l'état des events à tous les joueurs en ligne. */
+    public void broadcastEventState() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            sendEventState(p);
+            // Pousser les prix mis à jour aussi (rafraîchissement du shop ouvert)
+            sendItems(p, -1);
+        }
     }
 
     // ── Envoyer les items d'une categorie ───────────────────────────────────
@@ -246,8 +289,8 @@ public class ShopManager {
             mcItemWithMeta = item.minecraftItem + ":" + item.meta;
         }
         pb.writeString(mcItemWithMeta);
-        pb.writeLong(item.currentBuyPrice);
-        pb.writeLong(item.currentSellPrice);
+        pb.writeLong(effBuy(item));
+        pb.writeLong(effSell(item));
         pb.writeVarInt(item.maxStack);
         pb.writeString(item.categoryName != null ? item.categoryName : "");
         pb.writeBoolean(item.frozen);
@@ -292,7 +335,8 @@ public class ShopManager {
             return;
         }
 
-        long totalCost = item.currentBuyPrice * quantity;
+        long unitBuy = effBuy(item);
+        long totalCost = unitBuy * quantity;
         long balance = getBalance(player);
 
         if (balance < totalCost) {
@@ -312,10 +356,10 @@ public class ShopManager {
         // Enregistrer le volume cumulatif (prix mis à jour uniquement toutes les 24h)
         database.recordBuyVolume(itemId, quantity);
 
-        // Logger la transaction
+        // Logger la transaction (avec le prix réellement payé, event inclus)
         database.logTransaction(
             player.getUniqueId().toString(), player.getName(),
-            itemId, "BUY", quantity, item.currentBuyPrice
+            itemId, "BUY", quantity, unitBuy
         );
 
 
@@ -366,7 +410,8 @@ public class ShopManager {
         // Retirer les items
         removeItems(player, item.minecraftItem, item.meta, quantity);
 
-        long totalEarned = item.currentSellPrice * quantity;
+        long unitSell = effSell(item);
+        long totalEarned = unitSell * quantity;
 
         // Donner l'argent
         economy.depositPlayer(player, totalEarned);
@@ -374,10 +419,10 @@ public class ShopManager {
         // Enregistrer le volume cumulatif (prix mis à jour uniquement toutes les 24h)
         database.recordSellVolume(itemId, quantity);
 
-        // Logger la transaction
+        // Logger la transaction (avec le prix réellement reçu, event inclus)
         database.logTransaction(
             player.getUniqueId().toString(), player.getName(),
-            itemId, "SELL", quantity, item.currentSellPrice
+            itemId, "SELL", quantity, unitSell
         );
 
 
@@ -423,10 +468,10 @@ public class ShopManager {
             pb.writeVarInt(e.item.id);
             pb.writeString(e.item.displayName);
             pb.writeString(mcItem);
-            pb.writeLong(e.item.currentBuyPrice);
-            pb.writeLong(e.item.currentSellPrice);
+            pb.writeLong(effBuy(e.item));
+            pb.writeLong(effSell(e.item));
             pb.writeLong(e.quantity24h);
-            pb.writeLong(e.avgPrice);  // avgPrice MANQUANT — causait le décalage de buffer
+            pb.writeLong(e.avgPrice);  // prix moyen historique de la transaction (24h)
         }
 
         // Top sold (24h)
@@ -438,10 +483,10 @@ public class ShopManager {
             pb.writeVarInt(e.item.id);
             pb.writeString(e.item.displayName);
             pb.writeString(mcItem);
-            pb.writeLong(e.item.currentBuyPrice);
-            pb.writeLong(e.item.currentSellPrice);
+            pb.writeLong(effBuy(e.item));
+            pb.writeLong(effSell(e.item));
             pb.writeLong(e.quantity24h);
-            pb.writeLong(e.avgPrice);  // avgPrice MANQUANT — causait le décalage de buffer
+            pb.writeLong(e.avgPrice);  // prix moyen historique de la transaction (24h)
         }
 
         player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
