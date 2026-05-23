@@ -158,6 +158,7 @@ public class ShopManager {
                     sendItems(online, -1);
                     sendMarketStats(online);
                 }
+                if (eventManager != null) eventManager.tickForSimulation();
                 if (onComplete != null) onComplete.run();
             });
         });
@@ -201,7 +202,6 @@ public class ShopManager {
         long now = System.currentTimeMillis() / 1000L;
         pb.writeVarInt(events.size());
         for (ShopDatabase.ShopEventRow e : events) {
-            pb.writeLong(e.id);
             pb.writeString(e.type == null ? "" : e.type);
             pb.writeLong(Math.max(0, e.endTs - now));  // secondes restantes
             pb.writeDouble(e.multiplierBuy);

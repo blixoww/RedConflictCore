@@ -10,6 +10,7 @@ import org.bukkit.command.TabCompleter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -48,6 +49,7 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
             case "list":     return cmdList(sender);
+            case "next":     return cmdNext(sender);
             case "reload":   manager.reload(); sender.sendMessage(PRE + "Config rechargée."); return true;
             case "krach":    return cmdKrach(sender, args);
             case "inflation":return cmdInflation(sender, args);
@@ -60,12 +62,13 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
     private void usage(CommandSender s) {
         s.sendMessage(ChatColor.GOLD + "=== /shopevent (staff) ===");
         s.sendMessage(ChatColor.GRAY + " /shopevent list");
+        s.sendMessage(ChatColor.GRAY + " /shopevent next");
         s.sendMessage(ChatColor.GRAY + " /shopevent reload");
         s.sendMessage(ChatColor.GRAY + " /shopevent krach [duration_min]");
         s.sendMessage(ChatColor.GRAY + " /shopevent inflation [duration_min]");
         s.sendMessage(ChatColor.GRAY + " /shopevent aubaine random [duration_min]");
         s.sendMessage(ChatColor.GRAY + " /shopevent aubaine <itemId> <up|down> <multiplier> [duration_min]");
-        s.sendMessage(ChatColor.GRAY + " /shopevent stop <id|all>");
+        s.sendMessage(ChatColor.GRAY + " /shopevent stop <krach|inflation|aubaine|all>");
     }
 
     private boolean cmdList(CommandSender s) {
@@ -79,7 +82,7 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
         for (ShopEventRow e : evs) {
             long left = Math.max(0, e.endTs - now);
             String hms = ShopEventManager.formatDuration((int)(left / 60L));
-            s.sendMessage(ChatColor.GRAY + " #" + e.id + " §f" + e.type +
+            s.sendMessage(ChatColor.GRAY + " §f" + e.type +
                     ChatColor.GRAY + " mb=" + String.format(Locale.ROOT, "%.2f", e.multiplierBuy) +
                     " ms=" + String.format(Locale.ROOT, "%.2f", e.multiplierSell) +
                     (e.isGlobal() ? " §7(global)" : " §7items=" + e.itemIdsCsv) +
@@ -89,11 +92,28 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean cmdNext(CommandSender s) {
+        Calendar midnight = Calendar.getInstance();
+        midnight.add(Calendar.DAY_OF_MONTH, 1);
+        midnight.set(Calendar.HOUR_OF_DAY, 0);
+        midnight.set(Calendar.MINUTE, 0);
+        midnight.set(Calendar.SECOND, 0);
+        midnight.set(Calendar.MILLISECOND, 0);
+        long secondsUntil = Math.max(0, (midnight.getTimeInMillis() - System.currentTimeMillis()) / 1000L);
+        long h = secondsUntil / 3600;
+        long m = (secondsUntil % 3600) / 60;
+        s.sendMessage(ChatColor.GOLD + "=== Prochain roll d'événement auto ===");
+        s.sendMessage(ChatColor.GRAY + " Dans " + ChatColor.WHITE + h + "h " + m + "min"
+                + ChatColor.GRAY + " (au changement de jour)");
+        s.sendMessage(ChatColor.GRAY + " Probabilités configurées via " + ChatColor.WHITE + "shop_events.yml");
+        return true;
+    }
+
     private boolean cmdKrach(CommandSender s, String[] args) {
         int dur = parseDur(args, 1);
         long id = manager.launchKrach(dur, true);
         if (id == -1L) s.sendMessage(PRE + ChatColor.RED + "Échec (limite atteinte ou désactivé).");
-        else s.sendMessage(PRE + "Krach lancé #" + id + ".");
+        else s.sendMessage(PRE + "Krach lancé.");
         return true;
     }
 
@@ -101,7 +121,7 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
         int dur = parseDur(args, 1);
         long id = manager.launchInflation(dur, true);
         if (id == -1L) s.sendMessage(PRE + ChatColor.RED + "Échec (limite atteinte ou désactivé).");
-        else s.sendMessage(PRE + "Inflation lancée #" + id + ".");
+        else s.sendMessage(PRE + "Inflation lancée.");
         return true;
     }
 
@@ -114,7 +134,7 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
             int dur = parseDur(args, 2);
             long id = manager.launchRandomAubaine(dur, true);
             if (id == -1L) s.sendMessage(PRE + ChatColor.RED + "Échec.");
-            else s.sendMessage(PRE + "Aubaine aléatoire lancée #" + id + ".");
+            else s.sendMessage(PRE + "Aubaine aléatoire lancée.");
             return true;
         }
         // /shopevent aubaine <itemId> <up|down> <multiplier> [duration]
@@ -157,24 +177,27 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
         items.add(itemId);
         long id = manager.launchAubaine(items, upward, mb, ms, dur, true);
         if (id == -1L) s.sendMessage(PRE + ChatColor.RED + "Échec (limite atteinte).");
-        else s.sendMessage(PRE + "Aubaine #" + id + " (" + (upward ? "vente↑" : "achat↓") + " ×" + mult + ").");
+        else s.sendMessage(PRE + "Aubaine lancée (" + (upward ? "vente↑" : "achat↓") + " ×" + mult + ").");
         return true;
     }
 
     private boolean cmdStop(CommandSender s, String[] args) {
-        if (args.length < 2) { s.sendMessage(PRE + ChatColor.RED + "Usage: /shopevent stop <id|all>"); return true; }
+        if (args.length < 2) { s.sendMessage(PRE + ChatColor.RED + "Usage: /shopevent stop <krach|inflation|aubaine|all>"); return true; }
         if (args[1].equalsIgnoreCase("all")) {
             int n = manager.stopAll();
             s.sendMessage(PRE + n + " événement(s) arrêté(s).");
             return true;
         }
-        try {
-            long id = Long.parseLong(args[1]);
-            if (manager.stopEvent(id)) s.sendMessage(PRE + "Event #" + id + " arrêté.");
-            else s.sendMessage(PRE + ChatColor.RED + "Event introuvable ou déjà expiré.");
-        } catch (NumberFormatException e) {
-            s.sendMessage(PRE + ChatColor.RED + "Id invalide.");
+        String type = args[1].toUpperCase(Locale.ROOT);
+        if (!type.equals(ShopEventManager.TYPE_KRACH)
+                && !type.equals(ShopEventManager.TYPE_INFLATION)
+                && !type.equals(ShopEventManager.TYPE_AUBAINE)) {
+            s.sendMessage(PRE + ChatColor.RED + "Type inconnu. Utilisez : krach, inflation, aubaine ou all.");
+            return true;
         }
+        int n = manager.stopByType(type);
+        if (n == 0) s.sendMessage(PRE + ChatColor.RED + "Aucun événement " + type + " actif.");
+        else s.sendMessage(PRE + n + " événement(s) " + type + " arrêté(s).");
         return true;
     }
 
@@ -188,7 +211,7 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (!sender.hasPermission("shop.admin")) return new ArrayList<>();
         if (args.length == 1) {
-            return Arrays.asList("list", "reload", "krach", "inflation", "aubaine", "stop").stream()
+            return Arrays.asList("list", "next", "reload", "krach", "inflation", "aubaine", "stop").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT)))
                 .collect(Collectors.toList());
         }
@@ -198,10 +221,9 @@ public class ShopEventCommand implements CommandExecutor, TabCompleter {
                 .collect(Collectors.toList());
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("stop")) {
-            List<String> ids = new ArrayList<>();
-            ids.add("all");
-            for (ShopEventRow e : manager.getActiveEvents()) ids.add(String.valueOf(e.id));
-            return ids.stream().filter(s -> s.startsWith(args[1].toLowerCase(Locale.ROOT))).collect(Collectors.toList());
+            return Arrays.asList("all", "krach", "inflation", "aubaine").stream()
+                .filter(s -> s.startsWith(args[1].toLowerCase(Locale.ROOT)))
+                .collect(Collectors.toList());
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("aubaine")) {
             return Arrays.asList("up", "down").stream()

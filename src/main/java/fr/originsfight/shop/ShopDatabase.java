@@ -158,6 +158,16 @@ public class ShopDatabase {
         } catch (SQLException ignored) {}
     }
 
+    /** Avance les timestamps de tous les events actifs de 24h (simulation /shopdebug tick all). */
+    public void advanceActiveEventsByOneDay() {
+        long now = System.currentTimeMillis() / 1000L;
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE shop_events SET start_ts = start_ts - 86400, end_ts = end_ts - 86400 WHERE end_ts > ?")) {
+            ps.setLong(1, now);
+            ps.executeUpdate();
+        } catch (SQLException e) { LOG.severe("[Shop] advanceActiveEventsByOneDay: " + e.getMessage()); }
+    }
+
     private ShopEventRow readEvent(ResultSet rs) throws SQLException {
         ShopEventRow e = new ShopEventRow();
         e.id              = rs.getLong("id");
@@ -716,13 +726,17 @@ public class ShopDatabase {
                     spreadMultiplier = Math.max(1.0, Math.min(3.0, spreadMultiplier));
                 }
 
-                // Spread minimal = 1% du prix de base × multiplicateur de volatilité
-                long minSpread = Math.max(1, (long)(item.baseBuyPrice * 0.01 * spreadMultiplier));
+                // Spread minimal = écart configuré × multiplicateur de volatilité
+                // L'écart de base (baseBuyPrice - baseSellPrice) est la référence naturelle
+                long baseSpread = Math.max(1, item.baseBuyPrice - item.baseSellPrice);
+                long minSpread  = Math.max(1, (long)(baseSpread * spreadMultiplier));
 
                 // ── 5. Application des bornes floor/ceil ──────────────────────
                 newBuy  = Math.max(item.floorPrice + minSpread, Math.min(item.ceilPrice, newBuy));
-                newSell = newBuy - minSpread;
-                if (newSell < item.floorPrice) { newSell = item.floorPrice; newBuy = newSell + minSpread; }
+                // Le prix de vente évolue indépendamment ; on s'assure juste que
+                // le spread ne descend pas en dessous du minimum (pas de remplacement total).
+                newSell = Math.min(newSell, newBuy - minSpread);
+                if (newSell < item.floorPrice) { newSell = item.floorPrice; newBuy = Math.max(newBuy, newSell + minSpread); }
 
                 psUpd.setLong(1, newBuy);
                 psUpd.setLong(2, newSell);

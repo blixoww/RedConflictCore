@@ -273,6 +273,45 @@ public class ShopEventManager {
         return n;
     }
 
+    public int stopByType(String type) {
+        int n = 0;
+        for (ShopEventRow e : new ArrayList<>(activeCache)) {
+            if (type.equals(e.type)) {
+                database.terminateEvent(e.id);
+                announceEnd(e);
+                n++;
+            }
+        }
+        if (n > 0) {
+            refreshCache();
+            broadcastEventState();
+        }
+        return n;
+    }
+
+    /**
+     * Déclenché par /shopdebug tick all : simule un passage de 24h pour les events.
+     * Expire les events qui auraient dû finir, puis tente un roll quotidien.
+     * À appeler sur le thread principal après la régression des prix.
+     */
+    public void tickForSimulation() {
+        // Avancer les timestamps de 24h dans la DB, puis rafraîchir le cache
+        database.advanceActiveEventsByOneDay();
+        List<ShopEventRow> previous = new ArrayList<>(activeCache);
+        refreshCache();
+        Set<Long> currentIds = new HashSet<>();
+        for (ShopEventRow e : activeCache) currentIds.add(e.id);
+        for (ShopEventRow e : previous) {
+            if (!currentIds.contains(e.id)) announceEnd(e);
+        }
+        // Forcer le roll quotidien
+        lastDailyRollDay = -1;
+        attemptDailyRoll();
+        Calendar cal = Calendar.getInstance();
+        lastDailyRollDay = cal.get(Calendar.YEAR) * 1000 + cal.get(Calendar.DAY_OF_YEAR);
+        broadcastEventState();
+    }
+
     // ── Sélection pondérée d'items ────────────────────────────────────────────
 
     private List<Integer> pickWeightedItems(int n) {
@@ -359,13 +398,14 @@ public class ShopEventManager {
      */
     public static double effectiveMultForItem(ShopEventRow e, int itemId, double baseMult) {
         if (TYPE_AUBAINE.equals(e.type)) return baseMult;
-        double j = jitterFactor(e.id, itemId);
+        double j = jitterFactor(e.type, itemId);
         return 1.0 + (baseMult - 1.0) * j;
     }
 
-    /** Hash déterministe (eventId, itemId) → [0.65, 1.35]. Identique côté client. */
-    public static double jitterFactor(long eventId, int itemId) {
-        long h = (eventId * 2862933555777941757L) ^ (itemId * 1442695040888963407L);
+    /** Hash déterministe (eventType, itemId) → [0.65, 1.35]. Identique côté client. */
+    public static double jitterFactor(String eventType, int itemId) {
+        long typeHash = (long) eventType.hashCode();
+        long h = (typeHash * 2862933555777941757L) ^ (itemId * 1442695040888963407L);
         h ^= (h >>> 32);
         int u = (int)(h & 0x7FFFFFFF);
         double r = (u % 10000) / 10000.0; // [0, 1)
@@ -405,7 +445,7 @@ public class ShopEventManager {
             int closeBr = stripped.indexOf(']');
             if (closeBr > 0 && closeBr < 32) stripped = stripped.substring(closeBr + 1).trim();
             if (stripped.length() > 40) stripped = stripped.substring(0, 37) + "…";
-            String subtitle = ChatColor.GRAY + stripped;
+            String subtitle = ChatColor.WHITE + stripped;
 
             for (Player p : Bukkit.getOnlinePlayers()) sendTitle(p, title, subtitle);
         }

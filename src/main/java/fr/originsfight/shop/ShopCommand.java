@@ -85,8 +85,8 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
 
         Player player = (Player) sender;
 
-        // /shop (pas d'args) ou /shop open => ouvrir le GUI
-        if (args.length == 0 || (args.length == 1 && args[0].equalsIgnoreCase("open"))) {
+        // /shop (sans args) => ouvrir le GUI
+        if (args.length == 0) {
             manager.openShop(player);
             manager.sendCategories(player);
             return true;
@@ -151,7 +151,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
 
         // /shop
         if (args.length == 1) {
-            return Arrays.asList("open", "next").stream()
+            return Arrays.asList("next").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT)))
                 .collect(Collectors.toList());
         }
