@@ -2,6 +2,7 @@ package fr.originsfight.shop;
 
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.packets.PacketBuilder;
+import fr.originsfight.ring.RingEffects;
 import fr.originsfight.shop.ShopDatabase.ShopCategory;
 import fr.originsfight.shop.ShopDatabase.ShopItem;
 import net.milkbowl.vault.economy.Economy;
@@ -47,6 +48,23 @@ public class ShopManager {
     }
     private long effSell(ShopItem it) {
         return eventManager != null ? eventManager.effectiveSellPrice(it) : it.currentSellPrice;
+    }
+
+    // Prix effectifs tenant compte du Sceau du marchand (shop uniquement) :
+    // -5% à l'achat, +5% à la vente. Le NBT de l'anneau est lu côté serveur.
+    private long effBuy(Player player, ShopItem it) {
+        long base = effBuy(it);
+        if (fr.originsfight.ring.RingEffects.hasRing(player, RingEffects.NECKLACE_OF_MERCHANT)) {
+            return Math.round(base * 0.95D);
+        }
+        return base;
+    }
+    private long effSell(Player player, ShopItem it) {
+        long base = effSell(it);
+        if (fr.originsfight.ring.RingEffects.hasRing(player, fr.originsfight.ring.RingEffects.NECKLACE_OF_MERCHANT)) {
+            return Math.round(base * 1.05D);
+        }
+        return base;
     }
 
     public static ShopManager getInstance() { return instance; }
@@ -252,7 +270,7 @@ public class ShopManager {
             pb.writeVarInt(chunk.size());
 
             for (ShopItem item : chunk) {
-                writeShopItem(pb, item);
+                writeShopItem(pb, player, item);
             }
 
             player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
@@ -279,7 +297,7 @@ public class ShopManager {
         "cooked_fish", "golden_apple", "sponge", "prismarine", "banner"
     ));
 
-    private void writeShopItem(PacketBuilder pb, ShopItem item) {
+    private void writeShopItem(PacketBuilder pb, Player player, ShopItem item) {
         pb.writeVarInt(item.id);
         pb.writeString(item.displayName);
         // Toujours inclure le meta pour les items qui en ont besoin,
@@ -289,8 +307,8 @@ public class ShopManager {
             mcItemWithMeta = item.minecraftItem + ":" + item.meta;
         }
         pb.writeString(mcItemWithMeta);
-        pb.writeLong(effBuy(item));
-        pb.writeLong(effSell(item));
+        pb.writeLong(effBuy(player, item));
+        pb.writeLong(effSell(player, item));
         pb.writeVarInt(item.maxStack);
         pb.writeString(item.categoryName != null ? item.categoryName : "");
         pb.writeBoolean(item.frozen);
@@ -335,7 +353,7 @@ public class ShopManager {
             return;
         }
 
-        long unitBuy = effBuy(item);
+        long unitBuy = effBuy(player, item);
         long totalCost = unitBuy * quantity;
         long balance = getBalance(player);
 
@@ -410,7 +428,7 @@ public class ShopManager {
         // Retirer les items
         removeItems(player, item.minecraftItem, item.meta, quantity);
 
-        long unitSell = effSell(item);
+        long unitSell = effSell(player, item);
         long totalEarned = unitSell * quantity;
 
         // Donner l'argent
@@ -445,7 +463,7 @@ public class ShopManager {
         PacketBuilder pb = PacketBuilder.create(SHOP_ITEMS_RESPONSE);
         pb.writeVarInt(0); // action = clear & add
         pb.writeVarInt(1); // count = 1
-        writeShopItem(pb, item);
+        writeShopItem(pb, player, item);
         player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
     }
 

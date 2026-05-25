@@ -152,6 +152,12 @@ public class RC {
     public static final String LOTO_NEXT           = PRE + "§6§l\u2B50 §7Prochain loto dans §f%s§7.";
     public static final String LOTO_NEXT_IN_PROGRESS = PRE + "§6§l\u2B50 §eUn loto est en cours ! §7Temps restant : §f%s§7. Tapez §f/loto <montant> §7!";
     public static final String LOTO_NEXT_UNKNOWN   = PRE + "§7Le prochain loto sera annoncé prochainement.";
+    public static final String BLOCK_NOTHING = PRE + "§cVous n'avez aucun bloc à transformer.";
+    public static final String BLOCK_OK = PRE + "§aVous avez transformé §f%d §block";
+    public static final String TPU_OFF = PRE + "§cLe téléporteur de base est désactivé. Utilisez §f/tpu set §cpour le définir à votre position actuelle.";
+    public static final String TPU_ON = PRE + "§aTéléporteur de base défini à votre position actuelle.";
+    public static final String INGOT_NOTHING = PRE + "§cVous n'avez aucun lingot à transformer.";
+    public static final String INGOT_OK = PRE + "§aVous avez transformé §f%d §lingot";
 
     /** Formate un message en remplaçant %s/%d par les arguments donnés. */
     public static String fmt(String template, Object... args) {

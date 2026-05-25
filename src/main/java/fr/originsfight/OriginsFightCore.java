@@ -32,6 +32,7 @@ import fr.originsfight.hdv.HdvCommand;
 import fr.originsfight.hdv.HdvLoginListener;
 import fr.originsfight.hdv.HdvManager;
 import fr.originsfight.hdv.HdvServerHandler;
+import fr.originsfight.ring.*;
 import fr.originsfight.shop.ShopCommand;
 import fr.originsfight.shop.ShopManager;
 import fr.originsfight.shop.ShopServerHandler;
@@ -65,6 +66,7 @@ import fr.originsfight.useful.GuideCommand;
 import fr.originsfight.useful.MsgCommand;
 import fr.originsfight.useful.PoubelleCommand;
 import fr.originsfight.useful.VisionCommand;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -81,6 +83,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
+
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -108,6 +111,7 @@ public class OriginsFightCore extends JavaPlugin {
     private ClearLaggManager clearLaggManager;
     private AnonymeManager anonymeManager; // Added AnonymeManager
     private PBManager pbManager;
+    private RingManager ringManager;
     private PBLogger pbLogger;
     private StaffAlertManager pbStaffAlerts;
     private OffresManager offresManager;
@@ -117,14 +121,14 @@ public class OriginsFightCore extends JavaPlugin {
         instance = this;
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §aRedConflict est activé !");
 
-        this.worldGuard = (WorldGuardPlugin)getServer().getPluginManager().getPlugin("WorldGuard");
+        this.worldGuard = (WorldGuardPlugin) getServer().getPluginManager().getPlugin("WorldGuard");
         saveDefaultConfig();
         saveBoutiqueConfig();
         loadBoutiqueConfig();
         loadRecipes();
         this.alwaysDisabledCommands = getConfig().getStringList("commands.always-disabled");
         this.disabledInCombatCommands = getConfig().getStringList("commands.disabled-in-combat");
-        
+
         // Initialize AnonymeManager before registering commands
         this.anonymeManager = new AnonymeManager(this); // Initialize AnonymeManager
 
@@ -132,6 +136,7 @@ public class OriginsFightCore extends JavaPlugin {
         applyPermissionMessages();
         registerListeners();
         registerTradeChannels();
+        registerRing();
         loadPackets();
         // Système anti lag-switch
         this.lagSwitchManager = new LagSwitchManager(this);
@@ -239,17 +244,17 @@ public class OriginsFightCore extends JavaPlugin {
 
     public void onDisable() {
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §cRedConflict est désactivé !");
-        if (this.lagSwitchManager  != null) this.lagSwitchManager.disable();
-        if (this.clearLaggManager  != null) this.clearLaggManager.disable();
-        if (this.hdvManager != null)     this.hdvManager.disable();
+        if (this.lagSwitchManager != null) this.lagSwitchManager.disable();
+        if (this.clearLaggManager != null) this.clearLaggManager.disable();
+        if (this.hdvManager != null) this.hdvManager.disable();
         if (this.shopManager != null) {
             fr.originsfight.shop.ShopEventManager eMgr = fr.originsfight.shop.ShopEventManager.getInstance();
             if (eMgr != null) eMgr.disable();
             this.shopManager.disable();
         }
-        if (this.staffPlugin != null)    this.staffPlugin.disable();
-        if (this.bountyManager != null)  this.bountyManager.disable();
-        if (this.friendManager != null)  this.friendManager.disable();
+        if (this.staffPlugin != null) this.staffPlugin.disable();
+        if (this.bountyManager != null) this.bountyManager.disable();
+        if (this.friendManager != null) this.friendManager.disable();
         if (this.anonymeManager != null) this.anonymeManager.disable();
         if (this.offresManager != null) this.offresManager.stop();
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -303,6 +308,35 @@ public class OriginsFightCore extends JavaPlugin {
         }
     }
 
+    private void registerRing() {
+        this.ringManager = new RingManager(this);
+        RingPacketSender ringPacketSender = new RingPacketSender(this, ringManager);
+
+        getServer().getMessenger().registerIncomingPluginChannel(
+                this, RingServerHandler.CHANNEL_C2S,
+                new RingServerHandler(ringManager, ringPacketSender));
+        getServer().getMessenger().registerOutgoingPluginChannel(
+                this, RingPacketSender.CHANNEL_S2C);
+
+        getServer().getPluginManager().registerEvents(
+                new RingLoginListener(ringManager, ringPacketSender), this);
+
+        // Effets des anneaux équipés.
+        RingEffects.init(ringManager);
+        getServer().getPluginManager().registerEvents(
+                new RingEffectListener(), this);
+        RingEffectListener.startTask(this);
+
+        // Gestion des rings à la mort (drop / conservation via Totem of Undying).
+        getServer().getPluginManager().registerEvents(
+                new RingDeathListener(ringPacketSender), this);
+
+        // Sauvegarde automatique toutes les 5 minutes (6000 ticks)
+        ringManager.startAutoSave(6000);
+
+        getLogger().info("[Ring] Système ring initialisé.");
+    }
+
     private void registerTradeChannels() {
         getServer().getMessenger().registerIncomingPluginChannel(
                 this, fr.originsfight.trade.TradeC2SHandler.CHANNEL_C2S,
@@ -354,8 +388,8 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("hdv").setExecutor(hdvCmd);
             getCommand("hdv").setTabCompleter(hdvCmd);
         }
-        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:HDV_C2S", (PluginMessageListener)new HdvServerHandler(this));
-        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:C2S", (PluginMessageListener)new CustomPacketServerHandler(this));
+        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:HDV_C2S", (PluginMessageListener) new HdvServerHandler(this));
+        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:C2S", (PluginMessageListener) new CustomPacketServerHandler(this));
         // Shop
         this.shopManager = new ShopManager(this);
         if (!this.shopManager.enable()) {
@@ -391,20 +425,20 @@ public class OriginsFightCore extends JavaPlugin {
                 if (mgr != null) {
                     // Notif chat différée pour ne pas spammer pendant le join
                     org.bukkit.Bukkit.getScheduler().runTaskLater(OriginsFightCore.this,
-                        () -> mgr.notifyJoin(e.getPlayer()), 40L);
+                            () -> mgr.notifyJoin(e.getPlayer()), 40L);
                 }
             }
         }, this);
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:SHOP_C2S",
-            (PluginMessageListener) new ShopServerHandler(this));
-        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PDATA_C2S", (PluginMessageListener)new fr.originsfight.data.PlayerDataServerHandler(this));
+                (PluginMessageListener) new ShopServerHandler(this));
+        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PDATA_C2S", (PluginMessageListener) new fr.originsfight.data.PlayerDataServerHandler(this));
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:HDV_S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:SHOP_S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:PDATA_S2C");
         // Système de Ping
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PING_C2S",
-            (PluginMessageListener) new PingServerHandler(this));
+                (PluginMessageListener) new PingServerHandler(this));
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:PING_S2C");
         // Données de faction (tag + relation) envoyées périodiquement aux clients proches
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:FACTION_S2C");
@@ -426,7 +460,7 @@ public class OriginsFightCore extends JavaPlugin {
         for (Iterator<Recipe> it = Bukkit.recipeIterator(); it.hasNext(); ) {
             Recipe recipe = it.next();
             if (recipe instanceof FurnaceRecipe) {
-                FurnaceRecipe furnaceRecipe = (FurnaceRecipe)recipe;
+                FurnaceRecipe furnaceRecipe = (FurnaceRecipe) recipe;
                 Material inputMaterial = furnaceRecipe.getInput().getType();
                 ItemStack resultItem = furnaceRecipe.getResult();
                 if (inputMaterial != null && resultItem != null)
@@ -504,7 +538,9 @@ public class OriginsFightCore extends JavaPlugin {
         loadBoutiqueConfig();
     }
 
-    /** @deprecated Utiliser {@link #getPlayerDatabase()} */
+    /**
+     * @deprecated Utiliser {@link #getPlayerDatabase()}
+     */
     @Deprecated
     public PlayerDatabase getKsDatabase() {
         return this.playerDatabase;
