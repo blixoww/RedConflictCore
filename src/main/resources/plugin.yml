@@ -36,6 +36,9 @@ commands:
     description: Ouvre la boutique PB (grades, commandes, spawners, offres spéciales)
     usage: /pbshop [offre <id> enable|disable|reroll] | /pbshop reload
     aliases: [boutique, pbboutique]
+  sellall:
+    description: Vend automatiquement tous les items vendables de l'inventaire au prix du shop
+    usage: /sellall
   shopdebug:
     description: Commandes de debug du shop (admin)
     usage: /shopdebug <tick all|info|reset>

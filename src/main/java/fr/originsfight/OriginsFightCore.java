@@ -406,6 +406,11 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("shopdebug").setExecutor(shopCmd);
             getCommand("shopdebug").setTabCompleter(shopCmd);
         }
+        // /sellall — vente rapide de tout l'inventaire
+        fr.originsfight.shop.SellAllCommand sellAllCmd = new fr.originsfight.shop.SellAllCommand(this.shopManager);
+        if (getCommand("sellall") != null) {
+            getCommand("sellall").setExecutor(sellAllCmd);
+        }
         // ── Événements boursiers (krach, inflation, aubaines) ────────────────
         fr.originsfight.shop.ShopEventManager eventMgr =
                 new fr.originsfight.shop.ShopEventManager(this, this.shopManager);

@@ -453,6 +453,68 @@ public class ShopManager {
         sendMarketStats(player);
     }
 
+    // ── Vente automatique de tout l'inventaire ───────────────────────────────
+
+    /**
+     * Vend automatiquement tous les items de l'inventaire du joueur qui ont un
+     * prix de vente actif dans le shop (non gelé, prix > 0).
+     * Affiche un résumé dans le chat, ou un message si rien n'a pu être vendu.
+     */
+    public void handleSellAll(Player player) {
+        if (economy == null) {
+            player.sendMessage("§c[Shop] Économie indisponible.");
+            return;
+        }
+
+        List<ShopDatabase.ShopItem> allItems = database.getAllItems();
+
+        long totalEarned = 0L;
+        int totalQty = 0;
+        int linesSold = 0; // nbre de types d'items différents vendus
+
+        for (ShopDatabase.ShopItem item : allItems) {
+            if (item.frozen || item.currentSellPrice <= 0) continue;
+
+            int available = countItems(player, item.minecraftItem, item.meta);
+            if (available <= 0) continue;
+
+            // Retirer les items
+            removeItems(player, item.minecraftItem, item.meta, available);
+
+            long unitSell = effSell(player, item);
+            long earned = unitSell * available;
+            totalEarned += earned;
+            totalQty += available;
+            linesSold++;
+
+            // Enregistrer volume + transaction
+            database.recordSellVolume(item.id, available);
+            database.logTransaction(
+                    player.getUniqueId().toString(), player.getName(),
+                    item.id, "SELL", available, unitSell
+            );
+        }
+
+        if (totalQty == 0) {
+            player.sendMessage("§6[Shop] §7Aucun item vendable trouvé dans votre inventaire.");
+            return;
+        }
+
+        // Déposer l'argent
+        economy.depositPlayer(player, totalEarned);
+        player.updateInventory();
+
+        long newBalance = getBalance(player);
+        player.sendMessage("§6[Shop] §aVente automatique terminée !");
+        player.sendMessage("§7  §f" + totalQty + " §7item" + (totalQty > 1 ? "s" : "")
+                + " §8(" + linesSold + " type" + (linesSold > 1 ? "s" : "") + ")"
+                + " §7vendus pour §a" + formatPrice(totalEarned) + " $");
+        player.sendMessage("§7  Solde : §f" + formatPrice(newBalance) + " $");
+
+        // Mettre à jour les stats de marché
+        sendMarketStats(player);
+    }
+
     // ── Detail d'un item ─────────────────────────────────────────────────────
 
     public void sendItemDetail(Player player, int itemId) {
