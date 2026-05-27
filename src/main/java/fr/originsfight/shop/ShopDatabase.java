@@ -21,7 +21,7 @@ public class ShopDatabase {
     public boolean connect() {
         try {
             Class.forName("org.sqlite.JDBC");
-            File dbFile = new File(plugin.getDataFolder(), "shop.db");
+            File dbFile = new File(plugin.getDataFolder(), "shop/shop.db");
             File parentDir = dbFile.getParentFile();
             if (parentDir != null && !parentDir.exists()) parentDir.mkdirs();
 
@@ -751,8 +751,8 @@ public class ShopDatabase {
 
     public boolean loadItemsFromConfig() {
         try {
-            File configFile = new File(plugin.getDataFolder(), "shop_items.yml");
-            if (!configFile.exists()) plugin.saveResource("shop_items.yml", false);
+            File configFile = new File(plugin.getDataFolder(), "shop/shop_items.yml");
+            if (!configFile.exists()) plugin.saveResource("shop/shop_items.yml", false);
 
             org.bukkit.configuration.file.YamlConfiguration config =
                 new org.bukkit.configuration.file.YamlConfiguration();

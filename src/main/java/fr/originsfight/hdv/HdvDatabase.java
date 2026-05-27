@@ -40,7 +40,7 @@ public class HdvDatabase {
     public boolean connect() {
         try {
             Class.forName("org.sqlite.JDBC");
-            File dbFile = new File(this.plugin.getDataFolder(), "hdv.db");
+            File dbFile = new File(this.plugin.getDataFolder(), "hdv/hdv.db");
             dbFile.getParentFile().mkdirs();
             this.connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
             this.connection.setAutoCommit(true);

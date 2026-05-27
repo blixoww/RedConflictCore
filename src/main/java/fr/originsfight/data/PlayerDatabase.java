@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Base de données centralisée SQLite pour toutes les données de profil joueur.
  *
- * Fichier : plugins/OriginsFightCore/players.db
+ * Fichier : plugins/OriginsFightCore/players/players.db
  *
  * Table  : player_profiles
  *   uuid        TEXT PRIMARY KEY
@@ -38,7 +38,7 @@ public class PlayerDatabase {
     private final File dbFile;
 
     public PlayerDatabase(OriginsFightCore plugin) {
-        dbFile = new File(plugin.getDataFolder(), "players.db");
+        dbFile = new File(plugin.getDataFolder(), "players/players.db");
     }
 
     // ── Initialisation / Fermeture ────────────────────────────────────────────
@@ -46,6 +46,7 @@ public class PlayerDatabase {
     public boolean init() {
         try {
             Class.forName("org.sqlite.JDBC");
+            dbFile.getParentFile().mkdirs();
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
             createTable();
             return true;

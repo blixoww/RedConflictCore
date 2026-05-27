@@ -22,7 +22,7 @@ public class StaffDatabase {
     private final File dbFile;
 
     public StaffDatabase(OriginsFightCore plugin) {
-        dbFile = new File(plugin.getDataFolder(), "staff.db");
+        dbFile = new File(plugin.getDataFolder(), "staff/staff.db");
     }
 
     // ── Connexion ─────────────────────────────────────────────────────────────
@@ -30,6 +30,7 @@ public class StaffDatabase {
     public boolean init() {
         try {
             Class.forName("org.sqlite.JDBC");
+            dbFile.getParentFile().mkdirs();
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
             createTables();
             return true;

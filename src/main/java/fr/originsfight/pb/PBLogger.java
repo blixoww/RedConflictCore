@@ -18,8 +18,8 @@ public class PBLogger {
     private final Object lock = new Object();
 
     public PBLogger(OriginsFightCore plugin) {
-        if (!plugin.getDataFolder().exists()) plugin.getDataFolder().mkdirs();
-        this.file = new File(plugin.getDataFolder(), "pb_logs.txt");
+        this.file = new File(plugin.getDataFolder(), "pb/pb_logs.txt");
+        this.file.getParentFile().mkdirs();
     }
 
     public void log(String action, String player, int amount, int newBalance, String reason) {

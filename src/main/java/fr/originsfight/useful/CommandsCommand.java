@@ -38,10 +38,16 @@ public class CommandsCommand implements CommandExecutor {
         player.sendMessage("  §6§l$ §6Économie");
         player.sendMessage("  §8| §f/hdv §8— §7Hôtel des Ventes §8(achat/vente)");
         player.sendMessage("  §8| §f/shop §8— §7Boutique du serveur");
-        player.sendMessage("  §8| §f/sellall §8— §7Vendre tous les items vendables du shop §8(raccourci rapide)");
+        player.sendMessage("  §8| §f/sellall §8— §7Vendre tous les items vendables §8(raccourci rapide)");
         player.sendMessage("  §8| §f/baltop §8— §7Classement des plus riches");
         player.sendMessage("  §8| §f/prime §7<joueur> <$> §8— §7Placer une prime §8(§f/prime list§8)");
         player.sendMessage("  §8| §f/loto §7<montant> §8— §7Parier sur le loto §8(§f/loto help§8)");
+        player.sendMessage("");
+
+        player.sendMessage("  §b§l⛏ §bMétiers");
+        player.sendMessage("  §8| §f/metier §8— §7Ouvrir l'interface de métier §8(Mineur / Agriculteur / Artisan)");
+        player.sendMessage("  §8| §f/metier top §8— §7Classement global des métiers");
+        player.sendMessage("  §8| §f/metier top §7<metier> §8— §7Classement par métier");
         player.sendMessage("");
 
         player.sendMessage("  §a§l♥ §aSocial");

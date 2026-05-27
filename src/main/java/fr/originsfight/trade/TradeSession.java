@@ -281,7 +281,8 @@ public class TradeSession {
     private void logTradeFile(String status, List<ItemStack> snapA, List<ItemStack> snapB,
                               long mA, long mB, int ppA, int ppB) {
         try {
-            java.io.File f = new java.io.File(OriginsFightCore.getInstance().getDataFolder(), "trade_logs.txt");
+            java.io.File f = new java.io.File(OriginsFightCore.getInstance().getDataFolder(), "social/trade_logs.txt");
+            f.getParentFile().mkdirs();
             try (java.io.FileWriter w = new java.io.FileWriter(f, true)) {
                 String ts = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
                 w.write("[" + ts + "] " + status + " | " + playerA.getName() + " <-> " + playerB.getName()

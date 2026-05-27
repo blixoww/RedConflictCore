@@ -32,6 +32,7 @@ import fr.originsfight.hdv.HdvCommand;
 import fr.originsfight.hdv.HdvLoginListener;
 import fr.originsfight.hdv.HdvManager;
 import fr.originsfight.hdv.HdvServerHandler;
+import fr.originsfight.job.*;
 import fr.originsfight.ring.*;
 import fr.originsfight.shop.ShopCommand;
 import fr.originsfight.shop.ShopManager;
@@ -112,6 +113,8 @@ public class OriginsFightCore extends JavaPlugin {
     private AnonymeManager anonymeManager; // Added AnonymeManager
     private PBManager pbManager;
     private RingManager ringManager;
+    private JobDatabase jobDatabase;
+    private JobManager  jobManager;
     private PBLogger pbLogger;
     private StaffAlertManager pbStaffAlerts;
     private OffresManager offresManager;
@@ -137,6 +140,7 @@ public class OriginsFightCore extends JavaPlugin {
         registerListeners();
         registerTradeChannels();
         registerRing();
+        registerJob();
         loadPackets();
         // Système anti lag-switch
         this.lagSwitchManager = new LagSwitchManager(this);
@@ -246,6 +250,8 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §cRedConflict est désactivé !");
         if (this.lagSwitchManager != null) this.lagSwitchManager.disable();
         if (this.clearLaggManager != null) this.clearLaggManager.disable();
+        if (this.ringManager != null) { /* ring save on disable handled internally */ }
+        if (this.jobManager  != null) { this.jobManager.saveAll(); this.jobDatabase.disconnect(); }
         if (this.hdvManager != null) this.hdvManager.disable();
         if (this.shopManager != null) {
             fr.originsfight.shop.ShopEventManager eMgr = fr.originsfight.shop.ShopEventManager.getInstance();
@@ -308,8 +314,43 @@ public class OriginsFightCore extends JavaPlugin {
         }
     }
 
-    private void registerRing() {
-        this.ringManager = new RingManager(this);
+    private void registerJob() {
+        // jobs.yml est géré directement par JobConfig (sous-dossier jobs/)
+        this.jobDatabase = new JobDatabase(this);
+        if (!this.jobDatabase.connect()) {
+            getLogger().severe("[Jobs] Impossible d'initialiser la base de données jobs !");
+            return;
+        }
+        JobConfig       jobConfig = new JobConfig(this);
+        this.jobManager           = new JobManager(this, jobDatabase, jobConfig);
+        JobPacketSender jobSender = new JobPacketSender(this, jobConfig, jobDatabase);
+        this.jobManager.setPacketSender(jobSender);
+
+        // Canaux
+        getServer().getMessenger().registerIncomingPluginChannel(
+                this, JobServerHandler.CHANNEL_C2S,
+                new JobServerHandler(this, jobManager, jobSender));
+        getServer().getMessenger().registerOutgoingPluginChannel(
+                this, JobPacketSender.CHANNEL_S2C);
+
+        // Listeners
+        getServer().getPluginManager().registerEvents(new JobLoginListener(jobManager, jobSender), this);
+        getServer().getPluginManager().registerEvents(new JobMinerListener(jobManager, jobConfig), this);
+        getServer().getPluginManager().registerEvents(new JobFarmerListener(jobManager, jobConfig), this);
+        getServer().getPluginManager().registerEvents(new JobArtisanListener(jobManager, jobConfig), this);
+
+        // Commandes
+        JobCommand jobCmd = new JobCommand(this, jobManager, jobSender);
+        if (getCommand("metier") != null) {
+            getCommand("metier").setExecutor(jobCmd);
+            getCommand("metier").setTabCompleter(jobCmd);
+        }
+        getLogger().info("[Jobs] Système de métiers initialisé.");
+    }
+
+    public JobManager getJobManager() { return this.jobManager; }
+
+    private void registerRing() {        this.ringManager = new RingManager(this);
         RingPacketSender ringPacketSender = new RingPacketSender(this, ringManager);
 
         getServer().getMessenger().registerIncomingPluginChannel(
@@ -523,12 +564,13 @@ public class OriginsFightCore extends JavaPlugin {
     }
 
     private void saveBoutiqueConfig() {
-        File file = new File(getDataFolder(), "boutique.yml");
-        if (!file.exists()) saveResource("boutique.yml", false);
+        File file = new File(getDataFolder(), "boutique/boutique.yml");
+        file.getParentFile().mkdirs();
+        if (!file.exists()) saveResource("boutique/boutique.yml", false);
     }
 
     private void loadBoutiqueConfig() {
-        File file = new File(getDataFolder(), "boutique.yml");
+        File file = new File(getDataFolder(), "boutique/boutique.yml");
         YamlConfiguration loaded = YamlConfiguration.loadConfiguration(file);
         InputStream defStream = getResource("boutique.yml");
         if (defStream != null) {

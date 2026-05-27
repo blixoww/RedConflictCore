@@ -84,7 +84,8 @@ public class AnonymeManager {
     }
 
     private void setupAnonymousPlayersFile() {
-        anonymousPlayersFile = new File(plugin.getDataFolder(), "anonymous_players.yml");
+        anonymousPlayersFile = new File(plugin.getDataFolder(), "social/anonymous_players.yml");
+        anonymousPlayersFile.getParentFile().mkdirs();
         if (!anonymousPlayersFile.exists()) {
             try {
                 anonymousPlayersFile.createNewFile();

@@ -20,7 +20,7 @@ public class FriendDatabase {
     private final File dbFile;
 
     public FriendDatabase(OriginsFightCore plugin) {
-        dbFile = new File(plugin.getDataFolder(), "friends.db");
+        dbFile = new File(plugin.getDataFolder(), "social/friends.db");
     }
 
     // ── Initialisation ────────────────────────────────────────────────────────
@@ -28,6 +28,7 @@ public class FriendDatabase {
     public boolean init() {
         try {
             Class.forName("org.sqlite.JDBC");
+            dbFile.getParentFile().mkdirs();
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
             connection.setAutoCommit(true);
             // Mode WAL pour une meilleure fiabilité des écritures

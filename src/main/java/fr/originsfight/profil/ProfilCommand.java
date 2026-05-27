@@ -160,7 +160,22 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
             try { pb = plugin.getPBManager().get(uuid); } catch (Exception ignored) {}
         }
 
-        return new ProfilePayload(name, faction, rank, kills, deaths, ptMin, balance, streak, bounty, pb);
+        // ── Métiers — niveaux depuis JobManager ──────────────────────────────
+        int minerLevel = 0, farmerLevel = 0, artisanLevel = 0;
+        try {
+            fr.originsfight.job.JobManager jm = plugin.getJobManager();
+            if (jm != null) {
+                fr.originsfight.job.JobDatabase.JobData jd = jm.getData(uuid);
+                if (jd != null) {
+                    minerLevel   = jd.minerLevel;
+                    farmerLevel  = jd.farmerLevel;
+                    artisanLevel = jd.artisanLevel;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        return new ProfilePayload(name, faction, rank, kills, deaths, ptMin, balance, streak, bounty, pb,
+                minerLevel, farmerLevel, artisanLevel);
     }
 
     /**
@@ -244,6 +259,9 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
                 .writeLong(p.bounty)
                 .writeVarInt(factionRelation)
                 .writeVarInt(p.pb)
+                .writeVarInt(p.minerLevel)
+                .writeVarInt(p.farmerLevel)
+                .writeVarInt(p.artisanLevel)
                 .build();
         recipient.sendPluginMessage(plugin, CHANNEL, data);
     }
@@ -429,10 +447,13 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
         final String name, faction, rank;
         final int kills, deaths, ptMin, streak, pb;
         final long balance, bounty;
+        // Données métiers (tous toujours actifs)
+        final int minerLevel, farmerLevel, artisanLevel;
 
         ProfilePayload(String name, String faction, String rank,
                        int kills, int deaths, int ptMin,
-                       long balance, int streak, long bounty, int pb) {
+                       long balance, int streak, long bounty, int pb,
+                       int minerLevel, int farmerLevel, int artisanLevel) {
             this.name = name;
             this.faction = faction;
             this.rank = rank;
@@ -443,6 +464,9 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
             this.streak = streak;
             this.bounty = bounty;
             this.pb = pb;
+            this.minerLevel   = minerLevel;
+            this.farmerLevel  = farmerLevel;
+            this.artisanLevel = artisanLevel;
         }
     }
 }

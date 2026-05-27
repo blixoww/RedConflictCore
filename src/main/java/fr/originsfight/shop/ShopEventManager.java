@@ -90,8 +90,8 @@ public class ShopEventManager {
 
     private void loadConfig() {
         try {
-            File f = new File(plugin.getDataFolder(), "shop_events.yml");
-            if (!f.exists()) plugin.saveResource("shop_events.yml", false);
+            File f = new File(plugin.getDataFolder(), "shop/shop_events.yml");
+            if (!f.exists()) plugin.saveResource("shop/shop_events.yml", false);
             org.bukkit.configuration.file.YamlConfiguration cfg =
                 new org.bukkit.configuration.file.YamlConfiguration();
             try (InputStreamReader r = new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8)) {
