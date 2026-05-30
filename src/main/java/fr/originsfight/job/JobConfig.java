@@ -8,10 +8,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.TreeMap;
 
 /**
  * Charge et expose la configuration du système de métiers depuis jobs.yml.
+ *
+ * Modèle d'XP « par palier » : chaque action définit une valeur d'XP <b>par palier</b>
+ * (tableau aligné sur la section {@code tiers}). Toutes les sources sont toujours
+ * « farmables » ; seule la quantité d'XP varie selon le palier du joueur.
  */
 public class JobConfig {
 
@@ -23,55 +26,70 @@ public class JobConfig {
     private final double moneyBase;
     private final double moneyFactor;
 
-    /** Map<JobType, Map<"MATERIAL" or "MATERIAL:META", xp>> */
-    private final Map<JobType, Map<String, Integer>> actionXp = new EnumMap<>(JobType.class);
+    /** Paliers (bornes de niveau), dans l'ordre. L'index sert à indexer les tableaux d'XP. */
+    private final List<Tier> tiers = new ArrayList<>();
 
-    /** Map<JobType, Map<"break" or "place", Map<"MATERIAL:META" or "MATERIAL", xp>>> */
-    private final Map<JobType, Map<String, Map<String, Integer>>> farmerActionXp = new EnumMap<>(JobType.class);
+    /** Map&lt;JobType, Map&lt;"MATERIAL" ou "MATERIAL:META", xp[par palier]&gt;&gt; (ordre YAML préservé). */
+    private final Map<JobType, Map<String, int[]>> actionXp = new EnumMap<>(JobType.class);
 
-    /** Map<JobType, Map<level, LevelReward>> */
+    /** Map&lt;JobType, Map&lt;"break"/"place", Map&lt;"MATERIAL[:META]", xp[par palier]&gt;&gt;&gt;. */
+    private final Map<JobType, Map<String, Map<String, int[]>>> farmerActionXp = new EnumMap<>(JobType.class);
+
+    /** Map&lt;JobType, Map&lt;level, LevelReward&gt;&gt; */
     private final Map<JobType, Map<Integer, LevelReward>> rewardOverrides = new EnumMap<>(JobType.class);
+
+    /** Libellés lisibles (FR) pour l'onglet Information : clé action (majuscules) → texte. */
+    private final Map<String, String> sourceNames = new HashMap<>();
 
     /** Matériaux résultat exclus du gain d'XP Artisan (crafts trop simples). */
     private final Set<String> craftBlacklist = new HashSet<>();
 
     public JobConfig(JavaPlugin plugin) {
-        FileConfiguration cfg = plugin.getConfig();
-        // defaults are loaded by plugin.saveDefaultConfig() — we load jobs.yml separately
         FileConfiguration jobs = loadJobsConfig(plugin);
 
         this.maxLevels   = jobs.getInt("max-levels", 50);
         this.xpBase      = jobs.getDouble("xp-formula.base", 100);
-        this.xpFactor    = jobs.getDouble("xp-formula.factor", 1.12);
-        this.moneyBase   = jobs.getDouble("money-formula.base", 200);
-        this.moneyFactor = jobs.getDouble("money-formula.factor", 1.18);
+        this.xpFactor    = jobs.getDouble("xp-formula.factor", 1.13);
+        this.moneyBase   = jobs.getDouble("money-formula.base", 40);
+        this.moneyFactor = jobs.getDouble("money-formula.factor", 1.10);
 
-        // Parse actions per job
+        // Paliers — doit être parsé avant les actions (les tableaux s'alignent dessus).
+        parseTiers(jobs);
+
+        // Parse actions per job (valeurs = tableau d'XP par palier, ou scalaire = identique partout)
         for (JobType jt : new JobType[]{JobType.MINER, JobType.FARMER, JobType.ARTISAN}) {
             String path = "jobs." + jt.name() + ".actions";
             ConfigurationSection sec = jobs.getConfigurationSection(path);
             if (sec == null) continue;
 
             if (jt == JobType.FARMER) {
-                // Farmer has nested "break" and "place" sections
-                Map<String, Map<String, Integer>> farmerMap = new HashMap<>();
+                // Farmer : sections imbriquées "break" et "place"
+                Map<String, Map<String, int[]>> farmerMap = new LinkedHashMap<>();
                 for (String subKey : sec.getKeys(false)) {
                     ConfigurationSection subSec = sec.getConfigurationSection(subKey);
                     if (subSec != null) {
-                        Map<String, Integer> entries = new HashMap<>();
+                        Map<String, int[]> entries = new LinkedHashMap<>();
                         for (String mat : subSec.getKeys(false)) {
-                            entries.put(mat.toUpperCase(Locale.ROOT), subSec.getInt(mat));
+                            entries.put(mat.toUpperCase(Locale.ROOT), readTierArray(subSec.get(mat)));
                         }
-                        farmerMap.put(subKey.toLowerCase(), entries);
+                        farmerMap.put(subKey.toLowerCase(Locale.ROOT), entries);
                     }
                 }
                 farmerActionXp.put(jt, farmerMap);
             } else {
-                Map<String, Integer> map = new HashMap<>();
+                Map<String, int[]> map = new LinkedHashMap<>();
                 for (String mat : sec.getKeys(false)) {
-                    map.put(mat.toUpperCase(Locale.ROOT), sec.getInt(mat));
+                    map.put(mat.toUpperCase(Locale.ROOT), readTierArray(sec.get(mat)));
                 }
                 actionXp.put(jt, map);
+            }
+        }
+
+        // Libellés lisibles (optionnels)
+        ConfigurationSection namesSec = jobs.getConfigurationSection("source-names");
+        if (namesSec != null) {
+            for (String k : namesSec.getKeys(false)) {
+                sourceNames.put(k.toUpperCase(Locale.ROOT), namesSec.getString(k));
             }
         }
 
@@ -102,16 +120,77 @@ public class JobConfig {
         }
     }
 
-    private FileConfiguration loadJobsConfig(JavaPlugin plugin) {
-        java.io.File file = new java.io.File(plugin.getDataFolder(), "jobs/jobs.yml");
-        file.getParentFile().mkdirs();
-        if (!file.exists()) plugin.saveResource("jobs/jobs.yml", false);
-        return org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
+    private void parseTiers(FileConfiguration jobs) {
+        List<Map<?, ?>> list = jobs.getMapList("tiers");
+        if (list != null) {
+            for (Map<?, ?> m : list) {
+                Object nameObj = m.get("name");
+                String name = nameObj != null ? String.valueOf(nameObj) : "Palier";
+                int min = m.get("min") instanceof Number ? ((Number) m.get("min")).intValue() : 1;
+                int max = m.get("max") instanceof Number ? ((Number) m.get("max")).intValue() : min;
+                tiers.add(new Tier(name, min, max));
+            }
+        }
+        if (tiers.isEmpty()) {
+            // Paliers par défaut (alignés sur 50 niveaux)
+            tiers.add(new Tier("Débutant",   1,  5));
+            tiers.add(new Tier("Apprenti",   6,  10));
+            tiers.add(new Tier("Confirmé",   11, 20));
+            tiers.add(new Tier("Expert",     21, 30));
+            tiers.add(new Tier("Maître",     31, 40));
+            tiers.add(new Tier("Légendaire", 41, 50));
+        }
+    }
+
+    /**
+     * Lit une valeur de config (liste d'entiers ou scalaire) en un tableau d'XP de longueur
+     * {@code tiers.size()}. Une liste plus courte est complétée par sa dernière valeur ;
+     * un scalaire est répété sur tous les paliers.
+     */
+    private int[] readTierArray(Object raw) {
+        int n = tiers.size();
+        int[] arr = new int[n];
+        if (raw instanceof List) {
+            List<?> l = (List<?>) raw;
+            int last = 0;
+            for (int i = 0; i < n; i++) {
+                if (i < l.size()) {
+                    Object o = l.get(i);
+                    if (o instanceof Number) last = ((Number) o).intValue();
+                    else {
+                        try { last = Integer.parseInt(String.valueOf(o)); } catch (NumberFormatException ignored) {}
+                    }
+                }
+                arr[i] = last; // au-delà de la liste : on conserve la dernière valeur (padding)
+            }
+        } else {
+            int v = 0;
+            if (raw instanceof Number) v = ((Number) raw).intValue();
+            else if (raw != null) {
+                try { v = Integer.parseInt(String.valueOf(raw)); } catch (NumberFormatException ignored) {}
+            }
+            Arrays.fill(arr, v);
+        }
+        return arr;
     }
 
     // ── API publique ──────────────────────────────────────────────────────────
 
     public int getMaxLevels() { return maxLevels; }
+
+    public int tierCount() { return tiers.size(); }
+
+    public List<Tier> getTiers() { return Collections.unmodifiableList(tiers); }
+
+    /** Index de palier (0-based) pour un niveau donné. Clampé aux bornes. */
+    public int tierIndex(int level) {
+        for (int i = 0; i < tiers.size(); i++) {
+            Tier t = tiers.get(i);
+            if (level >= t.min && level <= t.max) return i;
+        }
+        if (level < tiers.get(0).min) return 0;
+        return tiers.size() - 1;
+    }
 
     /** XP requis pour atteindre `level` (à partir de 0). Level 1 = xpBase. */
     public int getXpRequired(int level) {
@@ -153,35 +232,32 @@ public class JobConfig {
         return sb.toString();
     }
 
-    /** XP donnée au Mineur pour avoir cassé un matériau (clé = "MAT" ou "MAT:META"). */
-    public int getMinerXp(String materialKey) {
-        Map<String, Integer> map = actionXp.get(JobType.MINER);
-        if (map == null) return 0;
-        Integer v = map.get(materialKey.toUpperCase(Locale.ROOT));
-        return v != null ? v : 0;
+    /** XP Mineur pour un matériau cassé, selon le palier du joueur (clé = "MAT" ou "MAT:META"). */
+    public int getMinerXp(String materialKey, int level) {
+        return lookup(actionXp.get(JobType.MINER), materialKey, level);
     }
 
-    /** XP Artisan pour un type d'action ("craft", "brew", "enchant", "anvil"). */
-    public int getArtisanXp(String action) {
-        Map<String, Integer> map = actionXp.get(JobType.ARTISAN);
+    /** XP Artisan pour un type d'action ("craft", "brew", "enchant", "anvil"), selon le palier. */
+    public int getArtisanXp(String action, int level) {
+        return lookup(actionXp.get(JobType.ARTISAN), action, level);
+    }
+
+    /** XP Agriculteur pour une action ("break"/"place") et un matériau, selon le palier. */
+    public int getFarmerXp(String action, String materialKey, int level) {
+        Map<String, Map<String, int[]>> outer = farmerActionXp.get(JobType.FARMER);
+        if (outer == null) return 0;
+        return lookup(outer.get(action.toLowerCase(Locale.ROOT)), materialKey, level);
+    }
+
+    private int lookup(Map<String, int[]> map, String key, int level) {
         if (map == null) return 0;
-        Integer v = map.get(action.toUpperCase(Locale.ROOT));
-        return v != null ? v : 0;
+        int[] arr = map.get(key.toUpperCase(Locale.ROOT));
+        return arr == null ? 0 : arr[tierIndex(level)];
     }
 
     /** Retourne true si ce matériau est dans la blacklist des crafts simples. */
     public boolean isCraftBlacklisted(Material mat) {
         return craftBlacklist.contains(mat.name());
-    }
-
-    /** XP Agriculteur pour une action (type = "break" ou "place") et un matériau. */
-    public int getFarmerXp(String action, String materialKey) {
-        Map<String, Map<String, Integer>> outer = farmerActionXp.get(JobType.FARMER);
-        if (outer == null) return 0;
-        Map<String, Integer> inner = outer.get(action.toLowerCase(Locale.ROOT));
-        if (inner == null) return 0;
-        Integer v = inner.get(materialKey.toUpperCase(Locale.ROOT));
-        return v != null ? v : 0;
     }
 
     // ── Parsing items ─────────────────────────────────────────────────────────
@@ -211,45 +287,76 @@ public class JobConfig {
         return result;
     }
 
-    /** Sources d'XP à envoyer au client pour l'onglet Information. */
+    // ── Sources d'XP (onglet Information) ───────────────────────────────────────
+
+    /**
+     * Sources d'XP à envoyer au client, dérivées des actions et déclinées par palier.
+     * Chaque palier (catégorie) liste toutes les sources du métier avec l'XP correspondante.
+     * {@code minLevel = 0} : rien n'est verrouillé (tout est farmable à chaque palier).
+     */
     public List<XpSourceEntry> getXpSources(JobType job) {
+        List<Src> sources = buildSources(job);
         List<XpSourceEntry> result = new ArrayList<>();
-        if (job == JobType.MINER) {
-            Map<String, Integer> map = actionXp.get(JobType.MINER);
-            if (map != null) {
-                List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
-                entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
-                for (Map.Entry<String, Integer> e : entries)
-                    result.add(new XpSourceEntry("Blocs", prettyKey(e.getKey()), e.getValue()));
-            }
-        } else if (job == JobType.FARMER) {
-            Map<String, Map<String, Integer>> outer = farmerActionXp.get(JobType.FARMER);
-            if (outer != null) {
-                Map<String, Integer> breakMap = outer.get("break");
-                if (breakMap != null) {
-                    List<Map.Entry<String, Integer>> entries = new ArrayList<>(breakMap.entrySet());
-                    entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
-                    for (Map.Entry<String, Integer> e : entries)
-                        result.add(new XpSourceEntry("Récolte", prettyKey(e.getKey()), e.getValue()));
-                }
-                Map<String, Integer> placeMap = outer.get("place");
-                if (placeMap != null) {
-                    List<Map.Entry<String, Integer>> entries = new ArrayList<>(placeMap.entrySet());
-                    entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
-                    for (Map.Entry<String, Integer> e : entries)
-                        result.add(new XpSourceEntry("Plantation", prettyKey(e.getKey()), e.getValue()));
-                }
-            }
-        } else if (job == JobType.ARTISAN) {
-            Map<String, Integer> map = actionXp.get(JobType.ARTISAN);
-            if (map != null) {
-                List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
-                entries.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
-                for (Map.Entry<String, Integer> e : entries)
-                    result.add(new XpSourceEntry("Craft & fabrication", prettyAction(e.getKey()), e.getValue()));
+        for (int ti = 0; ti < tiers.size(); ti++) {
+            String cat = tierLabel(ti);
+            for (Src s : sources) {
+                int xp = ti < s.xp.length ? s.xp[ti] : 0;
+                result.add(new XpSourceEntry(cat, s.label, xp, 0));
             }
         }
         return result;
+    }
+
+    /** Liste des sources d'un métier, triée par XP croissante (valeur du palier I). */
+    private List<Src> buildSources(JobType job) {
+        List<Src> list = new ArrayList<>();
+        if (job == JobType.FARMER) {
+            Map<String, Map<String, int[]>> outer = farmerActionXp.get(job);
+            if (outer != null) {
+                collect(list, outer.get("break"), "Récolte : ", job);
+                collect(list, outer.get("place"), "Plantation : ", job);
+            }
+        } else {
+            collect(list, actionXp.get(job), "", job);
+        }
+        list.sort((a, b) -> Integer.compare(a.xp.length == 0 ? 0 : a.xp[0],
+                                            b.xp.length == 0 ? 0 : b.xp[0]));
+        return list;
+    }
+
+    private void collect(List<Src> out, Map<String, int[]> map, String prefix, JobType job) {
+        if (map == null) return;
+        for (Map.Entry<String, int[]> e : map.entrySet()) {
+            out.add(new Src(prefix + sourceLabel(job, e.getKey()), e.getValue()));
+        }
+    }
+
+    private static final class Src {
+        final String label;
+        final int[]  xp;
+        Src(String label, int[] xp) { this.label = label; this.xp = xp; }
+    }
+
+    /** Libellé lisible d'une source : mapping {@code source-names} sinon repli automatique. */
+    private String sourceLabel(JobType job, String key) {
+        String mapped = sourceNames.get(key.toUpperCase(Locale.ROOT));
+        if (mapped != null) return mapped;
+        return job == JobType.ARTISAN ? prettyAction(key) : prettyKey(key);
+    }
+
+    /** Libellé de catégorie : "Palier III — Confirmé (Niv. 11-20)". */
+    private String tierLabel(int idx) {
+        Tier t = tiers.get(idx);
+        return "Palier " + roman(idx + 1) + " — " + t.name + " (Niv. " + t.min + "-" + t.max + ")";
+    }
+
+    private static String roman(int n) {
+        switch (n) {
+            case 1: return "I";   case 2: return "II";  case 3: return "III";
+            case 4: return "IV";  case 5: return "V";   case 6: return "VI";
+            case 7: return "VII"; case 8: return "VIII"; case 9: return "IX"; case 10: return "X";
+            default: return String.valueOf(n);
+        }
     }
 
     private static String prettyKey(String key) {
@@ -280,7 +387,42 @@ public class JobConfig {
         return String.valueOf(v);
     }
 
+    // ── Chargement fichier ──────────────────────────────────────────────────────
+
+    private FileConfiguration loadJobsConfig(JavaPlugin plugin) {
+        java.io.File file = new java.io.File(plugin.getDataFolder(), "jobs/jobs.yml");
+        file.getParentFile().mkdirs();
+        if (!file.exists()) plugin.saveResource("jobs/jobs.yml", false);
+
+        // Lecture forcée en UTF-8 : Spigot 1.8 lit sinon avec le charset par défaut de la JVM
+        // (Windows-1252 sous Windows), ce qui corrompt les accents (é → Ã©, — → â€").
+        org.bukkit.configuration.file.YamlConfiguration cfg =
+                new org.bukkit.configuration.file.YamlConfiguration();
+        try {
+            String content = new String(
+                    java.nio.file.Files.readAllBytes(file.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            cfg.loadFromString(content);
+            return cfg;
+        } catch (Exception e) {
+            LOG.warning("[Jobs] Lecture UTF-8 de jobs.yml échouée (" + e.getMessage()
+                    + "), repli sur le chargement par défaut.");
+            return org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
+        }
+    }
+
     // ── DTO ───────────────────────────────────────────────────────────────────
+
+    public static class Tier {
+        public final String name;
+        public final int    min;
+        public final int    max;
+        public Tier(String name, int min, int max) {
+            this.name = name;
+            this.min  = min;
+            this.max  = max;
+        }
+    }
 
     public static class LevelReward {
         public final long money;
@@ -295,11 +437,17 @@ public class JobConfig {
         public final String category;
         public final String label;
         public final int    xp;
+        public final int    minLevel;
+
         public XpSourceEntry(String category, String label, int xp) {
+            this(category, label, xp, 1);
+        }
+
+        public XpSourceEntry(String category, String label, int xp, int minLevel) {
             this.category = category;
             this.label    = label;
             this.xp       = xp;
+            this.minLevel = minLevel;
         }
     }
 }
-

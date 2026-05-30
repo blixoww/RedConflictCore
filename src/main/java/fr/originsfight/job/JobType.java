@@ -1,6 +1,8 @@
 package fr.originsfight.job;
 
-/** Énumère les trois métiers du serveur (+ NONE = sans métier). */
+/**
+ * Énumère les trois métiers du serveur (+ NONE = sans métier).
+ */
 public enum JobType {
 
     NONE("Aucun", "§8", "none"),
@@ -14,11 +16,13 @@ public enum JobType {
 
     JobType(String displayName, String color, String key) {
         this.displayName = displayName;
-        this.color       = color;
-        this.key         = key;
+        this.color = color;
+        this.key = key;
     }
 
-    /** Résout un String (insensible à la casse) → JobType, NONE si inconnu. */
+    /**
+     * Résout un String (insensible à la casse) → JobType, NONE si inconnu.
+     */
     public static JobType fromString(String s) {
         if (s == null || s.isEmpty()) return NONE;
         for (JobType jt : values()) {
@@ -27,7 +31,11 @@ public enum JobType {
         return NONE;
     }
 
-    /** Retour vrai si ce type est un vrai métier (≠ NONE). */
-    public boolean isReal() { return this != NONE; }
+    /**
+     * Retour vrai si ce type est un vrai métier (≠ NONE).
+     */
+    public boolean isReal() {
+        return this != NONE;
+    }
 }
 

@@ -5,17 +5,33 @@
 max-levels: 50
 
 # Formule XP : xp_required(level) = floor(base * pow(factor, level - 1))
+# Niv 1 → 400 | Niv 10 → ~1 520 | Niv 20 → ~6 710 | Niv 30 → ~29 600 | Niv 50 → ~576 800
 xp-formula:
-  base: 100
-  factor: 1.12
+  base: 400
+  factor: 1.16
 
 # Formule argent : money(level) = floor(money-base * pow(money-factor, level - 1))
-# (peut être surchargé par la section rewards par métier)
+# Valeurs faibles intentionnellement — les milestones (×5) sont les vraies récompenses.
 money-formula:
-  base: 200
-  factor: 1.18
+  base: 40
+  factor: 1.10
 
-# ── XP par action ──────────────────────────────────────────────────────────────
+# ── Paliers ──────────────────────────────────────────────────────────────────
+# Bornes de niveau de chaque palier. L'ORDRE compte : chaque action ci-dessous
+# définit une valeur d'XP par palier (1 valeur par entrée de cette liste).
+# Toutes les sources sont toujours farmables ; seule l'XP varie selon ton palier.
+tiers:
+  - { name: "Débutant",   min: 1,  max: 5  }
+  - { name: "Apprenti",   min: 6,  max: 10 }
+  - { name: "Confirmé",   min: 11, max: 20 }
+  - { name: "Expert",     min: 21, max: 30 }
+  - { name: "Maître",     min: 31, max: 40 }
+  - { name: "Légendaire", min: 41, max: 50 }
+
+# ── XP par action et par palier ──────────────────────────────────────────────
+# Chaque valeur est une liste de 6 nombres (1 par palier, dans l'ordre ci-dessus).
+# Une liste plus courte est complétée par sa dernière valeur ; un scalaire est
+# appliqué à tous les paliers.
 jobs:
 
   MINER:
@@ -24,16 +40,17 @@ jobs:
     description: "Extrais des minerais pour gagner de l'expérience"
     actions:
       # Clé = nom Material Bukkit (ou MATERIAL:META pour les blocs custom)
-      COAL_ORE: 5
-      IRON_ORE: 12
-      LAPIS_ORE: 15
-      REDSTONE_ORE: 15
-      QUARTZ_ORE: 18
-      GOLD_ORE: 20
-      DIAMOND_ORE: 50
-      EMERALD_ORE: 45
-      RUBY_ORE: 60
-      COBALT_ORE: 55
+      #                  I   II  III IV  V   VI
+      COAL_ORE:        [ 5,  6,  7,  8,  9,  10 ]
+      IRON_ORE:        [ 12, 13, 15, 17, 19, 21 ]
+      LAPIS_ORE:       [ 15, 16, 18, 20, 22, 24 ]
+      REDSTONE_ORE:    [ 15, 16, 18, 20, 22, 24 ]
+      QUARTZ_ORE:      [ 18, 20, 22, 24, 26, 28 ]
+      GOLD_ORE:        [ 20, 22, 25, 28, 31, 34 ]
+      EMERALD_ORE:     [ 45, 48, 52, 56, 60, 64 ]
+      DIAMOND_ORE:     [ 50, 54, 58, 62, 66, 70 ]
+      RUBY_ORE:        [ 60, 62, 65, 68, 70, 75 ]
+      COBALT_ORE:      [ 65, 68, 72, 76, 80, 85 ]   # > rubis à chaque palier
 
   FARMER:
     display: "Agriculteur"
@@ -42,27 +59,30 @@ jobs:
     actions:
       # "break" = casser le bloc, "place" = le poser
       break:
-        "CROPS:7": 8         # blé mûr (data value 7)
-        SUGAR_CANE: 5
-        CACTUS: 5
-        "CARROT:7": 10       # carottes mûres
-        "POTATO:7": 10       # pommes de terre mûres
+        #               I   II  III IV  V   VI
+        "CROPS:7":     [ 8,  9,  10, 11, 12, 13 ]   # blé mûr (data value 7)
+        SUGAR_CANE:    [ 5,  6,  7,  8,  9,  10 ]
+        CACTUS:        [ 5,  6,  7,  8,  9,  10 ]
+        "CARROT:7":    [ 10, 11, 12, 13, 14, 15 ]   # carottes mûres
+        "POTATO:7":    [ 10, 11, 12, 13, 14, 15 ]   # pommes de terre mûres
       place:
-        SEEDS: 2
-        SUGAR_CANE: 1
-        CACTUS: 1
-        CARROT_ITEM: 2
-        POTATO_ITEM: 2
+        #               I   II  III IV  V   VI
+        SEEDS:         [ 2,  2,  3,  3,  4,  4 ]
+        SUGAR_CANE:    [ 1,  1,  2,  2,  3,  3 ]
+        CACTUS:        [ 1,  1,  2,  2,  3,  3 ]
+        CARROT_ITEM:   [ 2,  2,  3,  3,  4,  4 ]
+        POTATO_ITEM:   [ 2,  2,  3,  3,  4,  4 ]
 
   ARTISAN:
     display: "Artisan"
     color: "§6"
     description: "Fabrique des items, brasse des potions et enchante"
     actions:
-      craft: 3          # XP par item crafté (hors blacklist)
-      brew: 20          # XP par potion brassée
-      enchant: 25       # XP par enchantement
-      anvil: 15         # XP par utilisation de l'enclume
+      #          I   II  III IV  V   VI
+      craft:   [ 3,  4,  5,  6,  7,  8  ]   # XP par item crafté (hors blacklist)
+      brew:    [ 20, 22, 25, 28, 31, 34 ]   # XP par potion brassée
+      enchant: [ 25, 28, 31, 34, 37, 40 ]   # XP par enchantement
+      anvil:   [ 15, 17, 19, 21, 23, 25 ]   # XP par utilisation de l'enclume
     # Crafts trop simples : aucune XP accordée pour ces résultats
     craft-blacklist:
       - WORKBENCH         # Table de craft
@@ -120,6 +140,36 @@ jobs:
       - STONE_BUTTON
       - STONE_PLATE
 
+# ── Libellés lisibles (onglet Information) ─────────────────────────────────────
+# Clé = identifiant d'action ci-dessus ; valeur = texte affiché. Optionnel : si
+# absent, un libellé est généré automatiquement à partir de la clé.
+source-names:
+  # MINER
+  COAL_ORE:     "Minerai de charbon"
+  IRON_ORE:     "Minerai de fer"
+  LAPIS_ORE:    "Minerai de lapis-lazuli"
+  REDSTONE_ORE: "Minerai de redstone"
+  QUARTZ_ORE:   "Minerai de quartz"
+  GOLD_ORE:     "Minerai d'or"
+  EMERALD_ORE:  "Minerai d'émeraude"
+  DIAMOND_ORE:  "Minerai de diamant"
+  RUBY_ORE:     "Minerai de rubis"
+  COBALT_ORE:   "Minerai de cobalt"
+  # FARMER (le préfixe Récolte/Plantation est ajouté automatiquement)
+  "CROPS:7":    "Blé mûr"
+  "CARROT:7":   "Carottes mûres"
+  "POTATO:7":   "Pommes de terre mûres"
+  SUGAR_CANE:   "Canne à sucre"
+  CACTUS:       "Cactus"
+  SEEDS:        "Graines"
+  CARROT_ITEM:  "Carottes"
+  POTATO_ITEM:  "Pommes de terre"
+  # ARTISAN
+  CRAFT:        "Fabriquer un item"
+  BREW:         "Brasser une potion"
+  ENCHANT:      "Enchanter un item"
+  ANVIL:        "Réparer à l'enclume"
+
 # ── Récompenses par niveau ─────────────────────────────────────────────────────
 # Format items : "MATERIAL[:META]:AMOUNT" (ex: "DIAMOND:5" ou "INK_SACK:4:8")
 # Si aucune surcharge ici, seul l'argent via la formule est donné.
@@ -127,49 +177,49 @@ jobs:
 rewards:
   MINER:
     5:
-      money: 500
+      money: 200
       items:
         - "IRON_INGOT:16"
     10:
-      money: 1000
+      money: 400
       items:
         - "IRON_INGOT:32"
         - "GOLD_INGOT:8"
     15:
-      money: 2000
+      money: 700
       items:
         - "DIAMOND:3"
     20:
-      money: 4000
+      money: 1200
       items:
         - "DIAMOND:8"
     25:
-      money: 8000
+      money: 2000
       items:
         - "DIAMOND:16"
         - "EMERALD:4"
     30:
-      money: 15000
+      money: 3500
       items:
         - "DIAMOND:24"
         - "EMERALD:8"
     35:
-      money: 25000
+      money: 6000
       items:
         - "DIAMOND:32"
         - "EMERALD:12"
     40:
-      money: 40000
+      money: 10000
       items:
         - "DIAMOND:48"
         - "EMERALD:16"
     45:
-      money: 60000
+      money: 15000
       items:
         - "DIAMOND:56"
         - "EMERALD:24"
     50:
-      money: 100000
+      money: 25000
       items:
         - "DIAMOND:64"
         - "EMERALD:32"
@@ -177,93 +227,92 @@ rewards:
 
   FARMER:
     5:
-      money: 500
+      money: 200
       items:
         - "WHEAT:32"
     10:
-      money: 1000
+      money: 400
       items:
         - "WHEAT:64"
         - "BREAD:16"
     15:
-      money: 2000
+      money: 700
       items:
         - "GOLDEN_APPLE:2"
     20:
-      money: 4000
+      money: 1200
       items:
         - "GOLDEN_APPLE:4"
     25:
-      money: 8000
+      money: 2000
       items:
         - "GOLDEN_APPLE:8"
     30:
-      money: 15000
+      money: 3500
       items:
         - "GOLDEN_APPLE:12"
     35:
-      money: 25000
+      money: 6000
       items:
         - "GOLDEN_APPLE:16"
     40:
-      money: 40000
+      money: 10000
       items:
         - "GOLDEN_APPLE:24"
     45:
-      money: 60000
+      money: 15000
       items:
         - "GOLDEN_APPLE:32"
     50:
-      money: 100000
+      money: 25000
       items:
         - "GOLDEN_APPLE:64"
         - "NETHER_STAR:1"
 
   ARTISAN:
     5:
-      money: 500
+      money: 200
       items:
         - "EXP_BOTTLE:8"
     10:
-      money: 1000
+      money: 400
       items:
         - "EXP_BOTTLE:24"
     15:
-      money: 2000
+      money: 700
       items:
         - "EXP_BOTTLE:32"
     20:
-      money: 4000
+      money: 1200
       items:
         - "EXP_BOTTLE:48"
     25:
-      money: 8000
+      money: 2000
       items:
         - "EXP_BOTTLE:64"
     30:
-      money: 15000
+      money: 3500
       items:
         - "EXP_BOTTLE:64"
         - "ENCHANTMENT_TABLE:1"
     35:
-      money: 25000
+      money: 6000
       items:
         - "EXP_BOTTLE:64"
         - "BOOK:16"
     40:
-      money: 40000
+      money: 10000
       items:
         - "EXP_BOTTLE:64"
         - "BOOK:32"
     45:
-      money: 60000
+      money: 15000
       items:
         - "EXP_BOTTLE:64"
         - "BOOK:48"
     50:
-      money: 100000
+      money: 25000
       items:
         - "EXP_BOTTLE:64"
         - "BOOK:64"
         - "NETHER_STAR:1"
-

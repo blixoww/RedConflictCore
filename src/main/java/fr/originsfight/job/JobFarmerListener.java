@@ -31,8 +31,9 @@ public class JobFarmerListener implements Listener {
 
         String keyMeta   = mat.name() + ":" + data;
         String keySimple = mat.name();
-        int xp = config.getFarmerXp("break", keyMeta);
-        if (xp == 0) xp = config.getFarmerXp("break", keySimple);
+        int level = manager.getLevel(player, JobType.FARMER);
+        int xp = config.getFarmerXp("break", keyMeta, level);
+        if (xp == 0) xp = config.getFarmerXp("break", keySimple, level);
         if (xp > 0) manager.giveXp(player, JobType.FARMER, xp);
     }
 
@@ -46,8 +47,9 @@ public class JobFarmerListener implements Listener {
 
         String keyMeta   = mat.name() + ":" + data;
         String keySimple = mat.name();
-        int xp = config.getFarmerXp("place", keyMeta);
-        if (xp == 0) xp = config.getFarmerXp("place", keySimple);
+        int level = manager.getLevel(player, JobType.FARMER);
+        int xp = config.getFarmerXp("place", keyMeta, level);
+        if (xp == 0) xp = config.getFarmerXp("place", keySimple, level);
         if (xp > 0) manager.giveXp(player, JobType.FARMER, xp);
     }
 }

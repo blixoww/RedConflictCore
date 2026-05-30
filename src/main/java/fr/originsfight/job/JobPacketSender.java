@@ -11,36 +11,36 @@ import java.util.List;
 
 /**
  * Envoie tous les packets job serveur → client.
- *
+ * <p>
  * Canaux : CUSTOM:JOB_S2C
- *
+ * <p>
  * PacketIds (S2C) :
- *   0xE0 JOB_DATA     — snapshot complet du joueur
- *   0xE1 JOB_LEVELUP  — animation niveau
- *   0xE2 JOB_XP_GAIN  — action bar XP
- *   0xE3 JOB_TOP      — classement
- *   0xE4 JOB_INIT     — config complète (50 niveaux × 3 métiers)
- *   0xE5 JOB_OPEN     — ouvre le GUI
+ * 0xE0 JOB_DATA     — snapshot complet du joueur
+ * 0xE1 JOB_LEVELUP  — animation niveau
+ * 0xE2 JOB_XP_GAIN  — action bar XP
+ * 0xE3 JOB_TOP      — classement
+ * 0xE4 JOB_INIT     — config complète (50 niveaux × 3 métiers)
+ * 0xE5 JOB_OPEN     — ouvre le GUI
  */
 public class JobPacketSender {
 
     public static final String CHANNEL_S2C = "CUSTOM:JOB_S2C";
 
-    private static final int PKT_JOB_DATA    = 0xE0;
+    private static final int PKT_JOB_DATA = 0xE0;
     private static final int PKT_JOB_LEVELUP = 0xE1;
     private static final int PKT_JOB_XP_GAIN = 0xE2;
-    private static final int PKT_JOB_TOP     = 0xE3;
-    private static final int PKT_JOB_INIT    = 0xE4;
-    private static final int PKT_JOB_OPEN       = 0xE5;
+    private static final int PKT_JOB_TOP = 0xE3;
+    private static final int PKT_JOB_INIT = 0xE4;
+    private static final int PKT_JOB_OPEN = 0xE5;
     private static final int PKT_JOB_XP_SOURCES = 0xE6;
 
     private final OriginsFightCore plugin;
-    private final JobConfig        config;
-    private final JobDatabase      database;
+    private final JobConfig config;
+    private final JobDatabase database;
 
     public JobPacketSender(OriginsFightCore plugin, JobConfig config, JobDatabase database) {
-        this.plugin   = plugin;
-        this.config   = config;
+        this.plugin = plugin;
+        this.config = config;
         this.database = database;
     }
 
@@ -140,6 +140,7 @@ public class JobPacketSender {
                 pb.writeString(s.category);
                 pb.writeString(s.label);
                 pb.writeVarInt(s.xp);
+                pb.writeVarInt(s.minLevel);
             }
         }
         send(player, pb.build());

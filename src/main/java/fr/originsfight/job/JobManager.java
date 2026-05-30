@@ -72,6 +72,11 @@ public class JobManager {
         return cache.computeIfAbsent(uuid, database::loadPlayer);
     }
 
+    /** Niveau actuel d'un joueur pour un métier (sert à choisir le palier d'XP). */
+    public int getLevel(Player player, JobType job) {
+        return getData(player.getUniqueId()).getLevelFor(job);
+    }
+
     /** @deprecated Tous les métiers sont actifs — conservé pour compatibilité admin */
     public JobType getActiveJob(UUID uuid) { return JobType.NONE; }
 

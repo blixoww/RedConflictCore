@@ -29,7 +29,7 @@ public class JobArtisanListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
 
-        int xpPerItem = config.getArtisanXp("craft");
+        int xpPerItem = config.getArtisanXp("craft", manager.getLevel(player, JobType.ARTISAN));
         if (xpPerItem <= 0) return;
 
         ItemStack result = event.getInventory().getResult();
@@ -83,7 +83,7 @@ public class JobArtisanListener implements Listener {
         String typeName = item.getType().name();
         if (!typeName.contains("POTION")) return;
 
-        int xp = config.getArtisanXp("brew");
+        int xp = config.getArtisanXp("brew", manager.getLevel(player, JobType.ARTISAN));
         if (xp > 0) manager.giveXp(player, JobType.ARTISAN, xp);
     }
 
@@ -92,7 +92,7 @@ public class JobArtisanListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEnchant(EnchantItemEvent event) {
         Player player = event.getEnchanter();
-        int xp = config.getArtisanXp("enchant");
+        int xp = config.getArtisanXp("enchant", manager.getLevel(player, JobType.ARTISAN));
         if (xp > 0) manager.giveXp(player, JobType.ARTISAN, xp);
     }
 
@@ -108,7 +108,7 @@ public class JobArtisanListener implements Listener {
 
         Player player = (Player) event.getWhoClicked();
 
-        int xp = config.getArtisanXp("anvil");
+        int xp = config.getArtisanXp("anvil", manager.getLevel(player, JobType.ARTISAN));
         if (xp > 0) manager.giveXp(player, JobType.ARTISAN, xp);
     }
 }

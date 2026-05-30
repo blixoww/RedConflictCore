@@ -362,7 +362,6 @@ categories:
       - "Poudre de Glowstone|glowstone_dust|1000|600|64|200|10000"
       - "Verrue du Nether|nether_wart|500|300|64|100|5000"
       - "Quartz du Nether|quartz|1500|1000|64|500|12000"
-      - "Balise|beacon|100000|60000|64|30000|500000"
 
   decoration:
     name: "Décoration"

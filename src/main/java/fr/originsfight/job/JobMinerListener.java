@@ -31,8 +31,9 @@ public class JobMinerListener implements Listener {
         String keySimple = mat.name();
         String keyMeta   = mat.name() + ":" + data;
 
-        int xp = config.getMinerXp(keyMeta);
-        if (xp == 0) xp = config.getMinerXp(keySimple);
+        int level = manager.getLevel(player, JobType.MINER);
+        int xp = config.getMinerXp(keyMeta, level);
+        if (xp == 0) xp = config.getMinerXp(keySimple, level);
         if (xp > 0) manager.giveXp(player, JobType.MINER, xp);
     }
 }

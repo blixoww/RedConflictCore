@@ -53,7 +53,7 @@ lagswitch:
 clearlagg:
 
   # Intervalle entre deux nettoyages automatiques (en minutes)
-  interval-minutes: 5
+  interval-minutes: 15
 
   # Secondes avant le clearlagg où un avertissement est diffusé en chat
   # Mettre à 0 pour désactiver l'avertissement
