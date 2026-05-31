@@ -19,6 +19,8 @@ public class TradeC2SHandler implements PluginMessageListener {
     private static final int TRADE_CANCEL  = 0xA3;
     private static final int TRADE_MONEY   = 0xA4;
     private static final int TRADE_PB      = 0xA5;
+    /** Clic style inventaire : byte region | varint slot | byte button | byte shift */
+    private static final int TRADE_CLICK   = 0xA6;
 
     private final TradeManager manager = TradeManager.getInstance();
     private final OriginsFightCore plugin;
@@ -45,13 +47,22 @@ public class TradeC2SHandler implements PluginMessageListener {
 
         switch (packetId) {
             case TRADE_OFFER: {
+                // Legacy : proposer toute une stack = shift-clic depuis l'inventaire.
                 int invSlot = readVarInt(in);
-                session.offerFromInventory(player, invSlot);
+                session.handleClick(player, TradeSession.REGION_INV, invSlot, 0, true);
                 break;
             }
             case TRADE_TAKE: {
                 int index = readVarInt(in);
                 session.takeBackFromOffer(player, index);
+                break;
+            }
+            case TRADE_CLICK: {
+                int region = in.read() & 0xFF;
+                int slot   = readVarInt(in);
+                int button = in.read() & 0xFF;
+                int shift  = in.read() & 0xFF;
+                session.handleClick(player, region, slot, button, shift == 1);
                 break;
             }
             case TRADE_CONFIRM:
