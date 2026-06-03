@@ -56,9 +56,11 @@ import fr.originsfight.repair.RepairCommand;
 import fr.originsfight.rtp.RTPCommand;
 import fr.originsfight.rtp.RTPListener;
 import fr.originsfight.staff.StaffPlugin;
+import fr.originsfight.trade.TradeC2SHandler;
 import fr.originsfight.trade.TradeCommand;
 import fr.originsfight.trade.TradeListener;
 import fr.originsfight.profil.ProfilCommand;
+import fr.originsfight.trade.TradePacketSender;
 import fr.originsfight.useful.BaltopCommand;
 import fr.originsfight.useful.CobbleCommand;
 import fr.originsfight.useful.CommandsCommand;
@@ -73,9 +75,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import fr.originsfight.xpboost.XpBoostManager;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -105,6 +109,7 @@ public class OriginsFightCore extends JavaPlugin {
     private ShopManager shopManager;
     private StaffPlugin staffPlugin;
     private PlayerDatabase playerDatabase;
+    private XpBoostManager xpBoostManager;
     private BountyManager bountyManager;
     private FriendManager friendManager;
     private LotoManager lotoManager;
@@ -114,7 +119,7 @@ public class OriginsFightCore extends JavaPlugin {
     private PBManager pbManager;
     private RingManager ringManager;
     private JobDatabase jobDatabase;
-    private JobManager  jobManager;
+    private JobManager jobManager;
     private PBLogger pbLogger;
     private StaffAlertManager pbStaffAlerts;
     private OffresManager offresManager;
@@ -169,6 +174,19 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("profil").setExecutor(profilCmd);
             getCommand("profil").setTabCompleter(profilCmd);
             getLogger().info("[PlayerDB] Base de données joueurs initialisée avec succès !");
+
+            // ── Boost d'XP x2 (item xp_booster) ──────────────────────────────
+            this.xpBoostManager = new fr.originsfight.xpboost.XpBoostManager(this.playerDatabase);
+            if (this.jobManager != null) {
+                this.jobManager.setXpBoostManager(this.xpBoostManager);
+                // Le sender métier inclut le temps de boost restant dans JOB_DATA.
+                if (this.jobManager.getPacketSender() != null) {
+                    this.jobManager.getPacketSender().setXpBoostManager(this.xpBoostManager);
+                }
+            }
+            getServer().getPluginManager().registerEvents(
+                    new fr.originsfight.xpboost.XpBoostListener(this.xpBoostManager, this.jobManager), this);
+            getLogger().info("[XpBoost] Boost d'XP x2 (item xp_booster) initialisé.");
 
             // ── Système Points Boutique (PB) ─────────────────────────────────
             this.pbLogger = new PBLogger(this);
@@ -251,7 +269,10 @@ public class OriginsFightCore extends JavaPlugin {
         if (this.lagSwitchManager != null) this.lagSwitchManager.disable();
         if (this.clearLaggManager != null) this.clearLaggManager.disable();
         if (this.ringManager != null) { /* ring save on disable handled internally */ }
-        if (this.jobManager  != null) { this.jobManager.saveAll(); this.jobDatabase.disconnect(); }
+        if (this.jobManager != null) {
+            this.jobManager.saveAll();
+            this.jobDatabase.disconnect();
+        }
         if (this.hdvManager != null) this.hdvManager.disable();
         if (this.shopManager != null) {
             fr.originsfight.shop.ShopEventManager eMgr = fr.originsfight.shop.ShopEventManager.getInstance();
@@ -321,8 +342,8 @@ public class OriginsFightCore extends JavaPlugin {
             getLogger().severe("[Jobs] Impossible d'initialiser la base de données jobs !");
             return;
         }
-        JobConfig       jobConfig = new JobConfig(this);
-        this.jobManager           = new JobManager(this, jobDatabase, jobConfig);
+        JobConfig jobConfig = new JobConfig(this);
+        this.jobManager = new JobManager(this, jobDatabase, jobConfig);
         JobPacketSender jobSender = new JobPacketSender(this, jobConfig, jobDatabase);
         this.jobManager.setPacketSender(jobSender);
 
@@ -348,9 +369,12 @@ public class OriginsFightCore extends JavaPlugin {
         getLogger().info("[Jobs] Système de métiers initialisé.");
     }
 
-    public JobManager getJobManager() { return this.jobManager; }
+    public JobManager getJobManager() {
+        return this.jobManager;
+    }
 
-    private void registerRing() {        this.ringManager = new RingManager(this);
+    private void registerRing() {
+        this.ringManager = new RingManager(this);
         RingPacketSender ringPacketSender = new RingPacketSender(this, ringManager);
 
         getServer().getMessenger().registerIncomingPluginChannel(
@@ -380,16 +404,16 @@ public class OriginsFightCore extends JavaPlugin {
 
     private void registerTradeChannels() {
         getServer().getMessenger().registerIncomingPluginChannel(
-                this, fr.originsfight.trade.TradeC2SHandler.CHANNEL_C2S,
-                new fr.originsfight.trade.TradeC2SHandler(this));
+                this, TradeC2SHandler.CHANNEL_C2S,
+                new TradeC2SHandler(this));
         getServer().getMessenger().registerOutgoingPluginChannel(
-                this, fr.originsfight.trade.TradePacketSender.CHANNEL_S2C);
+                this, TradePacketSender.CHANNEL_S2C);
         getLogger().info("[Trade] Canaux trade enregistrés.");
     }
 
     private void applyPermissionMessages() {
         getDescription().getCommands().keySet().forEach(name -> {
-            org.bukkit.command.PluginCommand cmd = getCommand(name);
+            PluginCommand cmd = getCommand(name);
             if (cmd != null && cmd.getPermission() != null) {
                 cmd.setPermissionMessage(RC.ERR_NO_PERM);
             }

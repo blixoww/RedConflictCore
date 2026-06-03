@@ -81,12 +81,42 @@ public class PlayerDatabase {
             "  faction     TEXT    NOT NULL DEFAULT ''," +
             "  streak      INTEGER NOT NULL DEFAULT 0," +
             "  bounty      INTEGER NOT NULL DEFAULT 0," +
-            "  pb          INTEGER NOT NULL DEFAULT 0" +
+            "  pb          INTEGER NOT NULL DEFAULT 0," +
+            "  xp_boost_until INTEGER NOT NULL DEFAULT 0" +
             ")"
         );
         // Migration : ajoute la colonne pb si la table préexistait sans elle
         try { conn().createStatement().executeUpdate("ALTER TABLE player_profiles ADD COLUMN pb INTEGER NOT NULL DEFAULT 0"); }
         catch (SQLException ignored) {}
+        // Migration : ajoute la colonne xp_boost_until (timestamp ms de fin du boost x2)
+        try { conn().createStatement().executeUpdate("ALTER TABLE player_profiles ADD COLUMN xp_boost_until INTEGER NOT NULL DEFAULT 0"); }
+        catch (SQLException ignored) {}
+    }
+
+    // ── Boost d'XP (x2 métiers, item xp_booster) ──────────────────────────────
+
+    /** Timestamp (ms) de fin du boost x2. 0 si aucun boost. */
+    public long getXpBoostUntil(UUID uuid) {
+        try {
+            PreparedStatement ps = conn().prepareStatement(
+                "SELECT xp_boost_until FROM player_profiles WHERE uuid = ?");
+            ps.setString(1, uuid.toString());
+            ResultSet rs = ps.executeQuery();
+            long v = rs.next() ? rs.getLong("xp_boost_until") : 0L;
+            rs.close(); ps.close();
+            return v;
+        } catch (SQLException e) { log("getXpBoostUntil: " + e.getMessage()); return 0L; }
+    }
+
+    /** Définit le timestamp (ms) de fin du boost x2. */
+    public void setXpBoostUntil(UUID uuid, long until) {
+        try {
+            PreparedStatement ps = conn().prepareStatement(
+                "UPDATE player_profiles SET xp_boost_until = ? WHERE uuid = ?");
+            ps.setLong(1, Math.max(0L, until));
+            ps.setString(2, uuid.toString());
+            ps.executeUpdate(); ps.close();
+        } catch (SQLException e) { log("setXpBoostUntil: " + e.getMessage()); }
     }
 
     // ── Points Boutique (PB) ──────────────────────────────────────────────────

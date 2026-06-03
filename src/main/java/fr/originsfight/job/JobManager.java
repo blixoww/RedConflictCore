@@ -26,6 +26,7 @@ public class JobManager {
     private final JobConfig       config;
     private JobPacketSender        packetSender;
     private Economy                economy;
+    private fr.originsfight.xpboost.XpBoostManager xpBoostManager;
 
     /** Cache mémoire UUID → JobData (évite les lectures SQLite en jeu). */
     private final Map<UUID, JobDatabase.JobData> cache = new ConcurrentHashMap<>();
@@ -41,6 +42,13 @@ public class JobManager {
     }
 
     public void setPacketSender(JobPacketSender sender) { this.packetSender = sender; }
+    public JobPacketSender getPacketSender() { return packetSender; }
+    public void setXpBoostManager(fr.originsfight.xpboost.XpBoostManager m) { this.xpBoostManager = m; }
+
+    /** Renvoie au client un JOB_DATA frais (ex. après (dés)activation du boost x2). */
+    public void resendJobData(Player p) {
+        if (p != null && packetSender != null) packetSender.sendJobData(p, getData(p.getUniqueId()));
+    }
     public JobDatabase  getDatabase() { return database; }
     public JobConfig    getConfig()   { return config; }
 
@@ -89,6 +97,12 @@ public class JobManager {
     public boolean giveXp(Player player, JobType job, int amount) {
         if (amount <= 0 || !job.isReal()) return false;
         UUID uuid = player.getUniqueId();
+
+        // Boost d'XP x2 (item xp_booster) : double l'XP métiers tant qu'il est actif.
+        if (xpBoostManager != null && xpBoostManager.isActive(uuid)) {
+            amount *= 2;
+        }
+
         JobDatabase.JobData d = getData(uuid);
 
         int level  = d.getLevelFor(job);

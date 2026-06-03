@@ -37,12 +37,16 @@ public class JobPacketSender {
     private final OriginsFightCore plugin;
     private final JobConfig config;
     private final JobDatabase database;
+    /** Optionnel : permet d'inclure le temps de boost x2 restant dans JOB_DATA. */
+    private fr.originsfight.xpboost.XpBoostManager xpBoostManager;
 
     public JobPacketSender(OriginsFightCore plugin, JobConfig config, JobDatabase database) {
         this.plugin = plugin;
         this.config = config;
         this.database = database;
     }
+
+    public void setXpBoostManager(fr.originsfight.xpboost.XpBoostManager m) { this.xpBoostManager = m; }
 
     // ── JOB_INIT ─────────────────────────────────────────────────────────────
 
@@ -67,6 +71,8 @@ public class JobPacketSender {
     // ── JOB_DATA ─────────────────────────────────────────────────────────────
 
     public void sendJobData(Player player, JobDatabase.JobData d) {
+        long boostMs = (xpBoostManager != null)
+                ? xpBoostManager.getRemainingMs(player.getUniqueId()) : 0L;
         byte[] pkt = PacketBuilder.create(PKT_JOB_DATA)
                 .writeVarInt(d.minerLevel)
                 .writeVarInt(d.minerXp)
@@ -74,6 +80,7 @@ public class JobPacketSender {
                 .writeVarInt(d.farmerXp)
                 .writeVarInt(d.artisanLevel)
                 .writeVarInt(d.artisanXp)
+                .writeLong(boostMs)
                 .build();
         send(player, pkt);
     }
