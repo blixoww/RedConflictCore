@@ -71,7 +71,7 @@ public class ShopManager {
 
     public ShopManager(OriginsFightCore plugin) {
         this.plugin = plugin;
-        this.database = new ShopDatabase(plugin);
+        this.database = new ShopDatabase(plugin, plugin.getCoreDatabase());
         instance = this;
     }
 

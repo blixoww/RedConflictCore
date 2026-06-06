@@ -38,6 +38,11 @@ import fr.originsfight.shop.ShopCommand;
 import fr.originsfight.shop.ShopManager;
 import fr.originsfight.shop.ShopServerHandler;
 import fr.originsfight.data.PlayerDatabase;
+import fr.originsfight.db.Database;
+import fr.originsfight.db.PlayerDataDatabase;
+import fr.originsfight.db.PlayerDataSyncService;
+import fr.originsfight.db.PlayerLockListener;
+import fr.originsfight.db.PlayerLockService;
 import fr.originsfight.pb.PBCommand;
 import fr.originsfight.pb.PBLogger;
 import fr.originsfight.pb.PBManager;
@@ -105,6 +110,9 @@ public class OriginsFightCore extends JavaPlugin {
 
     private final Map<Material, ItemStack> smeltableItems = new HashMap<>();
 
+    private Database database;
+    private PlayerLockService playerLockService;
+    private PlayerDataSyncService playerDataSync;
     private HdvManager hdvManager;
     private ShopManager shopManager;
     private StaffPlugin staffPlugin;
@@ -131,6 +139,37 @@ public class OriginsFightCore extends JavaPlugin {
 
         this.worldGuard = (WorldGuardPlugin) getServer().getPluginManager().getPlugin("WorldGuard");
         saveDefaultConfig();
+
+        // ── Base de données centralisée H2 (doit être prête AVANT tout module DB) ──
+        this.database = new Database(this);
+        if (!this.database.start()) {
+            getLogger().severe("[H2] Base de données indisponible — les modules de données risquent de ne pas fonctionner.");
+        } else {
+            this.playerLockService = new PlayerLockService(this.database);
+            this.playerLockService.createTable();
+            // Anti-crash : ce serveur est vide au démarrage → ses verrous restants sont des fantômes.
+            this.playerLockService.releaseAllForServer(this.database.getServerId());
+
+            // Synchronisation inventaire + enderchest (cross-serveur), activable via config.
+            if (getConfig().getBoolean("database.sync.enabled", true)) {
+                PlayerDataDatabase dataDb = new PlayerDataDatabase(this.database);
+                if (dataDb.init()) {
+                    this.playerDataSync = new PlayerDataSyncService(dataDb);
+                    // Anti-crash : auto-save périodique des inventaires (borne la perte de données).
+                    int autosave = getConfig().getInt("database.sync.autosave-minutes", 3);
+                    this.playerDataSync.startAutoSave(this, autosave);
+                    getLogger().info("[Sync] Synchronisation inventaire/enderchest activée"
+                            + (autosave > 0 ? " (auto-save toutes les " + autosave + " min)." : "."));
+                } else {
+                    getLogger().severe("[Sync] Échec init table player_data — synchro inventaire désactivée.");
+                }
+            }
+
+            getServer().getPluginManager().registerEvents(
+                    new PlayerLockListener(this.playerLockService, this.playerDataSync,
+                            this.database.getServerId(), this.database.isKickOnConflict()), this);
+        }
+
         saveBoutiqueConfig();
         loadBoutiqueConfig();
         loadRecipes();
@@ -163,7 +202,7 @@ public class OriginsFightCore extends JavaPlugin {
             getLogger().severe("[Staff] Échec de l'initialisation du système staff !");
         }
         // Système KS (kill score / stats PvP) — données centralisées dans PlayerDatabase
-        this.playerDatabase = new PlayerDatabase(this);
+        this.playerDatabase = new PlayerDatabase(this.database);
         if (this.playerDatabase.init()) {
             KsCommand ksCmd = new KsCommand(playerDatabase);
             getCommand("ks").setExecutor(ksCmd);
@@ -292,7 +331,15 @@ public class OriginsFightCore extends JavaPlugin {
             }
         }
         if (this.playerDatabase != null) this.playerDatabase.close();
+        // Sauvegarde inventaire/enderchest + libération des verrous des joueurs encore connectés.
+        if (this.playerDataSync != null) this.playerDataSync.saveAll(Bukkit.getOnlinePlayers());
+        if (this.playerLockService != null && this.database != null) {
+            for (Player p : Bukkit.getOnlinePlayers())
+                this.playerLockService.release(p.getUniqueId(), this.database.getServerId());
+        }
         unloadPackets();
+        // Fermeture du pool + arrêt du serveur H2 TCP EN DERNIER (après toutes les sauvegardes).
+        if (this.database != null) this.database.close();
     }
 
     private void registerCommands() {
@@ -337,7 +384,7 @@ public class OriginsFightCore extends JavaPlugin {
 
     private void registerJob() {
         // jobs.yml est géré directement par JobConfig (sous-dossier jobs/)
-        this.jobDatabase = new JobDatabase(this);
+        this.jobDatabase = new JobDatabase(this.database);
         if (!this.jobDatabase.connect()) {
             getLogger().severe("[Jobs] Impossible d'initialiser la base de données jobs !");
             return;
@@ -569,6 +616,11 @@ public class OriginsFightCore extends JavaPlugin {
 
     public PlayerDatabase getPlayerDatabase() {
         return this.playerDatabase;
+    }
+
+    /** Provider central de connexions H2 (pool HikariCP). */
+    public Database getCoreDatabase() {
+        return this.database;
     }
 
     public PBManager getPBManager() {

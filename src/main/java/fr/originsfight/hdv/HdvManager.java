@@ -34,7 +34,7 @@ public class HdvManager {
 
     public HdvManager(OriginsFightCore plugin) {
         this.plugin = plugin;
-        this.database = new HdvDatabase(plugin);
+        this.database = new HdvDatabase(plugin, plugin.getCoreDatabase());
         instance = this;
     }
 
@@ -46,9 +46,9 @@ public class HdvManager {
         if (setupVaultEconomy()) {
             LOG.info("[HDV] Vault trouve et utilise comme economy.");
         } else {
-            this.internalEconomy = new HdvEconomy(this.database.getConnection());
+            this.internalEconomy = new HdvEconomy(plugin.getCoreDatabase());
             this.economy = this.internalEconomy;
-            LOG.info("[HDV] Vault non trouvutilisation de l'interne (SQLite).");
+            LOG.info("[HDV] Vault non trouvé : utilisation de l'économie interne (H2).");
         }
         LOG.info("[HDV] Activation reussie.");
         return true;

@@ -9,6 +9,7 @@ fr\originsfight\ring\RingEffectListener$1.class
 fr\originsfight\faction\FactionZoneSender$1.class
 fr\originsfight\loto\LotoManager$1.class
 fr\originsfight\hdv\HdvDatabase.class
+fr\originsfight\db\PlayerLockListener.class
 fr\originsfight\job\JobDatabase$1.class
 fr\originsfight\staff\commands\FreezeCommand.class
 fr\originsfight\automsg\AutoMessageManager$1.class
@@ -19,6 +20,7 @@ fr\originsfight\ring\RingManager.class
 fr\originsfight\shop\ShopServerHandler.class
 fr\originsfight\useful\PlayerListManager$1.class
 fr\originsfight\shop\ShopManager.class
+fr\originsfight\db\PotionEffectCodec.class
 fr\originsfight\listeners\AxeArmorDamageListener.class
 fr\originsfight\shop\ShopDatabase$ShopCategory.class
 fr\originsfight\loto\LotoManager$7.class
@@ -59,6 +61,7 @@ fr\originsfight\data\PlayerDataServerHandler.class
 fr\originsfight\staff\commands\StaffChatCommand.class
 fr\originsfight\loto\LotoManager$8.class
 fr\originsfight\staff\commands\TopLuckCommand$3.class
+fr\originsfight\db\PlayerLockService.class
 fr\originsfight\RC.class
 fr\originsfight\bottlexp\BottleXpListener.class
 fr\originsfight\listeners\WelcomeListener.class
@@ -72,6 +75,7 @@ fr\originsfight\useful\TpuCommand.class
 fr\originsfight\ks\KsDatabase$KsStats.class
 fr\originsfight\death\DeathMessages.class
 fr\originsfight\staff\commands\UnsanctionCommand.class
+fr\originsfight\xpboost\XpBoostManager.class
 fr\originsfight\ks\KsCommand.class
 fr\originsfight\rtp\RTPListener.class
 fr\originsfight\staff\StaffListener$3.class
@@ -124,6 +128,7 @@ fr\originsfight\shop\ShopDatabase$ShopEventRow.class
 fr\originsfight\hdv\HdvCommand.class
 fr\originsfight\packets\PacketBuilder.class
 fr\originsfight\bounty\KillstreakManager.class
+fr\originsfight\db\ItemArrayCodec.class
 fr\originsfight\loto\LotoManager$4.class
 fr\originsfight\staff\commands\SanctionsCommand.class
 fr\originsfight\useful\BaltopCommand$BaltopEntry.class
@@ -144,6 +149,7 @@ fr\originsfight\ks\KsListener.class
 fr\originsfight\staff\StaffListener$4.class
 fr\originsfight\packets\CustomPacketServerHandler.class
 fr\originsfight\annonyme\AnonymeCommand.class
+fr\originsfight\db\PlayerDataSyncService.class
 fr\originsfight\data\PlayerDatabase$KsStats.class
 fr\originsfight\loto\LotoManager$9.class
 fr\originsfight\automsg\AutoMessageManager.class
@@ -153,6 +159,7 @@ fr\originsfight\profil\ProfilCommand.class
 fr\originsfight\clearlagg\ClearLaggManager.class
 fr\originsfight\staff\StaffFormatter.class
 fr\originsfight\friend\FriendListener.class
+fr\originsfight\xpboost\XpBoostListener.class
 fr\originsfight\utils\CooldownManager.class
 fr\originsfight\staff\commands\TopLuckCommand$1.class
 fr\originsfight\clearlagg\ClearLaggCommand$Collections.class
@@ -171,6 +178,7 @@ fr\originsfight\useful\VisionCommand.class
 fr\originsfight\trade\TradeListener.class
 fr\originsfight\rtp\RTPCommand.class
 fr\originsfight\useful\BlockCommand.class
+fr\originsfight\db\PlayerDataDatabase.class
 fr\originsfight\job\JobPacketSender.class
 fr\originsfight\hdv\HdvManager.class
 fr\originsfight\staff\StaffItems.class
@@ -181,12 +189,14 @@ fr\originsfight\hdv\HdvListing.class
 fr\originsfight\annonyme\AnonymousDataSender.class
 fr\originsfight\useful\GuideCommand.class
 fr\originsfight\trade\TradeCommand.class
+fr\originsfight\db\PlayerDataDatabase$PlayerData.class
 fr\originsfight\profil\ProfilCommand$CachedPayload.class
 fr\originsfight\repair\RepairItems.class
 fr\originsfight\job\JobMinerListener.class
 fr\originsfight\combatlog\CombatLogCommand.class
 fr\originsfight\combatlog\CombatLogListener.class
 fr\originsfight\data\PlayerDatabase.class
+fr\originsfight\db\Database.class
 fr\originsfight\useful\MsgCommand.class
 fr\originsfight\OriginsFightCore.class
 fr\originsfight\friend\FriendCommand.class

@@ -19,7 +19,7 @@ public class StaffPlugin {
 
     public StaffPlugin(OriginsFightCore plugin) {
         this.plugin = plugin;
-        this.db = new StaffDatabase(plugin);
+        this.db = new StaffDatabase(plugin.getCoreDatabase());
         this.listener = new StaffListener(db, plugin);
     }
 

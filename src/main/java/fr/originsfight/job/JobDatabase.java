@@ -1,83 +1,70 @@
 package fr.originsfight.job;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.db.Database;
 
-import java.io.File;
 import java.sql.*;
 import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * Accès SQLite pour les données de métiers.
+ * Accès H2 (pool partagé) pour les données de métiers.
  *
  * Table player_jobs :
- *   uuid           TEXT PK
- *   job            TEXT  DEFAULT 'NONE'
- *   miner_level    INT   DEFAULT 0
- *   miner_xp       INT   DEFAULT 0
- *   farmer_level   INT   DEFAULT 0
- *   farmer_xp      INT   DEFAULT 0
- *   artisan_level  INT   DEFAULT 0
- *   artisan_xp     INT   DEFAULT 0
+ *   uuid           VARCHAR PK
+ *   job            VARCHAR DEFAULT 'NONE'
+ *   miner_level    INT     DEFAULT 0
+ *   miner_xp       INT     DEFAULT 0
+ *   farmer_level   INT     DEFAULT 0
+ *   farmer_xp      INT     DEFAULT 0
+ *   artisan_level  INT     DEFAULT 0
+ *   artisan_xp     INT     DEFAULT 0
  */
 public class JobDatabase {
 
     private static final Logger LOG = Logger.getLogger("Jobs");
-    private Connection conn;
-    private final File dbFile;
+    private final Database db;
 
-    public JobDatabase(OriginsFightCore plugin) {
-        dbFile = new File(plugin.getDataFolder(), "jobs/jobs.db");
+    public JobDatabase(Database db) {
+        this.db = db;
     }
 
     // ── Cycle de vie ─────────────────────────────────────────────────────────
 
     public boolean connect() {
-        try {
-            Class.forName("org.sqlite.JDBC");
-            dbFile.getParentFile().mkdirs();
-            conn = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
-            createTables();
+        try (Connection c = db.getConnection();
+             Statement st = c.createStatement()) {
+            st.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS player_jobs (" +
+                "  uuid           VARCHAR(36) PRIMARY KEY," +
+                "  job            VARCHAR(16) NOT NULL DEFAULT 'NONE'," +
+                "  miner_level    INT NOT NULL DEFAULT 0," +
+                "  miner_xp       INT NOT NULL DEFAULT 0," +
+                "  farmer_level   INT NOT NULL DEFAULT 0," +
+                "  farmer_xp      INT NOT NULL DEFAULT 0," +
+                "  artisan_level  INT NOT NULL DEFAULT 0," +
+                "  artisan_xp     INT NOT NULL DEFAULT 0" +
+                ")"
+            );
             return true;
-        } catch (Exception e) {
-            LOG.severe("[Jobs] Erreur SQLite : " + e.getMessage());
+        } catch (SQLException e) {
+            LOG.severe("[Jobs] Erreur H2 : " + e.getMessage());
             return false;
         }
     }
 
-    public void disconnect() {
-        try { if (conn != null && !conn.isClosed()) conn.close(); } catch (SQLException ignored) {}
-    }
-
-    private Connection c() throws SQLException {
-        if (conn == null || conn.isClosed())
-            conn = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
-        return conn;
-    }
-
-    private void createTables() throws SQLException {
-        c().createStatement().executeUpdate(
-            "CREATE TABLE IF NOT EXISTS player_jobs (" +
-            "  uuid           TEXT    PRIMARY KEY," +
-            "  job            TEXT    NOT NULL DEFAULT 'NONE'," +
-            "  miner_level    INTEGER NOT NULL DEFAULT 0," +
-            "  miner_xp       INTEGER NOT NULL DEFAULT 0," +
-            "  farmer_level   INTEGER NOT NULL DEFAULT 0," +
-            "  farmer_xp      INTEGER NOT NULL DEFAULT 0," +
-            "  artisan_level  INTEGER NOT NULL DEFAULT 0," +
-            "  artisan_xp     INTEGER NOT NULL DEFAULT 0" +
-            ")"
-        );
-    }
+    /** No-op : le pool est fermé centralement. */
+    public void disconnect() { }
 
     // ── Ensure row ────────────────────────────────────────────────────────────
 
     public void ensurePlayer(UUID uuid) {
-        try {
-            PreparedStatement ps = c().prepareStatement(
-                "INSERT OR IGNORE INTO player_jobs (uuid) VALUES (?)");
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                "INSERT INTO player_jobs (uuid) SELECT ? " +
+                "WHERE NOT EXISTS (SELECT 1 FROM player_jobs WHERE uuid = ?)")) {
             ps.setString(1, uuid.toString());
-            ps.executeUpdate(); ps.close();
+            ps.setString(2, uuid.toString());
+            ps.executeUpdate();
         } catch (SQLException e) { LOG.warning("[Jobs] ensurePlayer: " + e.getMessage()); }
     }
 
@@ -85,23 +72,23 @@ public class JobDatabase {
 
     public JobData loadPlayer(UUID uuid) {
         ensurePlayer(uuid);
-        try {
-            PreparedStatement ps = c().prepareStatement(
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
                 "SELECT miner_level,miner_xp,farmer_level,farmer_xp,artisan_level,artisan_xp " +
-                "FROM player_jobs WHERE uuid = ?");
+                "FROM player_jobs WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
-            ResultSet rs = ps.executeQuery();
-            JobData d = new JobData();
-            if (rs.next()) {
-                d.minerLevel    = rs.getInt("miner_level");
-                d.minerXp       = rs.getInt("miner_xp");
-                d.farmerLevel   = rs.getInt("farmer_level");
-                d.farmerXp      = rs.getInt("farmer_xp");
-                d.artisanLevel  = rs.getInt("artisan_level");
-                d.artisanXp     = rs.getInt("artisan_xp");
+            try (ResultSet rs = ps.executeQuery()) {
+                JobData d = new JobData();
+                if (rs.next()) {
+                    d.minerLevel    = rs.getInt("miner_level");
+                    d.minerXp       = rs.getInt("miner_xp");
+                    d.farmerLevel   = rs.getInt("farmer_level");
+                    d.farmerXp      = rs.getInt("farmer_xp");
+                    d.artisanLevel  = rs.getInt("artisan_level");
+                    d.artisanXp     = rs.getInt("artisan_xp");
+                }
+                return d;
             }
-            rs.close(); ps.close();
-            return d;
         } catch (SQLException e) {
             LOG.warning("[Jobs] loadPlayer: " + e.getMessage());
             return new JobData();
@@ -111,11 +98,11 @@ public class JobDatabase {
     // ── Écriture ──────────────────────────────────────────────────────────────
 
     public void savePlayer(UUID uuid, JobData d) {
-        try {
-            PreparedStatement ps = c().prepareStatement(
-                "INSERT OR REPLACE INTO player_jobs " +
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                "MERGE INTO player_jobs " +
                 "(uuid,miner_level,miner_xp,farmer_level,farmer_xp,artisan_level,artisan_xp) " +
-                "VALUES (?,?,?,?,?,?,?)");
+                "KEY(uuid) VALUES (?,?,?,?,?,?,?)")) {
             ps.setString(1, uuid.toString());
             ps.setInt(2, d.minerLevel);
             ps.setInt(3, d.minerXp);
@@ -123,7 +110,7 @@ public class JobDatabase {
             ps.setInt(5, d.farmerXp);
             ps.setInt(6, d.artisanLevel);
             ps.setInt(7, d.artisanXp);
-            ps.executeUpdate(); ps.close();
+            ps.executeUpdate();
         } catch (SQLException e) { LOG.warning("[Jobs] savePlayer: " + e.getMessage()); }
     }
 
@@ -133,13 +120,13 @@ public class JobDatabase {
         String levelCol = levelCol(job);
         String xpCol    = xpCol(job);
         if (levelCol == null) return;
-        try {
-            PreparedStatement ps = c().prepareStatement(
-                "UPDATE player_jobs SET " + levelCol + " = ?, " + xpCol + " = ? WHERE uuid = ?");
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                "UPDATE player_jobs SET " + levelCol + " = ?, " + xpCol + " = ? WHERE uuid = ?")) {
             ps.setInt(1, newLevel);
             ps.setInt(2, newXp);
             ps.setString(3, uuid.toString());
-            ps.executeUpdate(); ps.close();
+            ps.executeUpdate();
         } catch (SQLException e) { LOG.warning("[Jobs] addXp: " + e.getMessage()); }
     }
 
@@ -149,24 +136,25 @@ public class JobDatabase {
         List<TopEntry> list = new ArrayList<>();
         String levelCol = job.isReal() ? levelCol(job) : null;
         String xpCol    = job.isReal() ? xpCol(job) : null;
-        try {
-            String sql;
-            if (job.isReal()) {
-                // Classement par métier spécifique
-                sql = "SELECT uuid, job, " + levelCol + " AS lvl, " + xpCol + " AS xp " +
-                      "FROM player_jobs WHERE " + levelCol + " > 0 " +
-                      "ORDER BY lvl DESC, xp DESC LIMIT " + limit;
-            } else {
-                // Classement global: niveau le plus élevé parmi les 3 métiers
-                sql = "SELECT uuid, job, " +
-                      "MAX(miner_level, farmer_level, artisan_level) AS lvl, " +
-                      "CASE WHEN miner_level >= farmer_level AND miner_level >= artisan_level THEN miner_xp " +
-                      "     WHEN farmer_level >= artisan_level THEN farmer_xp ELSE artisan_xp END AS xp " +
-                      "FROM player_jobs WHERE " +
-                      "(miner_level > 0 OR farmer_level > 0 OR artisan_level > 0) " +
-                      "ORDER BY lvl DESC, xp DESC LIMIT " + limit;
-            }
-            ResultSet rs = c().createStatement().executeQuery(sql);
+        String sql;
+        if (job.isReal()) {
+            // Classement par métier spécifique
+            sql = "SELECT uuid, job, " + levelCol + " AS lvl, " + xpCol + " AS xp " +
+                  "FROM player_jobs WHERE " + levelCol + " > 0 " +
+                  "ORDER BY lvl DESC, xp DESC LIMIT " + limit;
+        } else {
+            // Classement global: niveau le plus élevé parmi les 3 métiers (GREATEST = max multi-args H2)
+            sql = "SELECT uuid, job, " +
+                  "GREATEST(miner_level, farmer_level, artisan_level) AS lvl, " +
+                  "CASE WHEN miner_level >= farmer_level AND miner_level >= artisan_level THEN miner_xp " +
+                  "     WHEN farmer_level >= artisan_level THEN farmer_xp ELSE artisan_xp END AS xp " +
+                  "FROM player_jobs WHERE " +
+                  "(miner_level > 0 OR farmer_level > 0 OR artisan_level > 0) " +
+                  "ORDER BY lvl DESC, xp DESC LIMIT " + limit;
+        }
+        try (Connection c = db.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 TopEntry e = new TopEntry();
                 e.uuid  = rs.getString("uuid");
@@ -175,7 +163,6 @@ public class JobDatabase {
                 e.xp    = rs.getInt("xp");
                 list.add(e);
             }
-            rs.close();
         } catch (SQLException ex) { LOG.warning("[Jobs] getTop: " + ex.getMessage()); }
         return list;
     }
@@ -252,6 +239,3 @@ public class JobDatabase {
         public int     xp    = 0;
     }
 }
-
-
-

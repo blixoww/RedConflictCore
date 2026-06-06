@@ -212,3 +212,52 @@ pb:
   # aux membres du staff connectés (permission : staff.pb-alerts ou staff.staff).
   alert-threshold: 500
 
+# ── Base de données centralisée H2 ───────────────────────────────────────────
+# MODES disponibles :
+#
+# 1) Mode EMBARQUÉ (défaut, serveur standalone) :
+#    server.enabled: false  +  host: localhost
+#    → La base est un simple fichier local (plugins/OriginsFightCore/data/central.mv.db).
+#      Aucun port réseau requis. Idéal si vous n'avez qu'UN seul serveur Minecraft.
+#
+# 2) Mode SERVEUR TCP (multi-serveur, un seul serveur héberge H2) :
+#    server.enabled: true  sur LE serveur qui héberge la base (ex. le HUB).
+#    server.enabled: false + host: localhost sur les autres serveurs de la grappe.
+#    Tous les serveurs partagent UNE base H2 via TCP (même machine).
+#
+# 3) Mode CLIENT TCP pur :
+#    server.enabled: false + host: <ip_ou_hostname_distant>
+#    → Se connecte à un serveur H2 TCP existant sur un autre hôte.
+database:
+  server:
+    # true = ce serveur héberge H2 et démarre le serveur TCP (un seul par grappe).
+    # false + host=localhost = mode embarqué (fichier local, aucun TCP).
+    # false + host distant   = client TCP pur.
+    enabled: false
+  # Hôte/port du serveur H2 TCP (localhost car tous les serveurs sont sur la même machine).
+  host: localhost
+  port: 9092
+  # Nom de la base → jdbc:h2:tcp://<host>:<port>/./data/<name>;MODE=PostgreSQL
+  name: central
+  user: sa
+  password: ""
+  pool:
+    minimum-idle: 2
+    maximum-size: 10
+  # Identifiant UNIQUE de CE serveur dans la grappe (faction | minage | hub …).
+  # Utilisé par le verrou de présence cross-serveur.
+  server-id: faction
+  lock:
+    # Si true, un joueur encore verrouillé sur un autre serveur est kické à la
+    # connexion (le temps que ses données y soient sauvegardées). false = simple log.
+    kick-on-conflict: false
+  sync:
+    # Synchronisation cross-serveur de l'inventaire complet + enderchest.
+    # Au join : chargement depuis H2 (H2 fait autorité). Au quit : sauvegarde dans H2.
+    # Premier passage d'un joueur : son inventaire local est conservé et enregistré comme base.
+    enabled: true
+    # Sécurité anti-crash : sauvegarde auto de l'inventaire des joueurs connectés (en minutes).
+    # En cas de crash serveur, borne la perte au pire à cet intervalle. 0 = désactivé.
+    # Snapshot sur le thread principal + écriture base asynchrone → aucun lag pour les joueurs.
+    autosave-minutes: 3
+

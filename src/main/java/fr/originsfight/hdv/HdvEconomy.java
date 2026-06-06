@@ -1,5 +1,7 @@
 package fr.originsfight.hdv;
 
+import fr.originsfight.db.Database;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,18 +13,22 @@ import org.bukkit.entity.Player;
 public class HdvEconomy implements HdvManager.EconomyProvider {
     private static final Logger LOG = Logger.getLogger("HDV-Economy");
 
-    private final Connection connection;
+    private final Database db;
 
-    public HdvEconomy(Connection connection) {
-        this.connection = connection;
+    public HdvEconomy(Database db) {
+        this.db = db;
         createTable();
     }
 
     private void createTable() {
-        try (Statement st = this.connection.createStatement()) {
-            st.execute("CREATE TABLE IF NOT EXISTS hdv_economy (  uuid         TEXT PRIMARY KEY,  player_name  TEXT NOT NULL,  balance      INTEGER NOT NULL DEFAULT 0);");
+        try (Connection c = db.getConnection();
+             Statement st = c.createStatement()) {
+            st.execute("CREATE TABLE IF NOT EXISTS hdv_economy (" +
+                "  uuid         VARCHAR(36) PRIMARY KEY," +
+                "  player_name  VARCHAR(32) NOT NULL," +
+                "  balance      BIGINT NOT NULL DEFAULT 0);");
         } catch (SQLException e) {
-            LOG.severe("[HDV-Economy] Erreur crtable : " + e.getMessage());
+            LOG.severe("[HDV-Economy] Erreur création table : " + e.getMessage());
         }
     }
 
@@ -47,7 +53,8 @@ public class HdvEconomy implements HdvManager.EconomyProvider {
     }
 
     public long getBalance(String uuid) {
-        try (PreparedStatement ps = this.connection.prepareStatement("SELECT balance FROM hdv_economy WHERE uuid=?")) {
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT balance FROM hdv_economy WHERE uuid=?")) {
             ps.setString(1, uuid);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next())
@@ -62,14 +69,13 @@ public class HdvEconomy implements HdvManager.EconomyProvider {
     public boolean setBalance(String uuid, String name, long amount) {
         if (amount < 0L)
             amount = 0L;
-        try {
-            String sql = "INSERT INTO hdv_economy (uuid, player_name, balance) VALUES (?,?,?) ON CONFLICT(uuid) DO UPDATE SET balance=excluded.balance, player_name=excluded.player_name";
-            try (PreparedStatement ps = this.connection.prepareStatement(sql)) {
-                ps.setString(1, uuid);
-                ps.setString(2, name);
-                ps.setLong(3, amount);
-                ps.executeUpdate();
-            }
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                "MERGE INTO hdv_economy (uuid, player_name, balance) KEY(uuid) VALUES (?,?,?)")) {
+            ps.setString(1, uuid);
+            ps.setString(2, name);
+            ps.setLong(3, amount);
+            ps.executeUpdate();
             return true;
         } catch (SQLException e) {
             LOG.warning("[HDV-Economy] setBalance error : " + e.getMessage());

@@ -37,7 +37,7 @@ public class FriendManager {
     // ── Initialisation ────────────────────────────────────────────────────────
 
     public boolean enable(JavaPlugin plugin) {
-        database = new FriendDatabase((fr.originsfight.OriginsFightCore) plugin);
+        database = new FriendDatabase(((fr.originsfight.OriginsFightCore) plugin).getCoreDatabase());
         if (!database.init()) return false;
         // Charger les demandes existantes depuis la BDD dans le cache
         loadRequestsCache();

@@ -14,6 +14,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\jav
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\clearlagg\ClearLaggManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\ring\RingEffects.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\trade\TradePacketSender.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\db\PlayerLockListener.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\staff\commands\MuteCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\staff\StaffManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\useful\FurnaceCommand.java
@@ -22,6 +23,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\jav
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\pb\StaffAlertManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\boutique\BoutiqueCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\bounty\BountyListener.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\db\PlayerLockService.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\useful\GuideCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\job\JobManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\annonyme\AnonymeListener.java
@@ -29,11 +31,13 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\jav
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\ks\KsCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\bounty\BountyAnnouncer.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\job\JobArtisanListener.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\db\PlayerDataSyncService.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\ring\RingDeathListener.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\repair\RepairItems.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\rtp\RTP.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\staff\StaffDatabase.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\hdv\HdvLoginListener.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\db\PlayerDataDatabase.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\death\DeathMessages.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\useful\VisionCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\faction\FactionZoneSender.java
@@ -81,6 +85,8 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\jav
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\friend\FriendDatabase.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\job\JobServerHandler.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\shop\ShopEventManager.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\xpboost\XpBoostListener.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\db\ItemArrayCodec.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\staff\StaffItems.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\bottlexp\BottleXpCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\death\EnchantName.java
@@ -97,6 +103,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\jav
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\hdv\HdvDatabase.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\staff\commands\FreezeCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\useful\BaltopCommand.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\xpboost\XpBoostManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\useful\CobbleCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\boutique\BoutiqueItems.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\ring\RingManager.java
@@ -128,6 +135,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\jav
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\boutique\OffreSpeciale.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\hdv\HdvManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\data\PlayerDataServerHandler.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\db\Database.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\trade\TradeSession.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\staff\StaffPlugin.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\shop\ShopManager.java

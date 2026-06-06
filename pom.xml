@@ -32,13 +32,43 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.4</version>
+                <version>3.6.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <!-- Relocation de HikariCP uniquement, pour éviter tout conflit avec
+                                 d'autres plugins qui l'embarqueraient.
+                                 IMPORTANT : NE PAS reloc org.h2 — H2 charge ses ressources
+                                 (messages d'erreur, etc.) via des chemins "org/h2/..." codés en dur
+                                 dans des chaînes que le shade ne réécrit pas → casse H2 au runtime.
+                                 H2 est de toute façon isolé par le classloader du plugin. -->
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.zaxxer.hikari</pattern>
+                                    <shadedPattern>fr.originsfight.libs.hikari</shadedPattern>
+                                </relocation>
+                            </relocations>
+                            <filters>
+                                <!-- Évite les collisions de signatures/metadata entre artefacts. -->
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>module-info.class</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <!-- Réécrit META-INF/services/java.sql.Driver vers la classe relocée. -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -100,6 +130,20 @@
             <groupId>com.github.SaberLLC</groupId>
             <artifactId>Saber-Factions</artifactId>
             <version>4.1.4-STABLE</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- ── Stockage centralisé H2 (mode serveur TCP) + pool HikariCP ──────────── -->
+        <!-- H2 2.2.224 : dernière 2.x compatible Java 8. Shadé + relocé (voir shade plugin). -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.2.224</version>
+        </dependency>
+        <!-- HikariCP 4.0.3 : dernière branche compatible Java 8 (5.x exige Java 11). -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>4.0.3</version>
         </dependency>
     </dependencies>
 </project>
