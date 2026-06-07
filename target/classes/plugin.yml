@@ -4,6 +4,9 @@ main: fr.originsfight.OriginsFightCore
 prefix: OriginsFightCore
 authors: [leziink]
 description: Plugin RedConflict - gestion du serveur
+# Dépendances optionnelles : présentes sur le Faction, absentes sur le Minage.
+# softdepend = ordre de chargement respecté SI présent, mais pas obligatoire.
+softdepend: [Factions, WorldGuard, Vault, PlaceholderAPI, LuckPerms]
 commands:
   rtp:
     description: Téléportation aléatoire
@@ -99,6 +102,18 @@ commands:
     description: Affiche la liste des commandes disponibles
     usage: /commands
     aliases: [cmds]
+  hub:
+    description: Se téléporter au serveur HUB
+    usage: /hub
+    aliases: [lobby, spawn]
+  minage:
+    description: Se téléporter au serveur Minage
+    usage: /minage
+    aliases: [mine]
+  faction:
+    description: Se téléporter au serveur Faction
+    usage: /faction
+    aliases: [fac, factions]
   cobble:
     description: Toggle le filtrage automatique de la cobblestone
     usage: /cobble

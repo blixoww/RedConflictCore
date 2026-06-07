@@ -61,6 +61,12 @@ public class CommandsCommand implements CommandExecutor {
         player.sendMessage("  §8| §f/plannings §8— §7Voir les prochains événements");
         player.sendMessage("");
 
+        player.sendMessage("  §9§l⇆ §9Serveurs");
+        player.sendMessage("  §8| §f/hub §8— §7Rejoindre le serveur HUB §8(lobby)");
+        player.sendMessage("  §8| §f/faction §8— §7Rejoindre le serveur Faction");
+        player.sendMessage("  §8| §f/minage §8— §7Rejoindre le serveur Minage");
+        player.sendMessage("");
+
         player.sendMessage("  §7§lUtilitaires");
         player.sendMessage("  §8| §f/repairall §8— §7Réparer tous vos items §8(cooldown 24h)");
         player.sendMessage("  §8| §f/cobble §8— §7Filtrer la cobblestone automatiquement");

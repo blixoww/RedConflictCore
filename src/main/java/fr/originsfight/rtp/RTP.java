@@ -2,6 +2,7 @@ package fr.originsfight.rtp;
 
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.cooldown.CooldownType;
+import fr.originsfight.db.Database;
 import fr.originsfight.utils.CooldownManager;
 import fr.originsfight.utils.TimeUnits;
 import org.bukkit.Bukkit;
@@ -23,7 +24,8 @@ public class RTP {
             player.sendMessage("§7Téléportation effectuée.");
             return;
         }
-        if (CooldownManager.instance().timeLeft(player, CooldownType.RTP) > 0) {
+        // Sur le serveur Minage, /rtp n'a aucun cooldown (déplacement libre dans la mine).
+        if (!isNoCooldownServer() && CooldownManager.instance().timeLeft(player, CooldownType.RTP) > 0) {
             player.sendMessage("§cTu dois attendre " + CooldownManager.getFormattedTimeLeft(CooldownManager.instance().timeLeft(player, CooldownType.RTP)) + " avant de pouvoir utiliser cette commande.");
         } else {
             this.tasks.put(player, new BukkitRunnable() {
@@ -45,11 +47,23 @@ public class RTP {
         randomLocation.getWorld().getChunkAt(randomLocation).load();
         player.teleport(randomLocation);
         player.sendMessage("§aTéléportation effectuée.");
-        CooldownManager.instance().set(player, 4, TimeUnits.HOURS, CooldownType.RTP);
+        // Pas de cooldown sur le Minage ; ailleurs, 4h entre deux /rtp.
+        if (!isNoCooldownServer()) {
+            CooldownManager.instance().set(player, 4, TimeUnits.HOURS, CooldownType.RTP);
+        }
         if (this.tasks.containsKey(player)) {
             tasks.get(player).cancel();
             tasks.remove(player);
         }
+    }
+
+    /**
+     * {@code true} si CE serveur est le Minage (server-id = "minage"), où /rtp est libre
+     * (aucun cooldown). L'identifiant provient de la config DB partagée ({@code database.server-id}).
+     */
+    private boolean isNoCooldownServer() {
+        Database db = OriginsFightCore.getInstance().getCoreDatabase();
+        return db != null && "minage".equalsIgnoreCase(db.getServerId());
     }
 
     public Location randomLocation() {

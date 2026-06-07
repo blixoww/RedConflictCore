@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import fr.originsfight.OriginsFightCore;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.h2.Driver;
 import org.h2.tools.Server;
 
 import java.io.File;
@@ -13,9 +14,12 @@ import java.sql.SQLException;
 /**
  * Provider central de connexions vers la base H2 partagée (mode serveur TCP local).
  *
- * <p>Architecture multi-serveur : tous les serveurs Minecraft (Faction, Minage, HUB) tournent sur
- * la même machine et partagent UNE base H2. Un seul serveur héberge le serveur H2 TCP
- * ({@code database.server.enabled: true}, typiquement le HUB) ; les autres s'y connectent en client TCP.
+ * <p>Architecture multi-serveur : les serveurs Minecraft qui font tourner OriginsFightCore
+ * (Faction, Minage) tournent sur la même machine et partagent UNE base H2. Un seul serveur
+ * héberge le serveur H2 TCP ({@code database.server.enabled: true}) : c'est le FACTION, car
+ * le HUB est un lobby verrouillé sans OriginsFightCore. Les autres serveurs (Minage) s'y
+ * connectent en client TCP avec {@code host: 127.0.0.1} (PAS {@code localhost} : voir le
+ * piège documenté dans {@link #start()}).
  *
  * <p>Les connexions sont gérées par un pool HikariCP : chaque opération SQL emprunte une connexion
  * via {@link #getConnection()} (à utiliser en try-with-resources) et la rend immédiatement au pool.
@@ -46,21 +50,21 @@ public class Database {
      * Démarre (si nécessaire) le serveur H2 TCP puis le pool de connexions.
      *
      * @return {@code true} si la base est joignable, {@code false} sinon (les modules DB doivent
-     *         alors se désactiver proprement).
+     * alors se désactiver proprement).
      */
     public boolean start() {
         FileConfiguration cfg = plugin.getConfig();
 
         boolean serverEnabled = cfg.getBoolean("database.server.enabled", false);
-        String host           = cfg.getString("database.host", "localhost");
-        int port              = cfg.getInt("database.port", 9092);
-        String name           = cfg.getString("database.name", "central");
-        String user           = cfg.getString("database.user", "sa");
-        String password       = cfg.getString("database.password", "");
-        int minIdle           = cfg.getInt("database.pool.minimum-idle", 2);
-        int maxSize           = cfg.getInt("database.pool.maximum-size", 10);
-        this.serverId         = cfg.getString("database.server-id", "default");
-        this.kickOnConflict   = cfg.getBoolean("database.lock.kick-on-conflict", false);
+        String host = cfg.getString("database.host", "localhost");
+        int port = cfg.getInt("database.port", 9092);
+        String name = cfg.getString("database.name", "central");
+        String user = cfg.getString("database.user", "sa");
+        String password = cfg.getString("database.password", "");
+        int minIdle = cfg.getInt("database.pool.minimum-idle", 2);
+        int maxSize = cfg.getInt("database.pool.maximum-size", 10);
+        this.serverId = cfg.getString("database.server-id", "default");
+        this.kickOnConflict = cfg.getBoolean("database.lock.kick-on-conflict", false);
 
         // baseDir du serveur H2 = dossier du plugin ; l'URL "./data/<name>" résout donc
         // vers <dataFolder>/data/<name>.mv.db.
@@ -94,6 +98,10 @@ public class Database {
         //    - server.enabled=false + host distant   → TCP client pur (un autre serveur héberge H2)
         final String jdbcUrl;
         if (!serverEnabled && "localhost".equalsIgnoreCase(host)) {
+            // ⚠️ PIÈGE MULTI-SERVEUR : enabled=false + host=localhost = base FICHIER ISOLÉE.
+            // Un serveur CLIENT de la grappe (ex. le Minage) DOIT utiliser host: 127.0.0.1,
+            // sinon il crée sa propre base locale et NE voit PAS la base du Faction
+            // (inventaire, PB, HDV… non synchronisés).
             // Mode embarqué : la base est un simple fichier local, aucun port réseau nécessaire.
             // AUTO_SERVER=FALSE : pas de serveur TCP automatique (évite les conflits de port).
             String dbFilePath = dataDir.getAbsolutePath().replace('\\', '/') + "/" + name;
@@ -107,7 +115,7 @@ public class Database {
         HikariConfig hc = new HikariConfig();
         hc.setJdbcUrl(jdbcUrl);
         // Driver H2 embarqué dans le jar du plugin (non relocé).
-        hc.setDriverClassName(org.h2.Driver.class.getName());
+        hc.setDriverClassName(Driver.class.getName());
         hc.setUsername(user);
         hc.setPassword(password);
         hc.setMinimumIdle(minIdle);
@@ -132,11 +140,16 @@ public class Database {
                     }
                 }
             } catch (Exception e) {
-                if (dataSource != null) { dataSource.close(); dataSource = null; }
+                if (dataSource != null) {
+                    dataSource.close();
+                    dataSource = null;
+                }
                 plugin.getLogger().warning("[H2] Connexion impossible (tentative " + attempt + "/"
                         + maxAttempts + ") : " + e.getMessage());
                 if (attempt < maxAttempts) {
-                    try { Thread.sleep(2000L); } catch (InterruptedException ignored) {
+                    try {
+                        Thread.sleep(2000L);
+                    } catch (InterruptedException ignored) {
                         Thread.currentThread().interrupt();
                     }
                 }
@@ -146,38 +159,54 @@ public class Database {
         return false;
     }
 
-    /** Ferme le pool puis, le cas échéant, arrête le serveur H2 TCP hébergé. */
+    /**
+     * Ferme le pool puis, le cas échéant, arrête le serveur H2 TCP hébergé.
+     */
     public void close() {
         if (dataSource != null && !dataSource.isClosed()) {
-            try { dataSource.close(); } catch (Exception ignored) {}
+            try {
+                dataSource.close();
+            } catch (Exception ignored) {
+            }
         }
         dataSource = null;
         if (tcpServer != null) {
-            try { tcpServer.stop(); plugin.getLogger().info("[H2] Serveur H2 TCP arrêté."); }
-            catch (Exception ignored) {}
+            try {
+                tcpServer.stop();
+                plugin.getLogger().info("[H2] Serveur H2 TCP arrêté.");
+            } catch (Exception ignored) {
+            }
             tcpServer = null;
         }
     }
 
     // ── API ────────────────────────────────────────────────────────────────────
 
-    /** Emprunte une connexion au pool. À UTILISER EN TRY-WITH-RESOURCES (rend la connexion au pool). */
+    /**
+     * Emprunte une connexion au pool. À UTILISER EN TRY-WITH-RESOURCES (rend la connexion au pool).
+     */
     public Connection getConnection() throws SQLException {
         if (dataSource == null) throw new SQLException("Pool H2 non initialisé.");
         return dataSource.getConnection();
     }
 
-    /** {@code true} si le pool est opérationnel. */
+    /**
+     * {@code true} si le pool est opérationnel.
+     */
     public boolean isAvailable() {
         return dataSource != null && !dataSource.isClosed();
     }
 
-    /** Identifiant de CE serveur dans la grappe (faction|minage|hub…). */
+    /**
+     * Identifiant de CE serveur dans la grappe (faction|minage|hub…).
+     */
     public String getServerId() {
         return serverId;
     }
 
-    /** {@code true} si un conflit de verrou doit entraîner le kick du joueur. */
+    /**
+     * {@code true} si un conflit de verrou doit entraîner le kick du joueur.
+     */
     public boolean isKickOnConflict() {
         return kickOnConflict;
     }

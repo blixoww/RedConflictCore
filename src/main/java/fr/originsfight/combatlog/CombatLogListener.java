@@ -8,36 +8,74 @@ import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.utils.CooldownManager;
 import fr.originsfight.utils.TimeUnits;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.projectiles.ProjectileSource;
 
 public class CombatLogListener implements Listener {
 
+    // WorldGuard est optionnel : calculé une fois au démarrage. Sur un serveur sans WorldGuard
+    // (ex. Minage), hasPvP() n'est jamais appelé → la JVM ne charge pas les classes WorldGuard
+    // (pas de NoClassDefFoundError), et le PvP est autorisé partout par défaut.
+    private final boolean wgPresent = OriginsFightCore.getInstance().getWorldGuard() != null;
+
+    private final CombatLogSender sender;
+
+    public CombatLogListener(CombatLogSender sender) {
+        this.sender = sender;
+    }
+
     @EventHandler
     public void onDamagePlayer(EntityDamageByEntityEvent event) {
-        if (!(event.getEntity() instanceof Player) || !(event.getDamager() instanceof Player)) {
-            return;
-        }
-        Player player = (Player) event.getEntity();
-        Player damager = (Player) event.getDamager();
-        if (!hasPvP(player) || !hasPvP(damager)) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player victim = (Player) event.getEntity();
+
+        // Le combat ne se déclenche QUE si l'attaquant est un autre joueur — au corps à corps
+        // (épée, poing...) OU via un projectile qu'il a tiré (flèche). Tout le reste (chute, feu,
+        // noyade, lave, mobs...) n'est PAS du combat et ne tag pas / n'affiche pas le widget.
+        Player attacker = resolveAttacker(event.getDamager());
+        if (attacker == null || attacker.equals(victim)) return;
+
+        if (wgPresent && (!hasPvP(victim) || !hasPvP(attacker))) {
             event.setCancelled(true);
             return;
         }
-        if (!player.isOp()) {
-            if (CooldownManager.instance().timeLeft(player, CooldownType.COMBAT) == 0)
-                player.sendMessage("§7Tu viens d'entrer en combat.");
-            CooldownManager.instance().set(player, 30, TimeUnits.SECONDS, CooldownType.COMBAT);
+        tag(victim);
+        tag(attacker);
+    }
+
+    /**
+     * Résout le joueur responsable des dégâts : coup direct (l'entité est le joueur) ou projectile
+     * tiré par un joueur (flèche, etc. — le tireur est un joueur). Retourne {@code null} si les
+     * dégâts ne proviennent pas d'un joueur.
+     */
+    private static Player resolveAttacker(Entity damager) {
+        if (damager instanceof Player) {
+            return (Player) damager;
         }
-        if (!damager.isOp()) {
-            if (CooldownManager.instance().timeLeft(damager, CooldownType.COMBAT) == 0)
-                damager.sendMessage("§7Tu viens d'entrer en combat.");
-            CooldownManager.instance().set(damager, 30, TimeUnits.SECONDS, CooldownType.COMBAT);
+        if (damager instanceof Projectile) {
+            ProjectileSource shooter = ((Projectile) damager).getShooter();
+            if (shooter instanceof Player) {
+                return (Player) shooter;
+            }
         }
+        return null;
+    }
+
+    /** Passe un joueur en Combat Tag (30s) et pousse immédiatement l'état au widget client. */
+    private void tag(Player p) {
+        if (p.isOp()) return;
+        if (CooldownManager.instance().timeLeft(p, CooldownType.COMBAT) == 0) {
+            p.sendMessage("§7Tu viens d'entrer en combat.");
+        }
+        CooldownManager.instance().set(p, 30, TimeUnits.SECONDS, CooldownType.COMBAT);
+        sender.send(p);
     }
 
     @EventHandler
@@ -47,6 +85,7 @@ public class CombatLogListener implements Listener {
             player.setHealth(0);
             Bukkit.broadcastMessage("§c" + player.getName() + " est mort suite à un combat log.");
         }
+        sender.forget(player.getUniqueId());
     }
 
     @EventHandler

@@ -137,7 +137,15 @@ public class OriginsFightCore extends JavaPlugin {
         instance = this;
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §aRedConflict est activé !");
 
-        this.worldGuard = (WorldGuardPlugin) getServer().getPluginManager().getPlugin("WorldGuard");
+        // WorldGuard est optionnel : présent sur le Faction (zones PvP), absent sur le Minage.
+        // Le cast n'est exécuté que si le plugin est là (résolution paresseuse → pas de
+        // NoClassDefFoundError quand WorldGuard est absent du serveur).
+        if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
+            this.worldGuard = (WorldGuardPlugin) getServer().getPluginManager().getPlugin("WorldGuard");
+        } else {
+            this.worldGuard = null;
+            getLogger().info("[WorldGuard] Plugin absent — protection de zone PvP désactivée (combat-log toujours actif).");
+        }
         saveDefaultConfig();
 
         // ── Base de données centralisée H2 (doit être prête AVANT tout module DB) ──
@@ -284,13 +292,18 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("friend").setExecutor(friendCmd);
         getCommand("friend").setTabCompleter(friendCmd);
         getServer().getPluginManager().registerEvents(new FriendListener(friendManager), this);
-        // Système de loto automatique
-        this.lotoManager = new LotoManager(this);
-        this.lotoManager.startScheduler();
-        LotoCommand lotoCmd = new LotoCommand(lotoManager);
-        getCommand("loto").setExecutor(lotoCmd);
-        getCommand("loto").setTabCompleter(lotoCmd);
-        getLogger().info("[Loto] Système de loto initialisé avec succès !");
+        // Système de loto automatique — désactivable par serveur (features.loto: false)
+        if (isFeatureEnabled("loto")) {
+            this.lotoManager = new LotoManager(this);
+            this.lotoManager.startScheduler();
+            LotoCommand lotoCmd = new LotoCommand(lotoManager);
+            getCommand("loto").setExecutor(lotoCmd);
+            getCommand("loto").setTabCompleter(lotoCmd);
+            getLogger().info("[Loto] Système de loto initialisé avec succès !");
+        } else {
+            disableFeatureCommand("loto");
+            getLogger().info("[Loto] Désactivé via la config (features.loto: false).");
+        }
         // Messages automatiques dans le chat
         new AutoMessageManager(this);
         // Système ClearLagg
@@ -300,6 +313,28 @@ public class OriginsFightCore extends JavaPlugin {
         if (getCommand("clearlagg") != null) {
             getCommand("clearlagg").setExecutor(clCmd);
             getCommand("clearlagg").setTabCompleter(clCmd);
+        }
+
+        // Coupe les commandes des fonctionnalités désactivées (features.<nom>: false).
+        applyFeatureToggles();
+    }
+
+    /**
+     * Désactive les COMMANDES des fonctionnalités marquées {@code false} sous {@code features:}.
+     * La clé de config porte le même nom que la commande. À la différence du loto (dont le manager
+     * complet est court-circuité plus haut), ce passage ne coupe que la commande — le module sous-jacent
+     * peut continuer à tourner. Pour couper entièrement un module, ajouter une garde dédiée comme pour le loto.
+     */
+    private void applyFeatureToggles() {
+        String[] toggleable = {
+                "prime", "trade", "hdv", "shop", "sellall", "metier",
+                "bottlexp", "furnace", "repairall", "vision", "rtp", "baltop", "guide", "poubelle"
+        };
+        for (String name : toggleable) {
+            if (!isFeatureEnabled(name)) {
+                disableFeatureCommand(name);
+                getLogger().info("[Features] /" + name + " désactivée (features." + name + ": false).");
+            }
         }
     }
 
@@ -368,6 +403,11 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("commands").setExecutor(new CommandsCommand());
         // Guide du serveur → ouvre le GuiCraftGuide côté client modifié
         getCommand("guide").setExecutor(new GuideCommand(this));
+        // Navigation inter-serveurs (cluster Velocity) : /hub et /minage
+        fr.originsfight.server.ServerSwitchCommand serverSwitch = new fr.originsfight.server.ServerSwitchCommand(this);
+        getCommand("hub").setExecutor(serverSwitch);
+        getCommand("minage").setExecutor(serverSwitch);
+        getCommand("faction").setExecutor(serverSwitch);
         // Messagerie privée
         MsgCommand msg = new MsgCommand();
         getCommand("msg").setExecutor(msg);
@@ -469,7 +509,11 @@ public class OriginsFightCore extends JavaPlugin {
 
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new RTPListener(), this);
-        getServer().getPluginManager().registerEvents(new CombatLogListener(), this);
+        // Combat Tag : émetteur S2C (pilote le widget client) + listener (PvP only : épée ou flèche).
+        fr.originsfight.combatlog.CombatLogSender combatLogSender = new fr.originsfight.combatlog.CombatLogSender(this);
+        getServer().getMessenger().registerOutgoingPluginChannel(this, fr.originsfight.combatlog.CombatLogSender.CHANNEL);
+        combatLogSender.start();
+        getServer().getPluginManager().registerEvents(new CombatLogListener(combatLogSender), this);
         getServer().getPluginManager().registerEvents(new VoidListener(), this);
         getServer().getPluginManager().registerEvents(new DeathMessages(anonymeManager), this);
         getServer().getPluginManager().registerEvents(new DisabledCommands(), this);
@@ -559,12 +603,23 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:PING_S2C");
         // Données de faction (tag + relation) envoyées périodiquement aux clients proches
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:FACTION_S2C");
-        new FactionDataSender(this).start();
-        // Zone (claim) – envoie au client la faction propriétaire du chunk courant
-        FactionZoneSender zoneSender = new FactionZoneSender(this);
-        getServer().getPluginManager().registerEvents(zoneSender, this);
-        // Tâche périodique : détecte les changements de zone sans déplacement de chunk
-        zoneSender.startPeriodicUpdate();
+        // Canal BungeeCord/Velocity : transfert inter-serveurs (/hub, /minage)
+        getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
+        // Features faction : actives UNIQUEMENT si le plugin Factions est présent (serveur Faction).
+        // Sur un serveur sans Factions (ex. Minage), ces sous-systèmes sont désactivés proprement.
+        // Les `new` ne sont exécutés que dans cette branche → la JVM ne charge jamais
+        // FactionZoneSender/FactionDataSender (et donc les classes Factions) quand Factions est absent.
+        if (getServer().getPluginManager().getPlugin("Factions") != null) {
+            // Données de faction (tag + relation) envoyées périodiquement aux clients proches
+            new FactionDataSender(this).start();
+            // Zone (claim) – envoie au client la faction propriétaire du chunk courant
+            FactionZoneSender zoneSender = new FactionZoneSender(this);
+            getServer().getPluginManager().registerEvents(zoneSender, this);
+            // Tâche périodique : détecte les changements de zone sans déplacement de chunk
+            zoneSender.startPeriodicUpdate();
+        } else {
+            getLogger().info("[Faction] Plugin Factions absent — features faction (HUD tag, zone de claim) désactivées.");
+        }
         getLogger().info("[CustomPackets] Canaux enregistré avec succès !");
     }
 
@@ -637,6 +692,34 @@ public class OriginsFightCore extends JavaPlugin {
 
     public FileConfiguration getBoutiqueConfig() {
         return this.boutiqueConfig;
+    }
+
+    // ── Toggle de fonctionnalités (features.<clé> dans config.yml) ───────────────
+
+    /** Exécuteur partagé attribué aux commandes des fonctionnalités désactivées. */
+    private final fr.originsfight.feature.DisabledFeatureCommand disabledFeatureCommand =
+            new fr.originsfight.feature.DisabledFeatureCommand();
+
+    /**
+     * Indique si une fonctionnalité est activée sur CE serveur.
+     * Lit {@code features.<key>} dans config.yml (absent ⇒ {@code true}, activé par défaut).
+     * Permet de couper un module par serveur (ex. {@code features.loto: false} sur le Minage).
+     */
+    public boolean isFeatureEnabled(String key) {
+        return getConfig().getBoolean("features." + key, true);
+    }
+
+    /**
+     * Désactive une commande (et automatiquement ses alias, qui partagent le même PluginCommand) :
+     * son exécuteur renvoie alors « fonctionnalité désactivée sur ce serveur ». À appeler quand la
+     * fonctionnalité correspondante est coupée via la config.
+     */
+    public void disableFeatureCommand(String name) {
+        org.bukkit.command.PluginCommand cmd = getCommand(name);
+        if (cmd != null) {
+            cmd.setExecutor(disabledFeatureCommand);
+            cmd.setTabCompleter(disabledFeatureCommand);
+        }
     }
 
     private void saveBoutiqueConfig() {

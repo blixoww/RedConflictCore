@@ -81,6 +81,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\jav
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\useful\PlayerListManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\shop\ShopDatabase.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\staff\commands\BanCommand.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\server\ServerSwitchCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\bounty\BountyInfo.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\friend\FriendDatabase.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\job\JobServerHandler.java
@@ -135,6 +136,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\jav
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\boutique\OffreSpeciale.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\hdv\HdvManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\data\PlayerDataServerHandler.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\db\PotionEffectCodec.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\db\Database.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\trade\TradeSession.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\OriginsFightCore\src\main\java\fr\originsfight\staff\StaffPlugin.java

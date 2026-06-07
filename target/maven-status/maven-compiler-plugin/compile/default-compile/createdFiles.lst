@@ -16,6 +16,7 @@ fr\originsfight\automsg\AutoMessageManager$1.class
 fr\originsfight\hdv\HdvEconomy.class
 fr\originsfight\bounty\BountyManager.class
 fr\originsfight\job\JobServerHandler.class
+fr\originsfight\feature\DisabledFeatureCommand.class
 fr\originsfight\ring\RingManager.class
 fr\originsfight\shop\ShopServerHandler.class
 fr\originsfight\useful\PlayerListManager$1.class
@@ -57,6 +58,7 @@ fr\originsfight\pb\StaffAlertManager.class
 fr\originsfight\ring\RingLoginListener.class
 fr\originsfight\loto\LotoManager$2.class
 fr\originsfight\packets\PacketReader.class
+fr\originsfight\combatlog\CombatLogSender.class
 fr\originsfight\data\PlayerDataServerHandler.class
 fr\originsfight\staff\commands\StaffChatCommand.class
 fr\originsfight\loto\LotoManager$8.class
@@ -65,6 +67,7 @@ fr\originsfight\db\PlayerLockService.class
 fr\originsfight\RC.class
 fr\originsfight\bottlexp\BottleXpListener.class
 fr\originsfight\listeners\WelcomeListener.class
+fr\originsfight\server\ServerSwitchCommand.class
 fr\originsfight\boutique\BoutiqueClientServerHandler.class
 fr\originsfight\cooldown\CooldownType.class
 fr\originsfight\repair\RepairCommand.class

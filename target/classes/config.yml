@@ -212,6 +212,34 @@ pb:
   # aux membres du staff connectés (permission : staff.pb-alerts ou staff.staff).
   alert-threshold: 500
 
+# ── Activation / désactivation des fonctionnalités par serveur ────────────────
+# Permet de couper une fonctionnalité (et sa commande) sur CE serveur sans toucher
+# au code. Mettre une clé à "false" désactive la commande correspondante : elle
+# répond alors « fonctionnalité désactivée sur ce serveur ».
+# La clé porte le même nom que la commande. Toute clé absente = activée (true).
+#
+# Exemple typique : sur le Minage, pas de loto ni de /loto -> "loto: false".
+#
+# Cas particulier : "loto" coupe AUSSI le tirage automatique (manager complet),
+# pas seulement la commande. Les autres clés ne coupent que la commande ; le
+# module sous-jacent peut continuer à tourner (à durcir au cas par cas si besoin).
+features:
+  loto: true
+  prime: true
+  trade: true
+  hdv: true
+  shop: true
+  sellall: true
+  metier: true
+  bottlexp: true
+  furnace: true
+  repairall: true
+  vision: true
+  rtp: true
+  baltop: true
+  guide: true
+  poubelle: true
+
 # ── Base de données centralisée H2 ───────────────────────────────────────────
 # MODES disponibles :
 #
@@ -221,8 +249,12 @@ pb:
 #      Aucun port réseau requis. Idéal si vous n'avez qu'UN seul serveur Minecraft.
 #
 # 2) Mode SERVEUR TCP (multi-serveur, un seul serveur héberge H2) :
-#    server.enabled: true  sur LE serveur qui héberge la base (ex. le HUB).
-#    server.enabled: false + host: localhost sur les autres serveurs de la grappe.
+#    server.enabled: true  sur LE serveur qui héberge la base : c'est le FACTION
+#    (le HUB est un lobby verrouillé SANS OriginsFightCore, il n'héberge pas H2).
+#    server.enabled: false + host: 127.0.0.1 sur les AUTRES serveurs (ex. le Minage).
+#    ⚠️ NE PAS mettre host: localhost sur un client : "enabled:false + localhost"
+#       bascule en mode FICHIER ISOLÉ (mode 1) → la base n'est PAS partagée,
+#       inventaire / PB / HDV ne se synchronisent pas. Utilisez TOUJOURS 127.0.0.1.
 #    Tous les serveurs partagent UNE base H2 via TCP (même machine).
 #
 # 3) Mode CLIENT TCP pur :
@@ -234,7 +266,8 @@ database:
     # false + host=localhost = mode embarqué (fichier local, aucun TCP).
     # false + host distant   = client TCP pur.
     enabled: false
-  # Hôte/port du serveur H2 TCP (localhost car tous les serveurs sont sur la même machine).
+  # Hôte/port du serveur H2 TCP. Sur un serveur CLIENT (ex. Minage), mettez 127.0.0.1
+  # et JAMAIS localhost (localhost + enabled:false = base fichier isolée, pas de synchro).
   host: localhost
   port: 9092
   # Nom de la base → jdbc:h2:tcp://<host>:<port>/./data/<name>;MODE=PostgreSQL
