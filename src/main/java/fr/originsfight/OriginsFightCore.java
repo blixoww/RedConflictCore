@@ -5,6 +5,8 @@ import fr.originsfight.annonyme.AnonymeCommand;
 import fr.originsfight.annonyme.AnonymeListener;
 import fr.originsfight.annonyme.AnonymeManager;
 import fr.originsfight.automsg.AutoMessageManager;
+import fr.originsfight.backup.BackupCommand;
+import fr.originsfight.backup.BackupManager;
 import fr.originsfight.bounty.BountyCommand;
 import fr.originsfight.bounty.BountyListener;
 import fr.originsfight.bounty.BountyManager;
@@ -132,6 +134,7 @@ public class OriginsFightCore extends JavaPlugin {
     private StaffAlertManager pbStaffAlerts;
     private OffresManager offresManager;
     private FileConfiguration boutiqueConfig;
+    private fr.originsfight.backup.BackupManager backupManager;
 
     public void onEnable() {
         instance = this;
@@ -176,6 +179,15 @@ public class OriginsFightCore extends JavaPlugin {
             getServer().getPluginManager().registerEvents(
                     new PlayerLockListener(this.playerLockService, this.playerDataSync,
                             this.database.getServerId(), this.database.isKickOnConflict()), this);
+        }
+
+        // Sauvegarde automatique de la base (s'active uniquement sur l'hôte H2 = le Faction).
+        this.backupManager = new BackupManager(this);
+        this.backupManager.start();
+        if (getCommand("dbbackup") != null) {
+            BackupCommand backupCmd = new BackupCommand(this, this.backupManager);
+            getCommand("dbbackup").setExecutor(backupCmd);
+            getCommand("dbbackup").setTabCompleter(backupCmd);
         }
 
         saveBoutiqueConfig();
@@ -340,6 +352,7 @@ public class OriginsFightCore extends JavaPlugin {
 
     public void onDisable() {
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §cRedConflict est désactivé !");
+        if (this.backupManager != null) this.backupManager.stop();
         if (this.lagSwitchManager != null) this.lagSwitchManager.disable();
         if (this.clearLaggManager != null) this.clearLaggManager.disable();
         if (this.ringManager != null) { /* ring save on disable handled internally */ }
@@ -408,6 +421,12 @@ public class OriginsFightCore extends JavaPlugin {
         getCommand("hub").setExecutor(serverSwitch);
         getCommand("minage").setExecutor(serverSwitch);
         getCommand("faction").setExecutor(serverSwitch);
+        // Annonce inter-serveurs (BungeeCord Forward) : réception + commande staff.
+        fr.originsfight.announce.AnnounceService announceService = new fr.originsfight.announce.AnnounceService(this);
+        announceService.register();
+        if (getCommand("annonce") != null) {
+            getCommand("annonce").setExecutor(new fr.originsfight.announce.AnnounceCommand(announceService));
+        }
         // Messagerie privée
         MsgCommand msg = new MsgCommand();
         getCommand("msg").setExecutor(msg);

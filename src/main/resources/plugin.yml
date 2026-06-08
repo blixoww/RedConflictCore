@@ -210,3 +210,14 @@ commands:
     usage: /clearlagg <now|info|reload|count> [monde]
     permission: redconflict.staff
     aliases: [cl, lagg]
+  dbbackup:
+    description: Sauvegarde de la base de données — now (immédiate) / next (prochaine auto) (staff)
+    usage: /dbbackup <now|next>
+    permission: redconflict.staff
+    aliases: [backupnow]
+  annonce:
+    description: Diffuse une annonce stylée sur tous les serveurs (staff)
+    usage: /annonce <message>
+    permission: redconflict.staff
+    # Pas de 'broadcast'/'bc' : déjà pris par EssentialsX (conflit). 'ann' est sûr.
+    aliases: [ann]

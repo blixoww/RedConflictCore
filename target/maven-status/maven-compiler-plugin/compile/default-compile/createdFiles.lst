@@ -32,6 +32,7 @@ fr\originsfight\useful\PlayerListManager.class
 fr\originsfight\lagswitch\LagSwitchCommand.class
 fr\originsfight\rtp\RTP.class
 fr\originsfight\job\JobCommand.class
+fr\originsfight\announce\AnnounceCommand.class
 fr\originsfight\profil\ProfilCommand$ProfilePayload.class
 fr\originsfight\job\JobDatabase.class
 fr\originsfight\trade\TradePacketSender$CheckedConsumer.class
@@ -59,7 +60,9 @@ fr\originsfight\ring\RingLoginListener.class
 fr\originsfight\loto\LotoManager$2.class
 fr\originsfight\packets\PacketReader.class
 fr\originsfight\combatlog\CombatLogSender.class
+fr\originsfight\announce\Announce.class
 fr\originsfight\data\PlayerDataServerHandler.class
+fr\originsfight\backup\BackupManager.class
 fr\originsfight\staff\commands\StaffChatCommand.class
 fr\originsfight\loto\LotoManager$8.class
 fr\originsfight\staff\commands\TopLuckCommand$3.class
@@ -122,6 +125,7 @@ fr\originsfight\trade\TradeManager.class
 fr\originsfight\job\JobManager.class
 fr\originsfight\lagswitch\LagSwitchManager.class
 fr\originsfight\hdv\HdvLoginListener.class
+fr\originsfight\announce\AnnounceService.class
 fr\originsfight\boutique\BoutiquePacketSender.class
 fr\originsfight\ring\RingDeathListener.class
 fr\originsfight\staff\commands\StaffModeCommand.class
@@ -138,6 +142,7 @@ fr\originsfight\useful\BaltopCommand$BaltopEntry.class
 fr\originsfight\rtp\RTP$1.class
 fr\originsfight\staff\commands\BanCommand.class
 fr\originsfight\loto\LotoManager$3.class
+fr\originsfight\backup\BackupCommand.class
 fr\originsfight\staff\StaffDatabase$LuckData.class
 fr\originsfight\giveall\GiveAllCommand.class
 fr\originsfight\job\JobConfig$Tier.class

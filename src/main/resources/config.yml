@@ -294,3 +294,31 @@ database:
     # Snapshot sur le thread principal + écriture base asynchrone → aucun lag pour les joueurs.
     autosave-minutes: 3
 
+# ── Sauvegarde automatique de la base (pendant que le serveur tourne) ─────────
+# Ne s'active QUE sur l'hôte H2 (le serveur avec database.server.enabled: true = le Faction).
+# Tout le travail est asynchrone : aucun lag. Produit Backup/Back_<date>.zip
+# (h2_central.sql via SCRIPT TO + mariadb_luckperms.sql) et purge les vieux backups.
+# NB : si tu utilises CETTE sauvegarde, désinstalle la tâche planifiée Windows
+# (Backup\register-backup-task.ps1 -Remove) pour ne pas faire double emploi.
+backup:
+  enabled: true
+  # Intervalle entre deux sauvegardes automatiques, en HEURES (minimum 1). Ex : 6 = toutes les 6h.
+  # La 1ère sauvegarde a lieu après un intervalle complet (pas à chaque redémarrage).
+  interval-hours: 6
+  # ── Purge automatique des anciennes sauvegardes (les plus vieilles sont supprimées) ──
+  # Nombre MAXIMUM de sauvegardes conservées. Au-delà, les plus anciennes sont effacées. 0 = illimité.
+  max-backups: 28
+  # Supprime aussi les sauvegardes plus vieilles que N jours. 0 = désactivé.
+  # Les deux critères s'appliquent (une sauvegarde part si elle dépasse l'un OU l'autre).
+  retention-days: 14
+  # Dossier de sortie. Relatif = par rapport au dossier de travail du serveur (la racine = Faction).
+  folder: "Backup"
+  mariadb:
+    # Inclure un dump de la base LuckPerms (MariaDB). false = sauvegarder seulement le H2.
+    enabled: true
+    # Chemin de mariadb-dump.exe (relatif au dossier serveur, ou absolu).
+    dump-exe: "MariaDB/mariadb-11.4.5-winx64/bin/mariadb-dump.exe"
+    user: root
+    password: ""
+    database: luckperms
+
