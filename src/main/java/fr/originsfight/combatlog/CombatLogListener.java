@@ -36,9 +36,6 @@ public class CombatLogListener implements Listener {
         if (!(event.getEntity() instanceof Player)) return;
         Player victim = (Player) event.getEntity();
 
-        // Le combat ne se déclenche QUE si l'attaquant est un autre joueur — au corps à corps
-        // (épée, poing...) OU via un projectile qu'il a tiré (flèche). Tout le reste (chute, feu,
-        // noyade, lave, mobs...) n'est PAS du combat et ne tag pas / n'affiche pas le widget.
         Player attacker = resolveAttacker(event.getDamager());
         if (attacker == null || attacker.equals(victim)) return;
 

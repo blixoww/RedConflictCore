@@ -200,6 +200,9 @@ commands:
     - lmsr
     - pbshop
     - boutique
+    - minage
+    - faction
+    - hub
 
 # ── Monnaie ───────────────────────────────────────────────────────────────────
 monnaie:
