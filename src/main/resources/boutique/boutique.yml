@@ -10,8 +10,8 @@ boutique:
         - "&7/back - /craft - /furnace - /vision"
         - "&7/kit elite - 6 homes"
         - "&7Grade superieur debloquant de nouvelles commandes"
-      commande: "lp user %player% parent settemp elite 30d"
-      commande_perm: "lp user %player% parent add elite"
+      commande: "lp user %player% permission settemp group.elite true %duree%"
+      commande_perm: "lp user %player% permission set group.elite true"
       prix_monnaie: 30000
       prix_pb: 50
       prix_monnaie_perm: 100000
@@ -24,8 +24,8 @@ boutique:
         - "&7/near - /ec - /repairall"
         - "&7/kit immortel - 10 homes"
         - "&7Grade premium - le plus eleve du serveur"
-      commande: "lp user %player% parent settemp immortel 30d"
-      commande_perm: "lp user %player% parent add immortel"
+      commande: "lp user %player% permission settemp group.immortel true %duree%"
+      commande_perm: "lp user %player% permission set group.immortel true"
       prix_monnaie: 75000
       prix_pb: 100
       prix_monnaie_perm: 250000
@@ -38,8 +38,8 @@ boutique:
       icone: ENDER_CHEST
       description:
         - "&7Ouvrez votre EnderChest partout"
-      commande: "lp user %player% permission settemp redconflict.ec true 30d"
-      commande_perm: "lp user %player% permission set redconflict.ec true"
+      commande: "lp user %player% permission settemp essentials.enderchest true %duree%"
+      commande_perm: "lp user %player% permission set essentials.enderchest true"
       prix_monnaie: 5000
       prix_pb: 50
       prix_monnaie_perm: 25000
@@ -50,8 +50,8 @@ boutique:
       icone: crafting_table
       description:
         - "&7Table de craft virtuelle partout"
-      commande: "lp user %player% permission settemp redconflict.craft true 30d"
-      commande_perm: "lp user %player% permission set redconflict.craft true"
+      commande: "lp user %player% permission settemp essentials.workbench true %duree%"
+      commande_perm: "lp user %player% permission set essentials.workbench true"
       prix_monnaie: 3000
       prix_pb: 30
       prix_monnaie_perm: 15000
@@ -62,7 +62,7 @@ boutique:
       icone: FURNACE
       description:
         - "&7Cuit vos items sans four"
-      commande: "lp user %player% permission settemp redconflict.furnace true 30d"
+      commande: "lp user %player% permission settemp redconflict.furnace true %duree%"
       commande_perm: "lp user %player% permission set redconflict.furnace true"
       prix_monnaie: 2000
       prix_pb: 20
@@ -74,19 +74,19 @@ boutique:
       icone: ENDER_EYE
       description:
         - "&7Vision nocturne permanente"
-      commande: "lp user %player% permission settemp redconflict.vision true 30d"
-      commande_perm: "lp user %player% permission set redconflict.vision true"
+      commande: "lp user %player% permission settemp redconflict.nv true %duree%"
+      commande_perm: "lp user %player% permission set redconflict.nv true"
       prix_monnaie: 2000
       prix_pb: 20
       prix_monnaie_perm: 10000
       prix_pb_perm: 100
       duree: 2592000
     - id: "repairall"
-      nom: "&eRepairAll"
+      nom: "&eCommande /repairall"
       icone: ANVIL
       description:
         - "&7Repare tout votre stuff"
-      commande: "lp user %player% permission settemp redconflict.repair true 30d"
+      commande: "lp user %player% permission settemp redconflict.repair true %duree%"
       commande_perm: "lp user %player% permission set redconflict.repair true"
       prix_monnaie: 5000
       prix_pb: 50
@@ -98,7 +98,7 @@ boutique:
       icone: COMPASS
       description:
         - "&7Retour a la derniere position"
-      commande: "lp user %player% permission settemp essentials.back true 30d"
+      commande: "lp user %player% permission settemp essentials.back true %duree%"
       commande_perm: "lp user %player% permission set essentials.back true"
       prix_monnaie: 3000
       prix_pb: 30
@@ -110,7 +110,7 @@ boutique:
       icone: COOKED_BEEF
       description:
         - "&7Restaurez votre faim"
-      commande: "lp user %player% permission settemp essentials.feed true 30d"
+      commande: "lp user %player% permission settemp essentials.feed true %duree%"
       commande_perm: "lp user %player% permission set essentials.feed true"
       prix_monnaie: 2000
       prix_pb: 20
@@ -122,8 +122,8 @@ boutique:
       icone: COMPASS
       description:
         - "&7Affiche les joueurs proches"
-      commande: "lp user %player% permission settemp redconflict.near true 30d"
-      commande_perm: "lp user %player% permission set redconflict.near true"
+      commande: "lp user %player% permission settemp essentials.near true %duree%"
+      commande_perm: "lp user %player% permission set essentials.near true"
       prix_monnaie: 3000
       prix_pb: 30
       prix_monnaie_perm: 15000
@@ -138,7 +138,7 @@ boutique:
         - "&7Kit de demarrage pour bien commencer"
         - "&7Equipement de base solide"
         - "&7Ideal pour les nouveaux joueurs"
-      commande: "givekitboutique %player% kit_starter"
+      commande: "lp user %player% permission set greatkits.kits.Starter true"
       prix_monnaie: 8000
       prix_pb: 10
     - id: "kit-bonus"
@@ -148,7 +148,7 @@ boutique:
         - "&7Equipement intermediaire ameliore"
         - "&7Armure et outils de qualite superieure"
         - "&7Passez au niveau au-dessus"
-      commande: "givekitboutique %player% kit_bonus"
+      commande: "lp user %player% permission set greatkits.kits.Bonus true"
       prix_monnaie: 30000
       prix_pb: 40
     - id: "kit-potion"
@@ -158,7 +158,7 @@ boutique:
         - "&7Kit combat avec potions avancees"
         - "&7Potions de force, vitesse, regeneration"
         - "&7Dominez chaque combat"
-      commande: "givekitboutique %player% kit_potion"
+      commande: "lp user %player% permission set greatkits.kits.Potion true"
       prix_monnaie: 50000
       prix_pb: 65
 
@@ -189,12 +189,12 @@ boutique:
       commande: "mspa %player% add SPIDER 1"
     - id: "pig-zombie"
       nom: "&6Spawner Pig Zombie"
-      mob: "ZOMBIE_PIGMAN"
+      mob: "PIG_ZOMBIE"
       description:
         - "&7Un spawner de Pig Zombie"
       prix_monnaie: 35000
       prix_pb: 140
-      commande: "mspa %player% add ZOMBIE_PIGMAN 1"
+      commande: "mspa %player% add PIG_ZOMBIE 1"
     - id: "blaze"
       nom: "&eSpawner Blaze"
       mob: "BLAZE"
@@ -221,10 +221,17 @@ boutique:
       prix_pb: 200
       prix_pb_perm: 300
       commandes:
-        - "lp user %player% parent add elite"
+        - "lp user %player% permission set group.elite true"
         - "mspa %player% add ZOMBIE 2"
         - "mspa %player% add SKELETON 2"
-        - "givekitboutique %player% kit_starter"
+        - "give %player% EMERALD_HELMET 1 protection 3"
+        - "give %player% EMERALD_CHESTPLATE 1 protection 3"
+        - "give %player% EMERALD_LEGGINGS 1 protection 3"
+        - "give %player% EMERALD_BOOTS 1 protection 3"
+        - "give %player% RUBY_SWORD 1 sharpness 4"
+        - "give %player% RUBY_PICKAXE 1 efficiency 4 unbreaking 3"
+        - "give %player% OBSIDIAN 256"
+        - "lp user %player% permission set greatkits.kits.Starter true"
         - "givekey %player% steel_key 3"
     - id: "avance"
       nom: "&6&lPack Avance"
@@ -242,11 +249,18 @@ boutique:
       prix_pb: 300
       prix_pb_perm: 400
       commandes:
-        - "lp user %player% parent add elite"
+        - "lp user %player% permission set group.elite true"
         - "mspa %player% add ZOMBIE 2"
-        - "mspa %player% add ZOMBIE_PIGMAN 2"
+        - "mspa %player% add PIG_ZOMBIE 2"
         - "mspa %player% add SKELETON 2"
-        - "givekitboutique %player% kit_bonus"
+        - "give %player% RUBY_HELMET 1 protection 3"
+        - "give %player% RUBY_CHESTPLATE 1 protection 3"
+        - "give %player% RUBY_LEGGINGS 1 protection 3"
+        - "give %player% RUBY_BOOTS 1 protection 3"
+        - "give %player% COBALT_SWORD 1 sharpness 4"
+        - "give %player% COBALT_PICKAXE 1 efficiency 4 unbreaking 3"
+        - "give %player% OBSIDIAN 384"
+        - "lp user %player% permission set greatkits.kits.Bonus true"
         - "givekey %player% ruby_key 3"
     - id: "mega"
       nom: "&c&l&nMEGA PACK"
@@ -264,11 +278,18 @@ boutique:
       prix_pb: 400
       prix_pb_perm: 500
       commandes:
-        - "lp user %player% parent add immortel"
+        - "lp user %player% permission set group.immortel true"
         - "mspa %player% add ZOMBIE 2"
-        - "mspa %player% add ZOMBIE_PIGMAN 4"
+        - "mspa %player% add PIG_ZOMBIE 4"
         - "mspa %player% add SKELETON 2"
-        - "givekitboutique %player% kit_potion"
+        - "give %player% RUBY_HELMET 1 protection 4 unbreaking 3"
+        - "give %player% RUBY_CHESTPLATE 1 protection 4 unbreaking 3"
+        - "give %player% RUBY_LEGGINGS 1 protection 4 unbreaking 3"
+        - "give %player% RUBY_BOOTS 1 protection 4 unbreaking 3"
+        - "give %player% COBALT_SWORD 1 sharpness 5"
+        - "give %player% COBALT_PICKAXE 1 efficiency 5 unbreaking 3"
+        - "give %player% OBSIDIAN 640"
+        - "lp user %player% permission set greatkits.kits.Potion true"
         - "givekey %player% cobalt_key 3"
 
 # ── Offres speciales (edition limitee) ────────────────────────────────────────
@@ -280,7 +301,7 @@ offres_speciales:
   offres:
     - id: "epee-cobalt"
       actif: true
-      item: DIAMOND_SWORD
+      item: COBALT_SWORD
       data: 0
       nom: "&b&lEpee Cobalt"
       lore:
@@ -311,7 +332,7 @@ offres_speciales:
       quantite_stock: 20
     - id: "plastron-cobalt"
       actif: true
-      item: DIAMOND_CHESTPLATE
+      item: COBALT_CHESTPLATE
       data: 0
       nom: "&b&lPlastron Cobalt"
       lore:
