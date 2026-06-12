@@ -139,6 +139,7 @@ fr\originsfight\db\ItemArrayCodec.class
 fr\originsfight\loto\LotoManager$4.class
 fr\originsfight\staff\commands\SanctionsCommand.class
 fr\originsfight\useful\BaltopCommand$BaltopEntry.class
+fr\originsfight\faction\MinimapPositionSender.class
 fr\originsfight\rtp\RTP$1.class
 fr\originsfight\staff\commands\BanCommand.class
 fr\originsfight\loto\LotoManager$3.class

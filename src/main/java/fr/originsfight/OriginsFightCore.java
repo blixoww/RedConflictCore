@@ -622,6 +622,11 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:PING_S2C");
         // Données de faction (tag + relation) envoyées périodiquement aux clients proches
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:FACTION_S2C");
+        // Minimap : positions des joueurs faction/allié/ami envoyées périodiquement.
+        // Le sender filtre AVANT envoi (jamais d'ennemi/neutre) ; il dégrade proprement
+        // si Factions est absent (les positions d'amis restent envoyées).
+        getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:MMAP_S2C");
+        new fr.originsfight.faction.MinimapPositionSender(this).start();
         // Canal BungeeCord/Velocity : transfert inter-serveurs (/hub, /minage)
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
         // Features faction : actives UNIQUEMENT si le plugin Factions est présent (serveur Faction).
