@@ -20,13 +20,14 @@ import java.util.zip.ZipOutputStream;
  *
  * <p>Tourne UNIQUEMENT sur l'hôte H2 (le Faction, {@code database.server.enabled: true}) : le Minage
  * est un client H2 et ne doit pas sauvegarder la base partagée. Chaque jour, à l'heure configurée,
- * produit {@code Backup/Back_<date>.zip} contenant :
- * <ul>
- *   <li>{@code h2_central.sql} — export H2 cohérent via {@code SCRIPT TO} sur la connexion vivante ;</li>
- *   <li>{@code mariadb_luckperms.sql} — dump MariaDB via {@code mariadb-dump} (optionnel).</li>
- * </ul>
- * Purge les archives plus vieilles que {@code backup.retention-days}. Tout le travail (SQL + dump +
- * zip) s'exécute sur un thread asynchrone pour ne jamais bloquer le serveur.
+ * produit {@code Backup/Back_<date>.zip} contenant {@code h2_central.sql} — export H2 cohérent via
+ * {@code SCRIPT TO} sur la connexion vivante.
+ *
+ * <p>La MariaDB (LuckPerms) n'est PAS sauvegardée ici : elle est gérée séparément (backup pterodactyl
+ * / cron sur le nœud host).
+ *
+ * <p>Purge les archives plus vieilles que {@code backup.retention-days}. Tout le travail (SQL + zip)
+ * s'exécute sur un thread asynchrone pour ne jamais bloquer le serveur.
  */
 public class BackupManager {
 
@@ -104,10 +105,9 @@ public class BackupManager {
             staging.mkdirs();
 
             boolean h2Ok = dumpH2(staging);
-            boolean mariaOk = dumpMariaDB(staging);
 
-            if (!h2Ok && !mariaOk) {
-                plugin.getLogger().severe("[Backup] Aucune source sauvegardée — archive non créée.");
+            if (!h2Ok) {
+                plugin.getLogger().severe("[Backup] H2 non sauvegardé — archive non créée.");
                 deleteRecursive(staging);
                 return;
             }
@@ -116,7 +116,7 @@ public class BackupManager {
             zipDirectory(staging, zip);
             deleteRecursive(staging);
             plugin.getLogger().info("[Backup] Archive créée : " + zip.getName()
-                    + " (" + (zip.length() / 1024) + " Ko) [H2=" + h2Ok + ", MariaDB=" + mariaOk + "]");
+                    + " (" + (zip.length() / 1024) + " Ko) [H2=" + h2Ok + "]");
 
             prune(backupDir);
         } catch (Exception e) {
@@ -159,58 +159,6 @@ public class BackupManager {
             plugin.getLogger().warning("[Backup] Fichier H2 introuvable : " + mv.getPath());
         }
         return false;
-    }
-
-    // ── MariaDB : dump logique via mariadb-dump (optionnel) ────────────────────
-
-    private boolean dumpMariaDB(File staging) {
-        if (!plugin.getConfig().getBoolean("backup.mariadb.enabled", true)) return false;
-
-        String exe = plugin.getConfig().getString("backup.mariadb.dump-exe",
-                "MariaDB/mariadb-11.4.5-winx64/bin/mariadb-dump.exe");
-        File exeFile = new File(exe);
-        if (!exeFile.isAbsolute()) exeFile = new File(".", exe);
-        if (!exeFile.exists()) {
-            plugin.getLogger().warning("[Backup] mariadb-dump introuvable (" + exeFile.getPath() + ") — MariaDB ignoré.");
-            return false;
-        }
-
-        String user = plugin.getConfig().getString("backup.mariadb.user", "root");
-        String pass = plugin.getConfig().getString("backup.mariadb.password", "");
-        String db = plugin.getConfig().getString("backup.mariadb.database", "luckperms");
-        File out = new File(staging, "mariadb_" + db + ".sql");
-
-        java.util.List<String> cmd = new java.util.ArrayList<>();
-        cmd.add(exeFile.getAbsolutePath());
-        cmd.add("-u");
-        cmd.add(user);
-        if (pass != null && !pass.isEmpty()) cmd.add("-p" + pass);
-        cmd.add("--single-transaction");
-        cmd.add("--routines");
-        cmd.add("--events");
-        cmd.add("--databases");
-        cmd.add(db);
-
-        try {
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.redirectOutput(out);
-            pb.redirectErrorStream(false);
-            pb.redirectError(new File(staging, "mariadb_dump.err"));
-            Process p = pb.start();
-            int code = p.waitFor();
-            File err = new File(staging, "mariadb_dump.err");
-            if (code == 0 && out.exists() && out.length() > 0) {
-                if (err.exists()) err.delete();
-                return true;
-            }
-            plugin.getLogger().warning("[Backup] Dump MariaDB échoué (code=" + code + "). MariaDB démarré ?");
-            if (out.exists()) out.delete();
-            if (err.exists()) err.delete();
-            return false;
-        } catch (Exception e) {
-            plugin.getLogger().warning("[Backup] Dump MariaDB échoué : " + e.getMessage());
-            return false;
-        }
     }
 
     // ── Utilitaires ────────────────────────────────────────────────────────────

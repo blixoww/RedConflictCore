@@ -141,8 +141,6 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §aRedConflict est activé !");
 
         // WorldGuard est optionnel : présent sur le Faction (zones PvP), absent sur le Minage.
-        // Le cast n'est exécuté que si le plugin est là (résolution paresseuse → pas de
-        // NoClassDefFoundError quand WorldGuard est absent du serveur).
         if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
             this.worldGuard = (WorldGuardPlugin) getServer().getPluginManager().getPlugin("WorldGuard");
         } else {
@@ -158,7 +156,6 @@ public class OriginsFightCore extends JavaPlugin {
         } else {
             this.playerLockService = new PlayerLockService(this.database);
             this.playerLockService.createTable();
-            // Anti-crash : ce serveur est vide au démarrage → ses verrous restants sont des fantômes.
             this.playerLockService.releaseAllForServer(this.database.getServerId());
 
             // Synchronisation inventaire + enderchest (cross-serveur), activable via config.
@@ -235,7 +232,7 @@ public class OriginsFightCore extends JavaPlugin {
             getLogger().info("[PlayerDB] Base de données joueurs initialisée avec succès !");
 
             // ── Boost d'XP x2 (item xp_booster) ──────────────────────────────
-            this.xpBoostManager = new fr.originsfight.xpboost.XpBoostManager(this.playerDatabase);
+            this.xpBoostManager = new XpBoostManager(this.playerDatabase);
             if (this.jobManager != null) {
                 this.jobManager.setXpBoostManager(this.xpBoostManager);
                 // Le sender métier inclut le temps de boost restant dans JOB_DATA.
