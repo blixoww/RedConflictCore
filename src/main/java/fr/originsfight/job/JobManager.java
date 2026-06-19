@@ -25,6 +25,7 @@ public class JobManager {
     private final JobDatabase     database;
     private final JobConfig       config;
     private JobPacketSender        packetSender;
+    private JobTopManager          topManager;
     private Economy                economy;
     private fr.originsfight.xpboost.XpBoostManager xpBoostManager;
 
@@ -43,6 +44,8 @@ public class JobManager {
 
     public void setPacketSender(JobPacketSender sender) { this.packetSender = sender; }
     public JobPacketSender getPacketSender() { return packetSender; }
+    public void setTopManager(JobTopManager topManager) { this.topManager = topManager; }
+    public JobTopManager getTopManager() { return topManager; }
     public void setXpBoostManager(fr.originsfight.xpboost.XpBoostManager m) { this.xpBoostManager = m; }
 
     /** Renvoie au client un JOB_DATA frais (ex. après (dés)activation du boost x2). */

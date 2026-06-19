@@ -51,24 +51,34 @@ public class JobCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase(Locale.ROOT);
 
-        // ── /metier top [metier] ──────────────────────────────────────────────
-        if (sub.equals("top")) {
-            if (!(sender instanceof Player)) { sender.sendMessage("§cCommande réservée aux joueurs."); return true; }
-            Player p  = (Player) sender;
-            String jk = args.length >= 2 ? args[1].toUpperCase(Locale.ROOT) : "ALL";
-            JobType jt = JobType.fromString(jk);
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                List<JobDatabase.TopEntry> entries = manager.getDatabase().getTop(jt, 10);
-                for (JobDatabase.TopEntry e : entries) {
-                    try {
-                        org.bukkit.OfflinePlayer op = Bukkit.getOfflinePlayer(UUID.fromString(e.uuid));
-                        if (op.getName() != null) e.name = op.getName();
-                    } catch (Exception ignored) {}
-                }
-                final List<JobDatabase.TopEntry> fEntries = entries;
-                final String fJk = jk;
-                Bukkit.getScheduler().runTask(plugin, () -> this.sender.sendTop(p, fJk, fEntries));
+        // ── /metier topupdate ─ (staff) recalcule immédiatement le snapshot ─────
+        if (sub.equals("topupdate") && sender.hasPermission("jobs.admin")) {
+            sender.sendMessage("§e[Métier] Recalcul du classement en cours...");
+            manager.getTopManager().refreshAsync(() -> {
+                int n = manager.getTopManager().getSnapshot("ALL").size();
+                sender.sendMessage("§a[Métier] Classement mis à jour §7(" + n + " joueur(s) classé(s)).");
             });
+            return true;
+        }
+
+        // ── /metier top [metier] ─ lit le snapshot figé (recalculé toutes les 24h) ─
+        if (sub.equals("top")) {
+            String jk = args.length >= 2 ? args[1].toUpperCase(Locale.ROOT) : "ALL";
+            List<JobDatabase.TopEntry> entries = manager.getTopManager().getSnapshot(jk);
+
+            // Retour chat (toujours visible, même GUI fermé).
+            sender.sendMessage("§c§lRED §f§lCONFLICT §7» §fClassement métier §7(§e" + jk + "§7)");
+            if (entries.isEmpty()) {
+                sender.sendMessage("§7Aucun joueur classé pour le moment.");
+            } else {
+                int rank = 1;
+                for (JobDatabase.TopEntry e : entries) {
+                    sender.sendMessage("§e#" + (rank++) + " §f" + e.name
+                            + " §7— niv.§f" + e.level + " §7(§f" + e.xp + " §7XP)");
+                }
+            }
+            // Met aussi à jour l'onglet classement du GUI s'il est ouvert.
+            if (sender instanceof Player) this.sender.sendTop((Player) sender, jk, entries);
             return true;
         }
 
@@ -123,7 +133,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) {
             List<String> opts = new ArrayList<>(Arrays.asList("top"));
-            if (sender.hasPermission("jobs.admin")) opts.addAll(Arrays.asList("info", "xp", "reset"));
+            if (sender.hasPermission("jobs.admin")) opts.addAll(Arrays.asList("topupdate", "info", "xp", "reset"));
             return opts.stream().filter(s -> s.startsWith(args[0].toLowerCase())).collect(Collectors.toList());
         }
         if (args.length == 2) {

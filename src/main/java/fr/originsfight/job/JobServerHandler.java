@@ -2,7 +2,6 @@ package fr.originsfight.job;
 
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.packets.PacketReader;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
@@ -44,20 +43,11 @@ public class JobServerHandler implements PluginMessageListener {
 
             switch (pkt) {
                 case PKT_JOB_REQUEST_TOP: {
+                    // Lecture du snapshot figé (recalculé toutes les 24h / au démarrage /
+                    // via /metier topupdate) : instantané, aucun accès DB ici.
                     String jobKey = r.readString(16);
-                    Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                        JobType jt = JobType.fromString(jobKey);
-                        List<JobDatabase.TopEntry> entries = manager.getDatabase().getTop(jt, 10);
-                        for (JobDatabase.TopEntry e : entries) {
-                            try {
-                                org.bukkit.OfflinePlayer op = Bukkit.getOfflinePlayer(
-                                        java.util.UUID.fromString(e.uuid));
-                                if (op.getName() != null) e.name = op.getName();
-                            } catch (Exception ignored) {}
-                        }
-                        Bukkit.getScheduler().runTask(plugin, () ->
-                                sender.sendTop(player, jobKey, entries));
-                    });
+                    List<JobDatabase.TopEntry> entries = manager.getTopManager().getSnapshot(jobKey);
+                    sender.sendTop(player, jobKey, entries);
                     break;
                 }
                 case PKT_JOB_REQUEST_DATA: {

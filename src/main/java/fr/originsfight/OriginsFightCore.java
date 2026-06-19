@@ -130,6 +130,7 @@ public class OriginsFightCore extends JavaPlugin {
     private RingManager ringManager;
     private JobDatabase jobDatabase;
     private JobManager jobManager;
+    private JobTopManager jobTopManager;
     private PBLogger pbLogger;
     private StaffAlertManager pbStaffAlerts;
     private OffresManager offresManager;
@@ -353,6 +354,7 @@ public class OriginsFightCore extends JavaPlugin {
         if (this.lagSwitchManager != null) this.lagSwitchManager.disable();
         if (this.clearLaggManager != null) this.clearLaggManager.disable();
         if (this.ringManager != null) { /* ring save on disable handled internally */ }
+        if (this.jobTopManager != null) this.jobTopManager.shutdown();
         if (this.jobManager != null) {
             this.jobManager.saveAll();
             this.jobDatabase.disconnect();
@@ -449,6 +451,11 @@ public class OriginsFightCore extends JavaPlugin {
         this.jobManager = new JobManager(this, jobDatabase, jobConfig);
         JobPacketSender jobSender = new JobPacketSender(this, jobConfig, jobDatabase);
         this.jobManager.setPacketSender(jobSender);
+
+        // Snapshot des classements (recalcul auto 24h + au démarrage + /metier topupdate)
+        this.jobTopManager = new JobTopManager(this, jobDatabase);
+        this.jobManager.setTopManager(this.jobTopManager);
+        this.jobTopManager.init();
 
         // Canaux
         getServer().getMessenger().registerIncomingPluginChannel(

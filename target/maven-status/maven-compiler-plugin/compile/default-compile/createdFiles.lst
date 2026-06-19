@@ -17,6 +17,7 @@ fr\originsfight\hdv\HdvEconomy.class
 fr\originsfight\bounty\BountyManager.class
 fr\originsfight\job\JobServerHandler.class
 fr\originsfight\feature\DisabledFeatureCommand.class
+fr\originsfight\job\JobTopManager.class
 fr\originsfight\ring\RingManager.class
 fr\originsfight\shop\ShopServerHandler.class
 fr\originsfight\useful\PlayerListManager$1.class

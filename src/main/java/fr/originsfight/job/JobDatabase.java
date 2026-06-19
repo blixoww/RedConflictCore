@@ -45,6 +45,25 @@ public class JobDatabase {
                 "  artisan_xp     INT NOT NULL DEFAULT 0" +
                 ")"
             );
+            // Snapshot figé des classements (recalculé toutes les 24 h / au démarrage / via commande admin).
+            st.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS job_top_snapshot (" +
+                "  category  VARCHAR(16) NOT NULL," +
+                "  rk        INT         NOT NULL," +  // 'rank' est réservé en H2 2.x
+                "  uuid      VARCHAR(36)," +
+                "  name      VARCHAR(48)," +
+                "  job       VARCHAR(16)," +
+                "  level     INT," +
+                "  xp        INT," +
+                "  PRIMARY KEY (category, rk)" +
+                ")"
+            );
+            st.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS job_top_meta (" +
+                "  k VARCHAR(32) PRIMARY KEY," +
+                "  v VARCHAR(64)" +
+                ")"
+            );
             return true;
         } catch (SQLException e) {
             LOG.severe("[Jobs] Erreur H2 : " + e.getMessage());
@@ -138,9 +157,10 @@ public class JobDatabase {
         String xpCol    = job.isReal() ? xpCol(job) : null;
         String sql;
         if (job.isReal()) {
-            // Classement par métier spécifique
+            // Classement par métier spécifique : inclut les joueurs ayant de l'XP
+            // même au niveau 0 (sinon le classement reste vide tant que personne n'a level up).
             sql = "SELECT uuid, job, " + levelCol + " AS lvl, " + xpCol + " AS xp " +
-                  "FROM player_jobs WHERE " + levelCol + " > 0 " +
+                  "FROM player_jobs WHERE " + levelCol + " > 0 OR " + xpCol + " > 0 " +
                   "ORDER BY lvl DESC, xp DESC LIMIT " + limit;
         } else {
             // Classement global: niveau le plus élevé parmi les 3 métiers (GREATEST = max multi-args H2)
@@ -149,7 +169,8 @@ public class JobDatabase {
                   "CASE WHEN miner_level >= farmer_level AND miner_level >= artisan_level THEN miner_xp " +
                   "     WHEN farmer_level >= artisan_level THEN farmer_xp ELSE artisan_xp END AS xp " +
                   "FROM player_jobs WHERE " +
-                  "(miner_level > 0 OR farmer_level > 0 OR artisan_level > 0) " +
+                  "(miner_level > 0 OR farmer_level > 0 OR artisan_level > 0 " +
+                  " OR miner_xp > 0 OR farmer_xp > 0 OR artisan_xp > 0) " +
                   "ORDER BY lvl DESC, xp DESC LIMIT " + limit;
         }
         try (Connection c = db.getConnection();
@@ -165,6 +186,87 @@ public class JobDatabase {
             }
         } catch (SQLException ex) { LOG.warning("[Jobs] getTop: " + ex.getMessage()); }
         return list;
+    }
+
+    // ── Snapshot figé des classements ──────────────────────────────────────────
+
+    /**
+     * Remplace le snapshot persistant par {@code categories} et enregistre l'horodatage.
+     * Opération transactionnelle (purge + réinsertion).
+     */
+    public void saveSnapshot(Map<String, List<TopEntry>> categories, long timestamp) {
+        try (Connection c = db.getConnection()) {
+            boolean prevAuto = c.getAutoCommit();
+            c.setAutoCommit(false);
+            try {
+                try (Statement st = c.createStatement()) {
+                    st.executeUpdate("DELETE FROM job_top_snapshot");
+                }
+                try (PreparedStatement ps = c.prepareStatement(
+                        "INSERT INTO job_top_snapshot (category,rk,uuid,name,job,level,xp) " +
+                        "VALUES (?,?,?,?,?,?,?)")) {
+                    for (Map.Entry<String, List<TopEntry>> cat : categories.entrySet()) {
+                        int rank = 1;
+                        for (TopEntry e : cat.getValue()) {
+                            ps.setString(1, cat.getKey());
+                            ps.setInt(2, rank++);
+                            ps.setString(3, e.uuid);
+                            ps.setString(4, e.name);
+                            ps.setString(5, e.job.name());
+                            ps.setInt(6, e.level);
+                            ps.setInt(7, e.xp);
+                            ps.addBatch();
+                        }
+                    }
+                    ps.executeBatch();
+                }
+                try (PreparedStatement ps = c.prepareStatement(
+                        "MERGE INTO job_top_meta (k,v) KEY(k) VALUES ('last_update', ?)")) {
+                    ps.setString(1, Long.toString(timestamp));
+                    ps.executeUpdate();
+                }
+                c.commit();
+            } catch (SQLException ex) {
+                c.rollback();
+                throw ex;
+            } finally {
+                c.setAutoCommit(prevAuto);
+            }
+        } catch (SQLException e) {
+            LOG.warning("[Jobs] saveSnapshot: " + e.getMessage());
+        }
+    }
+
+    /** Recharge le snapshot persistant en mémoire (catégorie → liste ordonnée par rang). */
+    public Map<String, List<TopEntry>> loadSnapshot() {
+        Map<String, List<TopEntry>> map = new HashMap<>();
+        try (Connection c = db.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery(
+                "SELECT category,uuid,name,job,level,xp FROM job_top_snapshot ORDER BY category, rk")) {
+            while (rs.next()) {
+                TopEntry e = new TopEntry();
+                e.uuid  = rs.getString("uuid");
+                e.name  = rs.getString("name");
+                e.job   = JobType.fromString(rs.getString("job"));
+                e.level = rs.getInt("level");
+                e.xp    = rs.getInt("xp");
+                map.computeIfAbsent(rs.getString("category"), k -> new ArrayList<>()).add(e);
+            }
+        } catch (SQLException ex) { LOG.warning("[Jobs] loadSnapshot: " + ex.getMessage()); }
+        return map;
+    }
+
+    /** Horodatage (ms) du dernier recalcul du snapshot, 0 si jamais calculé. */
+    public long loadSnapshotTimestamp() {
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT v FROM job_top_meta WHERE k = 'last_update'");
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                try { return Long.parseLong(rs.getString("v")); } catch (NumberFormatException ignored) {}
+            }
+        } catch (SQLException ex) { LOG.warning("[Jobs] loadSnapshotTimestamp: " + ex.getMessage()); }
+        return 0L;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
