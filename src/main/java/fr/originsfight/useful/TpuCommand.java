@@ -1,5 +1,7 @@
 package fr.originsfight.useful;
 
+import fr.redfaction.api.RedFactionAPI;
+import fr.redfaction.entity.Faction;
 import fr.originsfight.RC;
 import fr.originsfight.friend.FriendManager;
 import org.bukkit.command.Command;
@@ -53,38 +55,17 @@ public class TpuCommand implements CommandExecutor {
         return blocked.contains(playerUid);
     }
 
-    // ── Vérification faction via reflection (compatible MassiveCraft / FactionsUUID) ──
+    // ── Vérification faction via l'API RedFaction ──
 
     private static boolean sameFaction(Player a, Player b) {
-        // FactionsUUID / MassiveCraft moderne
         try {
-            Class<?> fpClass = Class.forName("com.massivecraft.factions.FPlayers");
-            Object fpAll = fpClass.getMethod("getInstance").invoke(null);
-            Object fpA   = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, a);
-            Object fpB   = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, b);
-            if (fpA == null || fpB == null) return false;
-            Object fA = fpA.getClass().getMethod("getFaction").invoke(fpA);
-            Object fB = fpB.getClass().getMethod("getFaction").invoke(fpB);
+            if (!RedFactionAPI.isAvailable()) return false;
+            RedFactionAPI api = RedFactionAPI.get();
+            Faction fA = api.getPlayerFaction(a);
+            Faction fB = api.getPlayerFaction(b);
             if (fA == null || fB == null) return false;
-            String idA = (String) fA.getClass().getMethod("getId").invoke(fA);
-            String idB = (String) fB.getClass().getMethod("getId").invoke(fB);
-            return idA != null && idA.equals(idB);
+            return fA.getId().equals(fB.getId());
         } catch (Exception ignored) {}
-
-        // MassiveCraft legacy
-        try {
-            Class<?> mpClass = Class.forName("com.massivecraft.factions.entity.MPlayer");
-            Object mpA = mpClass.getMethod("get", UUID.class).invoke(null, a.getUniqueId());
-            Object mpB = mpClass.getMethod("get", UUID.class).invoke(null, b.getUniqueId());
-            if (mpA == null || mpB == null) return false;
-            Object fA = mpA.getClass().getMethod("getFaction").invoke(mpA);
-            Object fB = mpB.getClass().getMethod("getFaction").invoke(mpB);
-            if (fA == null || fB == null) return false;
-            String nA = (String) fA.getClass().getMethod("getName").invoke(fA);
-            String nB = (String) fB.getClass().getMethod("getName").invoke(fB);
-            return nA != null && nA.equals(nB);
-        } catch (Exception ignored) {}
-
         return false;
     }
 }

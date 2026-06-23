@@ -4,6 +4,8 @@ import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import fr.originsfight.annonyme.AnonymeCommand;
 import fr.originsfight.annonyme.AnonymeListener;
 import fr.originsfight.annonyme.AnonymeManager;
+import fr.originsfight.announce.AnnounceCommand;
+import fr.originsfight.announce.AnnounceService;
 import fr.originsfight.automsg.AutoMessageManager;
 import fr.originsfight.backup.BackupCommand;
 import fr.originsfight.backup.BackupManager;
@@ -11,8 +13,12 @@ import fr.originsfight.bounty.BountyCommand;
 import fr.originsfight.bounty.BountyListener;
 import fr.originsfight.bounty.BountyManager;
 import fr.originsfight.bounty.KillstreakManager;
+import fr.originsfight.combatlog.CombatLogSender;
+import fr.originsfight.data.PlayerDataServerHandler;
 import fr.originsfight.faction.FactionDataSender;
 import fr.originsfight.faction.FactionZoneSender;
+import fr.originsfight.faction.MinimapPositionSender;
+import fr.originsfight.feature.DisabledFeatureCommand;
 import fr.originsfight.friend.FriendCommand;
 import fr.originsfight.friend.FriendListener;
 import fr.originsfight.friend.FriendManager;
@@ -36,9 +42,8 @@ import fr.originsfight.hdv.HdvManager;
 import fr.originsfight.hdv.HdvServerHandler;
 import fr.originsfight.job.*;
 import fr.originsfight.ring.*;
-import fr.originsfight.shop.ShopCommand;
-import fr.originsfight.shop.ShopManager;
-import fr.originsfight.shop.ShopServerHandler;
+import fr.originsfight.server.ServerSwitchCommand;
+import fr.originsfight.shop.*;
 import fr.originsfight.data.PlayerDatabase;
 import fr.originsfight.db.Database;
 import fr.originsfight.db.PlayerDataDatabase;
@@ -68,20 +73,14 @@ import fr.originsfight.trade.TradeCommand;
 import fr.originsfight.trade.TradeListener;
 import fr.originsfight.profil.ProfilCommand;
 import fr.originsfight.trade.TradePacketSender;
-import fr.originsfight.useful.BaltopCommand;
-import fr.originsfight.useful.CobbleCommand;
-import fr.originsfight.useful.CommandsCommand;
-import fr.originsfight.useful.FurnaceCommand;
-import fr.originsfight.useful.GuideCommand;
-import fr.originsfight.useful.MsgCommand;
-import fr.originsfight.useful.PoubelleCommand;
-import fr.originsfight.useful.VisionCommand;
+import fr.originsfight.useful.*;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import fr.originsfight.xpboost.XpBoostListener;
 import fr.originsfight.xpboost.XpBoostManager;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -135,7 +134,7 @@ public class OriginsFightCore extends JavaPlugin {
     private StaffAlertManager pbStaffAlerts;
     private OffresManager offresManager;
     private FileConfiguration boutiqueConfig;
-    private fr.originsfight.backup.BackupManager backupManager;
+    private BackupManager backupManager;
 
     public void onEnable() {
         instance = this;
@@ -242,7 +241,7 @@ public class OriginsFightCore extends JavaPlugin {
                 }
             }
             getServer().getPluginManager().registerEvents(
-                    new fr.originsfight.xpboost.XpBoostListener(this.xpBoostManager, this.jobManager), this);
+                    new XpBoostListener(this.xpBoostManager, this.jobManager), this);
             getLogger().info("[XpBoost] Boost d'XP x2 (item xp_booster) initialisé.");
 
             // ── Système Points Boutique (PB) ─────────────────────────────────
@@ -361,7 +360,7 @@ public class OriginsFightCore extends JavaPlugin {
         }
         if (this.hdvManager != null) this.hdvManager.disable();
         if (this.shopManager != null) {
-            fr.originsfight.shop.ShopEventManager eMgr = fr.originsfight.shop.ShopEventManager.getInstance();
+            ShopEventManager eMgr = ShopEventManager.getInstance();
             if (eMgr != null) eMgr.disable();
             this.shopManager.disable();
         }
@@ -416,15 +415,15 @@ public class OriginsFightCore extends JavaPlugin {
         // Guide du serveur → ouvre le GuiCraftGuide côté client modifié
         getCommand("guide").setExecutor(new GuideCommand(this));
         // Navigation inter-serveurs (cluster Velocity) : /hub et /minage
-        fr.originsfight.server.ServerSwitchCommand serverSwitch = new fr.originsfight.server.ServerSwitchCommand(this);
+        ServerSwitchCommand serverSwitch = new ServerSwitchCommand(this);
         getCommand("hub").setExecutor(serverSwitch);
         getCommand("minage").setExecutor(serverSwitch);
         getCommand("faction").setExecutor(serverSwitch);
         // Annonce inter-serveurs (BungeeCord Forward) : réception + commande staff.
-        fr.originsfight.announce.AnnounceService announceService = new fr.originsfight.announce.AnnounceService(this);
+        AnnounceService announceService = new AnnounceService(this);
         announceService.register();
         if (getCommand("annonce") != null) {
-            getCommand("annonce").setExecutor(new fr.originsfight.announce.AnnounceCommand(announceService));
+            getCommand("annonce").setExecutor(new AnnounceCommand(announceService));
         }
         // Messagerie privée
         MsgCommand msg = new MsgCommand();
@@ -438,6 +437,9 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("annonyme").setExecutor(anonymeCommand);
             getCommand("annonyme").setTabCompleter(anonymeCommand);
         }
+
+        TpuCommand tpuCommand = new TpuCommand();
+        getCommand("tpu").setExecutor(tpuCommand);
     }
 
     private void registerJob() {
@@ -533,8 +535,8 @@ public class OriginsFightCore extends JavaPlugin {
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new RTPListener(), this);
         // Combat Tag : émetteur S2C (pilote le widget client) + listener (PvP only : épée ou flèche).
-        fr.originsfight.combatlog.CombatLogSender combatLogSender = new fr.originsfight.combatlog.CombatLogSender(this);
-        getServer().getMessenger().registerOutgoingPluginChannel(this, fr.originsfight.combatlog.CombatLogSender.CHANNEL);
+        CombatLogSender combatLogSender = new CombatLogSender(this);
+        getServer().getMessenger().registerOutgoingPluginChannel(this, CombatLogSender.CHANNEL);
         combatLogSender.start();
         getServer().getPluginManager().registerEvents(new CombatLogListener(combatLogSender), this);
         getServer().getPluginManager().registerEvents(new VoidListener(), this);
@@ -586,17 +588,17 @@ public class OriginsFightCore extends JavaPlugin {
             getCommand("shopdebug").setTabCompleter(shopCmd);
         }
         // /sellall — vente rapide de tout l'inventaire
-        fr.originsfight.shop.SellAllCommand sellAllCmd = new fr.originsfight.shop.SellAllCommand(this.shopManager);
+        SellAllCommand sellAllCmd = new SellAllCommand(this.shopManager);
         if (getCommand("sellall") != null) {
             getCommand("sellall").setExecutor(sellAllCmd);
         }
         // ── Événements boursiers (krach, inflation, aubaines) ────────────────
-        fr.originsfight.shop.ShopEventManager eventMgr =
-                new fr.originsfight.shop.ShopEventManager(this, this.shopManager);
+        ShopEventManager eventMgr =
+                new ShopEventManager(this, this.shopManager);
         this.shopManager.setEventManager(eventMgr);
         eventMgr.enable();
-        fr.originsfight.shop.ShopEventCommand eventCmd =
-                new fr.originsfight.shop.ShopEventCommand(eventMgr, this.shopManager.getDatabase());
+        ShopEventCommand eventCmd =
+                new ShopEventCommand(eventMgr, this.shopManager.getDatabase());
         if (getCommand("shopevent") != null) {
             getCommand("shopevent").setExecutor(eventCmd);
             getCommand("shopevent").setTabCompleter(eventCmd);
@@ -605,7 +607,7 @@ public class OriginsFightCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
             public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
-                fr.originsfight.shop.ShopEventManager mgr = fr.originsfight.shop.ShopEventManager.getInstance();
+                ShopEventManager mgr = ShopEventManager.getInstance();
                 if (mgr != null) {
                     // Notif chat différée pour ne pas spammer pendant le join
                     org.bukkit.Bukkit.getScheduler().runTaskLater(OriginsFightCore.this,
@@ -615,7 +617,7 @@ public class OriginsFightCore extends JavaPlugin {
         }, this);
         getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:SHOP_C2S",
                 (PluginMessageListener) new ShopServerHandler(this));
-        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PDATA_C2S", (PluginMessageListener) new fr.originsfight.data.PlayerDataServerHandler(this));
+        getServer().getMessenger().registerIncomingPluginChannel(this, "CUSTOM:PDATA_C2S", new PlayerDataServerHandler(this));
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:HDV_S2C");
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:SHOP_S2C");
@@ -630,14 +632,14 @@ public class OriginsFightCore extends JavaPlugin {
         // Le sender filtre AVANT envoi (jamais d'ennemi/neutre) ; il dégrade proprement
         // si Factions est absent (les positions d'amis restent envoyées).
         getServer().getMessenger().registerOutgoingPluginChannel(this, "CUSTOM:MMAP_S2C");
-        new fr.originsfight.faction.MinimapPositionSender(this).start();
+        new MinimapPositionSender(this).start();
         // Canal BungeeCord/Velocity : transfert inter-serveurs (/hub, /minage)
         getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
-        // Features faction : actives UNIQUEMENT si le plugin Factions est présent (serveur Faction).
-        // Sur un serveur sans Factions (ex. Minage), ces sous-systèmes sont désactivés proprement.
+        // Features faction : actives UNIQUEMENT si le plugin RedFaction est présent (serveur Faction).
+        // Sur un serveur sans RedFaction (ex. Minage), ces sous-systèmes sont désactivés proprement.
         // Les `new` ne sont exécutés que dans cette branche → la JVM ne charge jamais
-        // FactionZoneSender/FactionDataSender (et donc les classes Factions) quand Factions est absent.
-        if (getServer().getPluginManager().getPlugin("Factions") != null) {
+        // FactionZoneSender/FactionDataSender (et donc les classes RedFaction) quand RedFaction est absent.
+        if (getServer().getPluginManager().getPlugin("RedFaction") != null) {
             // Données de faction (tag + relation) envoyées périodiquement aux clients proches
             new FactionDataSender(this).start();
             // Zone (claim) – envoie au client la faction propriétaire du chunk courant
@@ -646,7 +648,7 @@ public class OriginsFightCore extends JavaPlugin {
             // Tâche périodique : détecte les changements de zone sans déplacement de chunk
             zoneSender.startPeriodicUpdate();
         } else {
-            getLogger().info("[Faction] Plugin Factions absent — features faction (HUD tag, zone de claim) désactivées.");
+            getLogger().info("[Faction] Plugin RedFaction absent — features faction (HUD tag, zone de claim) désactivées.");
         }
         getLogger().info("[CustomPackets] Canaux enregistré avec succès !");
     }
@@ -725,8 +727,8 @@ public class OriginsFightCore extends JavaPlugin {
     // ── Toggle de fonctionnalités (features.<clé> dans config.yml) ───────────────
 
     /** Exécuteur partagé attribué aux commandes des fonctionnalités désactivées. */
-    private final fr.originsfight.feature.DisabledFeatureCommand disabledFeatureCommand =
-            new fr.originsfight.feature.DisabledFeatureCommand();
+    private final DisabledFeatureCommand disabledFeatureCommand =
+            new DisabledFeatureCommand();
 
     /**
      * Indique si une fonctionnalité est activée sur CE serveur.
@@ -766,10 +768,6 @@ public class OriginsFightCore extends JavaPlugin {
             loaded.setDefaults(defaults);
         }
         this.boutiqueConfig = loaded;
-    }
-
-    public void reloadBoutiqueConfig() {
-        loadBoutiqueConfig();
     }
 
     /**

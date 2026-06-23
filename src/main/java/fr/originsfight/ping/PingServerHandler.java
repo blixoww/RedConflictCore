@@ -1,5 +1,7 @@
 package fr.originsfight.ping;
 
+import fr.redfaction.api.RedFactionAPI;
+import fr.redfaction.entity.Faction;
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.friend.FriendManager;
 import fr.originsfight.packets.PacketBuilder;
@@ -98,8 +100,7 @@ public class PingServerHandler implements PluginMessageListener {
 
         // Le payload est construit par destination ci-dessous (inclut le typeOrdinal)
 
-        String senderFaction = getFaction(sender);
-        List<String> senderAllies = getAllies(senderFaction);
+        Faction senderFaction = getFaction(sender);
 
         for (Player target : Bukkit.getOnlinePlayers()) {
             if (target.getUniqueId().equals(senderUUID)) continue;
@@ -108,9 +109,14 @@ public class PingServerHandler implements PluginMessageListener {
 
             // Déterminer la relation spécifique au target (priorité : faction > ally > friend)
             int relation = -1; // -1 = none
-            if (isSameFaction(senderFaction, target)) relation = 0;
-            else if (isAlly(senderAllies, target)) relation = 1;
-            else if (isFriend(friends, target)) relation = 2;
+            if (senderFaction != null) {
+                Faction targetFaction = getFaction(target);
+                if (targetFaction != null) {
+                    if (targetFaction.getId().equals(senderFaction.getId())) relation = 0;
+                    else if (senderFaction.isAlly(targetFaction.getId())) relation = 1;
+                }
+            }
+            if (relation == -1 && isFriend(friends, target)) relation = 2;
 
             if (relation != -1) {
                 if (relation == 2) {
@@ -145,77 +151,21 @@ public class PingServerHandler implements PluginMessageListener {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Intégration Factions (Massivecraft/HCFactions via reflection pour rester
-    // compatible sans dépendance compile-time).
+    // Intégration RedFaction
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Récupère le nom de faction du joueur.
-     * Supporte : MassiveCoreFactions, HCFactions (FactionsUUID), Factions-0.7.x.
-     * Retourne {@code null} si aucun plugin de faction n'est trouvé ou si le joueur
-     * est sans faction.
+     * Récupère la faction (normale) du joueur via l'API RedFaction.
+     * Retourne {@code null} si RedFaction est absent ou si le joueur est sans faction.
      */
-    private String getFaction(Player player) {
-        // Tentative MassiveCore / FactionsUUID
+    private Faction getFaction(Player player) {
         try {
-            Class<?> fpClass = Class.forName("com.massivecraft.factions.FPlayers");
-            Object fpAll = fpClass.getMethod("getInstance").invoke(null);
-            Object fp = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, player);
-            if (fp == null) return null;
-            Object faction = fp.getClass().getMethod("getFaction").invoke(fp);
-            if (faction == null) return null;
-            String tag = (String) faction.getClass().getMethod("getTag").invoke(faction);
-            return (tag == null || tag.isEmpty()) ? null : tag;
+            if (!RedFactionAPI.isAvailable()) return null;
+            Faction faction = RedFactionAPI.get().getPlayerFaction(player);
+            if (faction == null || !faction.isNormal()) return null;
+            return faction;
         } catch (Exception ignored) {}
-
-        // Tentative Factions legacy (org.bukkit plugin)
-        try {
-            Class<?> factionsClass = Class.forName("com.massivecraft.factions.entity.MPlayer");
-            Object mp = factionsClass.getMethod("get", UUID.class).invoke(null, player.getUniqueId());
-            if (mp == null) return null;
-            Object faction = mp.getClass().getMethod("getFaction").invoke(mp);
-            if (faction == null) return null;
-            return (String) faction.getClass().getMethod("getName").invoke(faction);
-        } catch (Exception ignored) {}
-
         return null;
-    }
-
-    /**
-     * Retourne la liste des noms de factions alliées à {@code factionName}.
-     */
-    @SuppressWarnings("unchecked")
-    private List<String> getAllies(String factionName) {
-        if (factionName == null) return java.util.Collections.emptyList();
-        try {
-            Class<?> factionsClass = Class.forName("com.massivecraft.factions.Factions");
-            Object factionsAll = factionsClass.getMethod("getInstance").invoke(null);
-            Object faction = factionsAll.getClass().getMethod("getByTag", String.class)
-                    .invoke(factionsAll, factionName);
-            if (faction == null) return java.util.Collections.emptyList();
-            Object relations = faction.getClass().getMethod("getRelationWishes").invoke(faction);
-            // getRelationWishes retourne Map<String, Relation>
-            java.util.Map<?, ?> map = (java.util.Map<?, ?>) relations;
-            List<String> allies = new java.util.ArrayList<>();
-            for (java.util.Map.Entry<?, ?> e : map.entrySet()) {
-                String rel = e.getValue().toString();
-                if (rel.equalsIgnoreCase("ALLY")) allies.add(e.getKey().toString());
-            }
-            return allies;
-        } catch (Exception ignored) {}
-        return java.util.Collections.emptyList();
-    }
-
-    private boolean isSameFaction(String senderFaction, Player target) {
-        if (senderFaction == null) return false;
-        String targetFaction = getFaction(target);
-        return senderFaction.equals(targetFaction);
-    }
-
-    private boolean isAlly(List<String> senderAllies, Player target) {
-        if (senderAllies == null || senderAllies.isEmpty()) return false;
-        String targetFaction = getFaction(target);
-        return targetFaction != null && senderAllies.contains(targetFaction);
     }
 }
 

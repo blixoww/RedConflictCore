@@ -138,25 +138,13 @@ public class KsListener implements Listener {
 
     private String resolveFaction(UUID uuid, Player p) {
         try {
-            Class<?> fpClass = Class.forName("com.massivecraft.factions.FPlayers");
-            Object fpAll = fpClass.getMethod("getInstance").invoke(null);
-            Object fp = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, p);
-            if (fp != null) {
-                Object fac = fp.getClass().getMethod("getFaction").invoke(fp);
-                if (fac != null) {
-                    Boolean w = tryBoolean(fac, "isWilderness");
-                    if (!Boolean.TRUE.equals(w)) {
-                        String tag = (String) fac.getClass().getMethod("getTag").invoke(fac);
-                        if (tag != null && !tag.isEmpty()) return tag;
-                    }
-                }
+            if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return "";
+            fr.redfaction.entity.Faction fac = fr.redfaction.api.RedFactionAPI.get().getPlayerFaction(p);
+            if (fac != null && fac.isNormal()) {
+                String tag = fac.getTag();
+                if (tag != null && !tag.isEmpty()) return tag;
             }
         } catch (Exception ignored) {}
         return "";
-    }
-
-    private Boolean tryBoolean(Object obj, String method) {
-        try { return (Boolean) obj.getClass().getMethod(method).invoke(obj); }
-        catch (Exception e) { return null; }
     }
 }

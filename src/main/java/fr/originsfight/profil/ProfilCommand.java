@@ -273,65 +273,35 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
     private int resolveRequesterRelation(Player requester, String targetTag) {
         if (targetTag == null || targetTag.isEmpty()) return 4;
         try {
-            Class<?> fpClass   = Class.forName("com.massivecraft.factions.FPlayers");
-            Object   fpAll     = fpClass.getMethod("getInstance").invoke(null);
-            Object   fp        = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, requester);
-            if (fp == null) return 4;
-            Object pFaction    = fp.getClass().getMethod("getFaction").invoke(fp);
-            if (pFaction == null) return 4;
-            if (Boolean.TRUE.equals(tryBoolean(pFaction, "isWilderness"))) return 4;
+            if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return 4;
+            fr.redfaction.api.RedFactionAPI api = fr.redfaction.api.RedFactionAPI.get();
 
-            String ownTag = (String) pFaction.getClass().getMethod("getTag").invoke(pFaction);
+            fr.redfaction.entity.Faction pFaction = api.getPlayerFaction(requester);
+            if (pFaction == null) return 4;
+
+            String ownTag = pFaction.getTag();
             if (targetTag.equals(ownTag)) return 0; // own faction
 
-            // Find target faction
-            Class<?> factionsClass = Class.forName("com.massivecraft.factions.Factions");
-            Object   factionsAll   = factionsClass.getMethod("getInstance").invoke(null);
-            @SuppressWarnings("unchecked")
-            java.util.Collection<?> allFactions =
-                (java.util.Collection<?>) factionsAll.getClass().getMethod("getAllFactions").invoke(factionsAll);
-            Object targetFaction = null;
-            for (Object f : allFactions) {
-                String tag = (String) f.getClass().getMethod("getTag").invoke(f);
-                if (targetTag.equalsIgnoreCase(tag)) { targetFaction = f; break; }
+            // Trouve la faction cible par son tag
+            fr.redfaction.entity.Faction targetFaction = null;
+            for (fr.redfaction.entity.Faction f : api.getAllFactions()) {
+                if (targetTag.equalsIgnoreCase(f.getTag())) { targetFaction = f; break; }
             }
             if (targetFaction == null) {
-                plugin.getLogger().warning("[ProfilCmd] faction tag not found among " + allFactions.size() + " factions: '" + targetTag + "'");
+                plugin.getLogger().warning("[ProfilCmd] faction tag not found: '" + targetTag + "'");
                 return 4;
             }
 
-            // Cherche getRelationTo(Faction) — on filtre par isInstance pour éviter de prendre getRelationTo(FPlayer)
-            java.lang.reflect.Method relMethod = null;
-            for (java.lang.reflect.Method m : fp.getClass().getMethods()) {
-                if (m.getName().equals("getRelationTo") && m.getParameterCount() == 1) {
-                    if (m.getParameterTypes()[0].isInstance(targetFaction)) {
-                        relMethod = m;
-                        break;
-                    }
-                }
-            }
-            // Fallback : prend n'importe quelle surcharge à 1 param si aucune n'accepte directement targetFaction
-            if (relMethod == null) {
-                for (java.lang.reflect.Method m : fp.getClass().getMethods()) {
-                    if (m.getName().equals("getRelationTo") && m.getParameterCount() == 1) {
-                        relMethod = m; break;
-                    }
-                }
-            }
-            if (relMethod == null) return 4;
-            Object rel = null;
-            try { rel = relMethod.invoke(fp, targetFaction); } catch (Exception ignored) {}
+            fr.redfaction.entity.Relation rel = api.getRelation(pFaction, targetFaction);
             if (rel == null) return 4;
-            // toString() est overridé dans Saber-Factions (retourne "§7ennemi" etc.)
-            // name() retourne le nom de la constante enum : ENEMY, ALLY, TRUCE, MEMBER
-            String relName;
-            try { relName = (String) rel.getClass().getMethod("name").invoke(rel); }
-            catch (Exception e) { relName = rel.toString(); }
-            plugin.getLogger().info("[ProfilCmd] relation=" + relName + " own=" + ownTag + " target=" + targetTag);
-            if (relName.equalsIgnoreCase("MEMBER"))  return 0;
-            if (relName.equalsIgnoreCase("ALLY"))    return 1;
-            if (relName.equalsIgnoreCase("TRUCE"))   return 2;
-            if (relName.equalsIgnoreCase("ENEMY"))   return 3;
+            plugin.getLogger().info("[ProfilCmd] relation=" + rel.name() + " own=" + ownTag + " target=" + targetTag);
+            switch (rel) {
+                case SELF:  return 0;
+                case ALLY:  return 1;
+                case TRUCE: return 2;
+                case ENEMY: return 3;
+                default:    return 4;
+            }
         } catch (Exception e) {
             plugin.getLogger().warning("[ProfilCmd] resolveRequesterRelation error: " + e);
         }
@@ -348,81 +318,19 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * Récupère le tag de faction d'un joueur (en ligne ou hors ligne) par UUID.
-     * Plusieurs tentatives pour couvrir toutes les versions de Factions.
+     * Récupère le tag de faction d'un joueur (en ligne ou hors ligne) par UUID,
+     * via l'API RedFaction. Retourne "" si sans faction / RedFaction absent.
      */
     private String getFactionTagByUUID(UUID uuid) {
-        // Tentative 1 : FPlayers (FactionsUUID)
         try {
-            Class<?> fpClass = Class.forName("com.massivecraft.factions.FPlayers");
-            Object fpAll = fpClass.getMethod("getInstance").invoke(null);
-
-            Object fp = null;
-            // a) getById(String)
-            try {
-                fp = fpAll.getClass().getMethod("getById", String.class).invoke(fpAll, uuid.toString());
-            } catch (Exception ignored) {}
-            // b) getByPlayer(Player)
-            if (fp == null && Bukkit.getPlayer(uuid) != null) {
-                try {
-                    fp = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, Bukkit.getPlayer(uuid));
-                } catch (Exception ignored) {}
-            }
-            // c) getByOfflinePlayer(OfflinePlayer)
-            if (fp == null) {
-                try {
-                    OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
-                    fp = fpAll.getClass().getMethod("getByOfflinePlayer", org.bukkit.OfflinePlayer.class).invoke(fpAll, op);
-                } catch (Exception ignored) {}
-            }
-
-            // d) Itération sur getAllFPlayers
-            if (fp == null) {
-                try {
-                    java.util.Collection<?> col = (java.util.Collection<?>) fpAll.getClass().getMethod("getAllFPlayers").invoke(fpAll);
-                    for (Object obj : col) {
-                        try {
-                            String id = (String) obj.getClass().getMethod("getId").invoke(obj);
-                            if (uuid.toString().equals(id)) {
-                                fp = obj; break;
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                } catch (Exception ignored) {}
-            }
-
-            if (fp != null) {
-                Object faction = fp.getClass().getMethod("getFaction").invoke(fp);
-                if (faction != null) {
-                    if (!Boolean.TRUE.equals(tryBoolean(faction, "isSafeZone")) &&
-                        !Boolean.TRUE.equals(tryBoolean(faction, "isWarZone")) &&
-                        !Boolean.TRUE.equals(tryBoolean(faction, "isWilderness"))) {
-                        String tag = (String) faction.getClass().getMethod("getTag").invoke(faction);
-                        if (tag != null && !tag.isEmpty()) return tag;
-                    }
-                }
+            if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return "";
+            fr.redfaction.entity.Faction faction = fr.redfaction.api.RedFactionAPI.get().getPlayerFaction(uuid);
+            if (faction != null && faction.isNormal()) {
+                String tag = faction.getTag();
+                if (tag != null && !tag.isEmpty()) return tag;
             }
         } catch (Exception ignored) {}
-
-        // Tentative 2 : MPlayer (Factions moderne)
-        try {
-            Class<?> mpClass = Class.forName("com.massivecraft.factions.entity.MPlayer");
-            Object mp = mpClass.getMethod("get", UUID.class).invoke(null, uuid);
-            if (mp != null) {
-                Object faction = mp.getClass().getMethod("getFaction").invoke(mp);
-                if (faction != null) {
-                    String n = (String) faction.getClass().getMethod("getName").invoke(faction);
-                    if (n != null && !n.isEmpty()) return n;
-                }
-            }
-        } catch (Exception ignored) {}
-
         return "";
-    }
-
-    private Boolean tryBoolean(Object obj, String method) {
-        try { return (Boolean) obj.getClass().getMethod(method).invoke(obj); }
-        catch (Exception e) { return null; }
     }
 
     @Override

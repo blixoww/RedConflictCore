@@ -6,7 +6,7 @@ authors: [leziink]
 description: Plugin RedConflict - gestion du serveur
 # Dépendances optionnelles : présentes sur le Faction, absentes sur le Minage.
 # softdepend = ordre de chargement respecté SI présent, mais pas obligatoire.
-softdepend: [Factions, WorldGuard, Vault, PlaceholderAPI, LuckPerms]
+softdepend: [RedFaction, WorldGuard, Vault, PlaceholderAPI, LuckPerms]
 commands:
   rtp:
     description: Téléportation aléatoire
@@ -117,6 +117,9 @@ commands:
   cobble:
     description: Toggle le filtrage automatique de la cobblestone
     usage: /cobble
+  tpu:
+    description: Toggle "TP Unavailable" — bloque les demandes de TP entrantes (sauf amis/faction)
+    usage: /tpu
   msg:
     description: Envoie un message privé à un joueur
     usage: /msg <joueur> <message>

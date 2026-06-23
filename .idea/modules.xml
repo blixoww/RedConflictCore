@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/OriginsFightCore.iml" filepath="$PROJECT_DIR$/OriginsFightCore.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/OriginsFightCore.iml" filepath="$PROJECT_DIR$/.idea/OriginsFightCore.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../RedFaction/redfaction.iml" filepath="$PROJECT_DIR$/../RedFaction/redfaction.iml" />
     </modules>
   </component>
 </project>

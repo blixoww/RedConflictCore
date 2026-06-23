@@ -143,6 +143,7 @@ fr\originsfight\useful\BaltopCommand$BaltopEntry.class
 fr\originsfight\faction\MinimapPositionSender.class
 fr\originsfight\rtp\RTP$1.class
 fr\originsfight\staff\commands\BanCommand.class
+fr\originsfight\faction\FactionDataSender$1.class
 fr\originsfight\loto\LotoManager$3.class
 fr\originsfight\backup\BackupCommand.class
 fr\originsfight\staff\StaffDatabase$LuckData.class
@@ -194,6 +195,7 @@ fr\originsfight\hdv\HdvManager.class
 fr\originsfight\staff\StaffItems.class
 fr\originsfight\staff\StaffPlugin.class
 fr\originsfight\staff\commands\LockChatCommand.class
+fr\originsfight\profil\ProfilCommand$1.class
 fr\originsfight\staff\commands\TopLuckCommand.class
 fr\originsfight\hdv\HdvListing.class
 fr\originsfight\annonyme\AnonymousDataSender.class

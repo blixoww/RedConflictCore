@@ -221,32 +221,20 @@ public class BountyCommand implements CommandExecutor, TabCompleter {
         FriendManager fm = FriendManager.getInstance();
         if (fm != null && fm.areFriends(requester.getUniqueId(), target.getUniqueId())) return true;
 
-        // Vérif faction via réflexion (Saber-Factions)
+        // Vérif faction via l'API RedFaction
         try {
-            Class<?> fpClass = Class.forName("com.massivecraft.factions.FPlayers");
-            Object fpAll = fpClass.getMethod("getInstance").invoke(null);
-            Object fp = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, requester);
-            if (fp == null) return false;
-            Object fp2 = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, target);
-            if (fp2 == null) return false;
+            if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return false;
+            fr.redfaction.api.RedFactionAPI api = fr.redfaction.api.RedFactionAPI.get();
+            fr.redfaction.entity.Faction fRequester = api.getPlayerFaction(requester);
+            fr.redfaction.entity.Faction fTarget    = api.getPlayerFaction(target);
+            if (fRequester == null || fTarget == null) return false;
 
-            // getRelationTo(FPlayer) — cherche la surcharge qui accepte fp2
-            java.lang.reflect.Method relMethod = null;
-            for (java.lang.reflect.Method m : fp.getClass().getMethods()) {
-                if (m.getName().equals("getRelationTo") && m.getParameterCount() == 1
-                        && m.getParameterTypes()[0].isInstance(fp2)) {
-                    relMethod = m; break;
-                }
-            }
-            if (relMethod == null) return false;
-
-            Object rel = relMethod.invoke(fp, fp2);
+            fr.redfaction.entity.Relation rel = api.getRelation(fRequester, fTarget);
             if (rel == null) return false;
-            String relName = (String) rel.getClass().getMethod("name").invoke(rel);
-            // MEMBER = même faction, ALLY = allié, TRUCE = trêve → tous considérés amicaux
-            return relName.equalsIgnoreCase("MEMBER")
-                || relName.equalsIgnoreCase("ALLY")
-                || relName.equalsIgnoreCase("TRUCE");
+            // SELF = même faction, ALLY = allié, TRUCE = trêve → tous considérés amicaux
+            return rel == fr.redfaction.entity.Relation.SELF
+                || rel == fr.redfaction.entity.Relation.ALLY
+                || rel == fr.redfaction.entity.Relation.TRUCE;
         } catch (Exception ignored) {}
         return false;
     }

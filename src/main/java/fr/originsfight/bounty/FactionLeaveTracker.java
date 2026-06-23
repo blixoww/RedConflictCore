@@ -84,13 +84,11 @@ public class FactionLeaveTracker implements Listener {
 
     public static String getFactionId(Player player) {
         try {
-            Class.forName("com.massivecraft.factions.FPlayers");
-            com.massivecraft.factions.FPlayer fp =
-                com.massivecraft.factions.FPlayers.getInstance().getByPlayer(player);
-            if (fp == null) return null;
-            com.massivecraft.factions.Faction fac = fp.getFaction();
-            if (fac == null || fac.isWilderness()) return null;
-            return fac.getId();
+            if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return null;
+            fr.redfaction.entity.Faction fac =
+                fr.redfaction.api.RedFactionAPI.get().getPlayerFaction(player);
+            if (fac == null || !fac.isNormal()) return null;
+            return fac.getId().toString();
         } catch (Throwable ignored) { return null; }
     }
 }

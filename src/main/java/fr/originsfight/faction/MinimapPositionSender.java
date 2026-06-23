@@ -1,5 +1,7 @@
 package fr.originsfight.faction;
 
+import fr.redfaction.api.RedFactionAPI;
+import fr.redfaction.entity.Faction;
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.friend.FriendManager;
 import fr.originsfight.packets.PacketBuilder;
@@ -10,7 +12,6 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -71,8 +72,7 @@ public class MinimapPositionSender implements Runnable {
             UUID   viewerUUID  = viewer.getUniqueId();
             String viewerWorld = viewer.getWorld().getName();
 
-            String viewerFaction = getFaction(viewer);
-            List<String> viewerAllies = getAllies(viewerFaction);
+            Faction viewerFaction = getFaction(viewer);
             List<UUID> friends = (friendManager != null) ? friendManager.getFriends(viewerUUID) : null;
 
             // Collecter les cibles visibles (relation ∈ {0,1,2}) avant sérialisation.
@@ -85,9 +85,14 @@ public class MinimapPositionSender implements Runnable {
                 if (!isInRange(viewer, target)) continue;
 
                 int relation = -1; // -1 = non visible
-                if (isSameFaction(viewerFaction, target)) relation = 0;
-                else if (isAlly(viewerAllies, target)) relation = 1;
-                else if (isFriend(friends, target)) relation = 2;
+                if (viewerFaction != null) {
+                    Faction targetFaction = getFaction(target);
+                    if (targetFaction != null) {
+                        if (targetFaction.getId().equals(viewerFaction.getId())) relation = 0;
+                        else if (viewerFaction.isAlly(targetFaction.getId())) relation = 1;
+                    }
+                }
+                if (relation == -1 && isFriend(friends, target)) relation = 2;
 
                 if (relation != -1) {
                     targets.add(target);
@@ -149,63 +154,17 @@ public class MinimapPositionSender implements Runnable {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Intégration Factions (réflexion, sans dépendance compile-time) — identique
-    // à PingServerHandler pour rester cohérent.
+    // Intégration RedFaction — identique à PingServerHandler pour rester cohérent.
     // ─────────────────────────────────────────────────────────────────────────
 
-    private String getFaction(Player player) {
+    /** Faction (normale) du joueur, ou {@code null} s'il n'en a pas / RedFaction absent. */
+    private Faction getFaction(Player player) {
         try {
-            Class<?> fpClass = Class.forName("com.massivecraft.factions.FPlayers");
-            Object fpAll = fpClass.getMethod("getInstance").invoke(null);
-            Object fp = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, player);
-            if (fp == null) return null;
-            Object faction = fp.getClass().getMethod("getFaction").invoke(fp);
-            if (faction == null) return null;
-            String tag = (String) faction.getClass().getMethod("getTag").invoke(faction);
-            return (tag == null || tag.isEmpty()) ? null : tag;
+            if (!RedFactionAPI.isAvailable()) return null;
+            Faction faction = RedFactionAPI.get().getPlayerFaction(player);
+            if (faction == null || !faction.isNormal()) return null;
+            return faction;
         } catch (Exception ignored) {}
-
-        try {
-            Class<?> factionsClass = Class.forName("com.massivecraft.factions.entity.MPlayer");
-            Object mp = factionsClass.getMethod("get", UUID.class).invoke(null, player.getUniqueId());
-            if (mp == null) return null;
-            Object faction = mp.getClass().getMethod("getFaction").invoke(mp);
-            if (faction == null) return null;
-            return (String) faction.getClass().getMethod("getName").invoke(faction);
-        } catch (Exception ignored) {}
-
         return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<String> getAllies(String factionName) {
-        if (factionName == null) return java.util.Collections.emptyList();
-        try {
-            Class<?> factionsClass = Class.forName("com.massivecraft.factions.Factions");
-            Object factionsAll = factionsClass.getMethod("getInstance").invoke(null);
-            Object faction = factionsAll.getClass().getMethod("getByTag", String.class)
-                    .invoke(factionsAll, factionName);
-            if (faction == null) return java.util.Collections.emptyList();
-            Object relations = faction.getClass().getMethod("getRelationWishes").invoke(faction);
-            Map<?, ?> map = (Map<?, ?>) relations;
-            List<String> allies = new ArrayList<>();
-            for (Map.Entry<?, ?> e : map.entrySet()) {
-                String rel = e.getValue().toString();
-                if (rel.equalsIgnoreCase("ALLY")) allies.add(e.getKey().toString());
-            }
-            return allies;
-        } catch (Exception ignored) {}
-        return java.util.Collections.emptyList();
-    }
-
-    private boolean isSameFaction(String viewerFaction, Player target) {
-        if (viewerFaction == null) return false;
-        return viewerFaction.equals(getFaction(target));
-    }
-
-    private boolean isAlly(List<String> viewerAllies, Player target) {
-        if (viewerAllies == null || viewerAllies.isEmpty()) return false;
-        String targetFaction = getFaction(target);
-        return targetFaction != null && viewerAllies.contains(targetFaction);
     }
 }

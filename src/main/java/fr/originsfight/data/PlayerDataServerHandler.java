@@ -81,20 +81,15 @@ public class PlayerDataServerHandler implements PluginMessageListener {
                 }
             } catch (Exception ignored) {}
 
-            // ── Faction — fraîche depuis Factions ────────────────────────────────
+            // ── Faction — fraîche depuis RedFaction ───────────────────────────────
             String faction = "";
             try {
-                Class<?> fpClass = Class.forName("com.massivecraft.factions.FPlayers");
-                Object fpAll = fpClass.getMethod("getInstance").invoke(null);
-                Object fp = fpAll.getClass().getMethod("getByPlayer", Player.class).invoke(fpAll, player);
-                if (fp != null) {
-                    Object fac = fp.getClass().getMethod("getFaction").invoke(fp);
-                    if (fac != null) {
-                        Boolean w = tryBoolean(fac, "isWilderness");
-                        if (!Boolean.TRUE.equals(w)) {
-                            String tag = (String) fac.getClass().getMethod("getTag").invoke(fac);
-                            if (tag != null && !tag.isEmpty()) faction = tag;
-                        }
+                if (fr.redfaction.api.RedFactionAPI.isAvailable()) {
+                    fr.redfaction.entity.Faction fac =
+                        fr.redfaction.api.RedFactionAPI.get().getPlayerFaction(player);
+                    if (fac != null && fac.isNormal()) {
+                        String tag = fac.getTag();
+                        if (tag != null && !tag.isEmpty()) faction = tag;
                     }
                 }
             } catch (Exception ignored) {}
@@ -139,11 +134,6 @@ public class PlayerDataServerHandler implements PluginMessageListener {
                 player.sendPluginMessage(plugin, "CUSTOM:PDATA_S2C", data);
             });
         });
-    }
-
-    private Boolean tryBoolean(Object obj, String method) {
-        try { return (Boolean) obj.getClass().getMethod(method).invoke(obj); }
-        catch (Exception e) { return null; }
     }
 
     private static String truncate(String s, int max) {

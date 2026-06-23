@@ -44,8 +44,8 @@ public class AnonymeManager {
 
     /**
      * Tâche périodique qui réimpose l'appartenance à la team "anonymous"
-     * toutes les 10 ticks. Nécessaire car les plugins de factions (FactionsUUID,
-     * Saber-Factions) réassignent automatiquement les joueurs à leur team de
+     * toutes les 10 ticks. Nécessaire car les plugins de factions (RedFaction)
+     * réassignent automatiquement les joueurs à leur team de
      * couleur de relation, ce qui écrase notre préfixe §k et révèle le pseudo.
      */
     private void startEnforcementTask() {

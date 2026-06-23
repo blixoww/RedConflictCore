@@ -1,11 +1,8 @@
 package fr.originsfight.faction;
 
-import com.massivecraft.factions.Board;
-import com.massivecraft.factions.FLocation;
-import com.massivecraft.factions.FPlayer;
-import com.massivecraft.factions.FPlayers;
-import com.massivecraft.factions.Faction;
-import com.massivecraft.factions.struct.Relation;
+import fr.redfaction.api.RedFactionAPI;
+import fr.redfaction.entity.Faction;
+import fr.redfaction.entity.Relation;
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Location;
@@ -151,7 +148,7 @@ public class FactionZoneSender implements Listener {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Claim owner — API directe Saber-Factions
+    // Claim owner — API RedFaction
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
@@ -160,17 +157,11 @@ public class FactionZoneSender implements Listener {
      */
     private String getClaimOwner(Location location) {
         try {
-            // Utiliser worldName + chunkX/Z en long pour éviter l'API deprecated
-            String worldName = location.getWorld().getName();
-            long   chunkX    = location.getBlockX() >> 4;
-            long   chunkZ    = location.getBlockZ() >> 4;
-            FLocation floc   = new FLocation(worldName, Integer.parseInt(String.valueOf(chunkX)), Integer.parseInt(String.valueOf(chunkZ)));
-            Faction   faction = Board.getInstance().getFactionAt(floc);
+            if (!RedFactionAPI.isAvailable()) return null;
+            Faction faction = RedFactionAPI.get().getFactionAt(location);
 
             if (faction == null)        return null;
-            if (faction.isWilderness()) return null;
-            if (faction.isSafeZone())   return null;
-            if (faction.isWarZone())    return null;
+            if (!faction.isNormal())    return null; // SafeZone / WarZone
 
             String tag = faction.getTag();
             return (tag == null || tag.isEmpty()) ? null : tag;
@@ -186,10 +177,9 @@ public class FactionZoneSender implements Listener {
 
     private String getOwnFactionTag(Player player) {
         try {
-            FPlayer fp = FPlayers.getInstance().getByPlayer(player);
-            if (fp == null) return "";
-            Faction f = fp.getFaction();
-            if (f == null || f.isWilderness()) return "";
+            if (!RedFactionAPI.isAvailable()) return "";
+            Faction f = RedFactionAPI.get().getPlayerFaction(player);
+            if (f == null) return "";
             String tag = f.getTag();
             return (tag != null) ? tag : "";
         } catch (Exception e) {
@@ -204,22 +194,22 @@ public class FactionZoneSender implements Listener {
 
     private int resolveRelation(Player player, String ownerTag) {
         try {
-            FPlayer fp = FPlayers.getInstance().getByPlayer(player);
-            if (fp == null) return 4;
+            if (!RedFactionAPI.isAvailable()) return 4;
+            RedFactionAPI api = RedFactionAPI.get();
 
-            Faction pFaction = fp.getFaction();
-            if (pFaction == null || pFaction.isWilderness()) return 4;
+            Faction pFaction = api.getPlayerFaction(player);
+            if (pFaction == null) return 4;
 
             if (ownerTag.equals(pFaction.getTag())) return 0;
 
             Faction ownerFaction = findFactionByTag(ownerTag);
             if (ownerFaction == null) return 4;
 
-            Relation rel = fp.getRelationTo(ownerFaction);
+            Relation rel = api.getRelation(pFaction, ownerFaction);
             if (rel == null) return 4;
 
             switch (rel) {
-                case MEMBER:  return 0;
+                case SELF:    return 0;
                 case ALLY:    return 1;
                 case TRUCE:   return 2;
                 case ENEMY:   return 3;
@@ -233,7 +223,8 @@ public class FactionZoneSender implements Listener {
 
     private Faction findFactionByTag(String tag) {
         try {
-            for (Faction f : com.massivecraft.factions.Factions.getInstance().getAllFactions()) {
+            if (!RedFactionAPI.isAvailable()) return null;
+            for (Faction f : RedFactionAPI.get().getAllFactions()) {
                 if (tag.equals(f.getTag())) return f;
             }
         } catch (Exception ignored) {}
