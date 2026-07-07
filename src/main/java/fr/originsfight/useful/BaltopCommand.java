@@ -1,134 +1,125 @@
 package fr.originsfight.useful;
 
-import fr.originsfight.OriginsFightCore;
-import fr.originsfight.RC;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.economy.VaultEconomy;
+import fr.originsfight.core.text.RC;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.command.*;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 /**
- * /baltop [page] — Classement des richesses en chat (comme /ks top).
- * Prérequis : Vault + plugin économie.
+ * /baltop [page] — classement des richesses en chat. Le classement est
+ * construit en asynchrone (le parcours des OfflinePlayers peut être lent)
+ * puis affiché sur le thread principal.
  */
-public class BaltopCommand implements CommandExecutor, TabCompleter {
+public class BaltopCommand extends CoreCommand {
 
     private static final int PER_PAGE = 10;
 
-    private net.milkbowl.vault.economy.Economy economy = null;
-    private boolean vaultChecked = false;
+    public BaltopCommand(JavaPlugin plugin) {
+        super(plugin, "baltop", true);
+    }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
         Player viewer = (Player) sender;
 
-        if (!setupEconomy()) {
-            viewer.sendMessage(RC.PRE + "§cVault ou un plugin economie n'est pas installe.");
-            return true;
+        Economy economy = VaultEconomy.get();
+        if (economy == null) {
+            viewer.sendMessage(RC.ERR_ECONOMY);
+            return;
         }
 
-        int page = 1;
+        int requestedPage = 1;
         if (args.length >= 1) {
-            try { page = Integer.parseInt(args[0]); } catch (NumberFormatException ignored) {}
+            try {
+                requestedPage = Integer.parseInt(args[0]);
+            } catch (NumberFormatException ignored) {
+            }
         }
 
-        final int finalPage = page;
+        final int page = requestedPage;
         viewer.sendMessage(RC.PRE + "§7Chargement du classement...");
-
-        // Chargement asynchrone car getOfflinePlayers() peut être lent
-        Bukkit.getScheduler().runTaskAsynchronously(
-            OriginsFightCore.getInstance(), () -> {
-                final List<BaltopEntry> data = buildData();
-                Bukkit.getScheduler().runTask(
-                    OriginsFightCore.getInstance(), new Runnable() {
-                    public void run() { showPage(viewer, data, finalPage); }
-                });
-            });
-        return true;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            List<BaltopEntry> data = buildData(economy);
+            Bukkit.getScheduler().runTask(plugin, () -> showPage(viewer, data, page));
+        });
     }
 
-    private boolean setupEconomy() {
-        if (vaultChecked) return economy != null;
-        vaultChecked = true;
-        if (Bukkit.getServer().getPluginManager().getPlugin("Vault") == null) return false;
-        try {
-            RegisteredServiceProvider<net.milkbowl.vault.economy.Economy> rsp =
-                    Bukkit.getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
-            if (rsp == null) return false;
-            economy = rsp.getProvider();
-        } catch (NoClassDefFoundError e) { return false; }
-        return economy != null;
-    }
-
-    private List<BaltopEntry> buildData() {
+    private List<BaltopEntry> buildData(Economy economy) {
         List<BaltopEntry> list = new ArrayList<>();
         for (OfflinePlayer op : Bukkit.getOfflinePlayers()) {
-            if (op.getName() == null) continue;
-            if (!economy.hasAccount(op)) continue;
-            double bal = economy.getBalance(op);
-            if (bal <= 0) continue;
-            list.add(new BaltopEntry(op.getName(), bal));
+            if (op.getName() == null || !economy.hasAccount(op)) {
+                continue;
+            }
+            double balance = economy.getBalance(op);
+            if (balance > 0) {
+                list.add(new BaltopEntry(op.getName(), balance));
+            }
         }
-        list.sort(new Comparator<BaltopEntry>() {
-            public int compare(BaltopEntry a, BaltopEntry b) { return Double.compare(b.balance, a.balance); }
-        });
+        list.sort((a, b) -> Double.compare(b.balance, a.balance));
         return list;
     }
 
     private void showPage(Player viewer, List<BaltopEntry> data, int page) {
-        if (data.isEmpty()) { viewer.sendMessage(RC.PRE + "§cAucun joueur avec un solde."); return; }
+        if (data.isEmpty()) {
+            viewer.sendMessage(RC.PRE + "§cAucun joueur avec un solde.");
+            return;
+        }
 
         int totalPages = Math.max(1, (int) Math.ceil((double) data.size() / PER_PAGE));
         page = Math.max(1, Math.min(page, totalPages));
-
         int from = (page - 1) * PER_PAGE;
-        int to   = Math.min(from + PER_PAGE, data.size());
+        int to = Math.min(from + PER_PAGE, data.size());
 
-        DecimalFormat df = new DecimalFormat("#,##0.00", new DecimalFormatSymbols(Locale.US));
+        DecimalFormat money = new DecimalFormat("#,##0.00", new DecimalFormatSymbols(Locale.US));
 
         viewer.sendMessage(RC.SEP);
         viewer.sendMessage("§6§l  Baltop §8| §7Page " + page + "/" + totalPages);
         viewer.sendMessage(RC.SEP);
-
         for (int i = from; i < to; i++) {
-            int rank = i + 1;
-            BaltopEntry e = data.get(i);
-
-            String medal;
-            if (rank == 1)      medal = "§6#1";
-            else if (rank == 2) medal = "§f#2";
-            else if (rank == 3) medal = "§c#3";
-            else                medal = "§7#" + rank;
-
-            viewer.sendMessage("  " + medal + " §f" + e.name + " §8| §a" + df.format(e.balance) + " $");
+            BaltopEntry entry = data.get(i);
+            viewer.sendMessage("  " + medal(i + 1) + " §f" + entry.name + " §8| §a" + money.format(entry.balance) + " $");
         }
-
         viewer.sendMessage(RC.SEP);
 
-        // Position du viewer dans le classement
-        String viewerName = viewer.getName();
         for (int i = 0; i < data.size(); i++) {
-            if (data.get(i).name.equalsIgnoreCase(viewerName)) {
-                viewer.sendMessage("  §7Votre position §8: §e#" + (i + 1) + " §8| §a" + df.format(data.get(i).balance) + " $");
+            if (data.get(i).name.equalsIgnoreCase(viewer.getName())) {
+                viewer.sendMessage("  §7Votre position §8: §e#" + (i + 1)
+                        + " §8| §a" + money.format(data.get(i).balance) + " $");
                 break;
             }
         }
-        if (totalPages > 1)
+        if (totalPages > 1) {
             viewer.sendMessage("  §7Page suivante §8: §f/baltop " + (page + 1));
+        }
     }
 
-    @Override
-    public List<String> onTabComplete(CommandSender s, Command c, String a, String[] args) { return new ArrayList<>(); }
+    private static String medal(int rank) {
+        switch (rank) {
+            case 1: return "§6#1";
+            case 2: return "§f#2";
+            case 3: return "§c#3";
+            default: return "§7#" + rank;
+        }
+    }
 
     private static class BaltopEntry {
         final String name;
         final double balance;
-        BaltopEntry(String name, double balance) { this.name = name; this.balance = balance; }
+
+        BaltopEntry(String name, double balance) {
+            this.name = name;
+            this.balance = balance;
+        }
     }
 }

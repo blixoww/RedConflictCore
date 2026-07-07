@@ -1,20 +1,22 @@
 package fr.originsfight.rtp;
 
-import fr.originsfight.OriginsFightCore;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
+import fr.originsfight.core.command.CoreCommand;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
-public class RTPCommand implements CommandExecutor {
+/** /rtp — téléportation aléatoire (préavis et cooldown gérés par {@link RtpService}). */
+public class RtpCommand extends CoreCommand {
+
+    private final RtpService rtp;
+
+    public RtpCommand(JavaPlugin plugin, RtpService rtp) {
+        super(plugin, "rtp", true);
+        this.rtp = rtp;
+    }
+
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (sender instanceof Player) {
-            Player player = (Player) sender;
-            OriginsFightCore.getInstance().getLogger().info("Commande RTP exécutée par " + player.getName() + " !");
-            RTP.instance().isTeleporting(player);
-            return true;
-        }
-        return false;
+    protected void execute(CommandSender sender, String label, String[] args) {
+        rtp.request((Player) sender);
     }
 }

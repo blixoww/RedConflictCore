@@ -1,30 +1,30 @@
 package fr.originsfight.useful;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.text.RC;
 import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.inventory.Inventory;
+import org.bukkit.plugin.java.JavaPlugin;
 
-public class PoubelleCommand implements CommandExecutor, Listener {
+/** /poubelle — inventaire jetable dont le contenu est détruit à la fermeture. */
+public class PoubelleCommand extends CoreCommand implements Listener {
+
+    public PoubelleCommand(JavaPlugin plugin) {
+        super(plugin, "poubelle", true);
+    }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
-        Player player = (Player) sender;
-        Inventory poubelle = Bukkit.createInventory(null, 54, RC.TRASH_TITLE);
-        player.openInventory(poubelle);
-        return true;
+    protected void execute(CommandSender sender, String label, String[] args) {
+        ((Player) sender).openInventory(Bukkit.createInventory(null, 54, RC.TRASH_TITLE));
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        if (event.getInventory().getTitle().equals(RC.TRASH_TITLE)) {
+        if (RC.TRASH_TITLE.equals(event.getInventory().getTitle())) {
             event.getInventory().clear();
         }
     }

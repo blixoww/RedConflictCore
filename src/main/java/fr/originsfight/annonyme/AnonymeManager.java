@@ -24,8 +24,8 @@ public class AnonymeManager {
 
     private final OriginsFightCore plugin;
     private final Set<UUID> anonymousPlayers;
-    private final Map<UUID, Team> originalTeams; // Map to store original teams
-    private final Map<UUID, String> originalDisplayNames; // Map to store original display names
+    private final Map<UUID, Team> originalTeams;
+    private final Map<UUID, String> originalDisplayNames;
     private Team anonymousTeam;
     private File anonymousPlayersFile;
     private FileConfiguration anonymousPlayersConfig;
@@ -35,7 +35,7 @@ public class AnonymeManager {
         this.plugin = plugin;
         this.anonymousPlayers = new HashSet<>();
         this.originalTeams = new HashMap<>();
-        this.originalDisplayNames = new HashMap<>(); // Initialize the map
+        this.originalDisplayNames = new HashMap<>();
         setupScoreboardTeam();
         setupAnonymousPlayersFile();
         loadAnonymousPlayers();
@@ -137,7 +137,7 @@ public class AnonymeManager {
     public void addAnonymous(Player player) {
         anonymousPlayers.add(player.getUniqueId());
 
-        // Store original team if player is already in a tea
+        // Sauvegarde la team courante pour la restaurer à la sortie du mode anonyme.
         Team playerCurrentTeam = player.getScoreboard().getEntryTeam(player.getName());
         if (playerCurrentTeam != null) {
             originalTeams.put(player.getUniqueId(), playerCurrentTeam);
@@ -156,7 +156,7 @@ public class AnonymeManager {
         anonymousPlayers.remove(player.getUniqueId());
         anonymousTeam.removeEntry(player.getName());
 
-        // Restore original team if one was stored
+        // Restaure la team d'origine si elle avait été sauvegardée.
         Team originalTeam = originalTeams.remove(player.getUniqueId());
         if (originalTeam != null) {
             originalTeam.addEntry(player.getName());
@@ -168,7 +168,7 @@ public class AnonymeManager {
         if (originalName != null && !originalName.equals(player.getDisplayName())) {
             player.setDisplayName(originalName);
         }
-        // Force le client à effacer le cache anonyme pour ce joueur
+        // Force le client à effacer le cache anonyme pour ce joueur.
         AnonymousDataSender.broadcast(player, false);
     }
 
@@ -178,10 +178,10 @@ public class AnonymeManager {
 
     public void onPlayerJoin(Player player) {
         if (isAnonymous(player)) {
-            // Re-apply anonymity settings on join (team de scoreboard seulement)
+            // Ré-applique l'anonymat à la connexion (team de scoreboard seulement).
             anonymousTeam.addEntry(player.getName());
             player.sendMessage("§aVous êtes anonyme.");
-            // Avertit tous les viewers que ce joueur est anonyme
+            // Avertit tous les viewers que ce joueur est anonyme.
             AnonymousDataSender.broadcast(player, true);
         }
         // Synchronise vers ce viewer l'état de tous les joueurs anonymes en ligne
@@ -190,11 +190,11 @@ public class AnonymeManager {
     }
 
     public void onPlayerQuit(Player player) {
-        // Clean up from anonymous team if they quit while anonymous
+        // Retire de la team anonyme un joueur qui se déconnecte en étant anonyme.
         if (anonymousTeam.hasEntry(player.getName())) {
             anonymousTeam.removeEntry(player.getName());
         }
-        // Remove from originalTeams and originalDisplayNames maps to prevent memory leaks
+        // Purge les caches du joueur (évite les fuites mémoire).
         originalTeams.remove(player.getUniqueId());
         originalDisplayNames.remove(player.getUniqueId());
     }
@@ -205,7 +205,7 @@ public class AnonymeManager {
             enforcementTask = null;
         }
         saveAnonymousPlayers();
-        // Restore display names for any online anonymous players before disabling
+        // Restaure les joueurs anonymes encore en ligne avant la désactivation.
         for (UUID uuid : anonymousPlayers) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
@@ -217,11 +217,11 @@ public class AnonymeManager {
                 } catch (IllegalArgumentException ignored) {}
             }
         }
-        // Clear all players from the anonymous team when the plugin disables
+        // Vide la team anonyme à la désactivation du plugin.
         for (String entry : anonymousTeam.getEntries()) {
             anonymousTeam.removeEntry(entry);
         }
-        // Unregister the team to clean up the scoreboard
+        // Désenregistre la team pour nettoyer le scoreboard.
         anonymousTeam.unregister();
     }
 }

@@ -11,6 +11,11 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 
+/**
+ * Message de mort PvP custom : « X a été tué par Y avec <arme> », avec les
+ * enchantements de l'arme au survol. Les pseudos sont masqués quand la victime
+ * ou le tueur est en /annonyme.
+ */
 public class DeathMessages implements Listener {
 
     private static final String ANON_NAME = "Identité masquée";
@@ -23,57 +28,52 @@ public class DeathMessages implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
-        Player death = event.getEntity();
-        Player killer = death.getKiller();
+        Player victim = event.getEntity();
+        Player killer = victim.getKiller();
+        if (killer == null) {
+            return;
+        }
 
-        if (killer == null) return;
-
-        String deathName  = anonymeManager.isAnonymous(death)  ? ANON_NAME : death.getName();
+        String victimName = anonymeManager.isAnonymous(victim) ? ANON_NAME : victim.getName();
         String killerName = anonymeManager.isAnonymous(killer) ? ANON_NAME : killer.getName();
 
-        ItemStack killItem = killer.getItemInHand();
         event.setDeathMessage(null);
+        TextComponent message = new TextComponent("§6✦ §e" + victimName + " §7a été tué par §c" + killerName);
 
-        // Construire le message avec TextComponent
-        TextComponent message = new TextComponent("§6✦ §e" + deathName + " §7a été tué par §c" + killerName);
-
-        if (killItem != null && killItem.hasItemMeta()
-                && killItem.getItemMeta().hasDisplayName()
-                && (killItem.getType().name().toLowerCase().contains("sword")
-                || killItem.getType().name().toLowerCase().contains("axe"))) {
-
-            String displayName = killItem.getItemMeta().getDisplayName();
-            String enchants = enchantToString(killItem);
-
-            // Créer un composant pour le nom de l'arme avec hover
+        ItemStack weapon = killer.getItemInHand();
+        if (isNamedWeapon(weapon)) {
+            String displayName = weapon.getItemMeta().getDisplayName();
+            String enchants = enchantsToString(weapon);
             TextComponent weaponComponent = new TextComponent(" §7avec §b" + displayName);
-            String hoverText = "§b" + displayName + (enchants.isEmpty() ? "" : "\n§7" + enchants);
-            weaponComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                    new BaseComponent[]{new TextComponent(hoverText)}));
-
+            weaponComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new BaseComponent[]{
+                    new TextComponent("§b" + displayName + (enchants.isEmpty() ? "" : "\n§7" + enchants))}));
             message.addExtra(weaponComponent);
         }
 
-        // Envoyer le message à tous les joueurs
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.spigot().sendMessage(message);
         }
     }
 
-    private String enchantToString(ItemStack itemStack) {
-        if (itemStack.getEnchantments().isEmpty()) return "";
+    /** Seules les armes renommées (épée/hache) sont détaillées dans le message. */
+    private static boolean isNamedWeapon(ItemStack item) {
+        if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) {
+            return false;
+        }
+        String type = item.getType().name().toLowerCase();
+        return type.contains("sword") || type.contains("axe");
+    }
+
+    private static String enchantsToString(ItemStack item) {
         StringBuilder builder = new StringBuilder();
-        itemStack.getEnchantments().forEach((ench, level) -> {
-            String lvl = String.valueOf(level)
-                    .replace("1", "I").replace("2", "II").replace("3", "III")
-                    .replace("4", "IV").replace("5", "V");
-            try {
-                String name = EnchantName.valueOf(ench.getName()).getName();
-                builder.append("§b").append(name).append(" §l").append(lvl).append(" ");
-            } catch (IllegalArgumentException ignored) {
-                builder.append("§b").append(ench.getName()).append(" §l").append(lvl).append(" ");
-            }
-        });
+        item.getEnchantments().forEach((enchant, level) ->
+                builder.append("§b").append(EnchantName.of(enchant.getName()))
+                        .append(" §l").append(roman(level)).append(" "));
         return builder.toString().trim();
+    }
+
+    private static String roman(int level) {
+        String[] romans = {"I", "II", "III", "IV", "V"};
+        return level >= 1 && level <= romans.length ? romans[level - 1] : String.valueOf(level);
     }
 }

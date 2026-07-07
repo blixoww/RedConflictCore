@@ -1,7 +1,8 @@
 package fr.originsfight.backup;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.OriginsFightCore;
-import fr.originsfight.RC;
+import fr.originsfight.core.text.RC;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -23,25 +24,26 @@ import java.util.List;
  * <p>N'a d'effet que sur l'hôte H2 (le Faction). La sauvegarde s'exécute en asynchrone pour ne pas
  * bloquer le serveur ; le résultat apparaît dans la console et le dossier {@code Backup}.
  */
-public class BackupCommand implements CommandExecutor, TabCompleter {
+public class BackupCommand extends CoreCommand {
 
     private final OriginsFightCore plugin;
     private final BackupManager manager;
 
     public BackupCommand(OriginsFightCore plugin, BackupManager manager) {
+        super(plugin, "backup", false);
         this.plugin = plugin;
         this.manager = manager;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    protected void execute(CommandSender sender, String label, String[] args) {
         if (!sender.hasPermission("redconflict.staff")) {
             sender.sendMessage(RC.ERR_NO_PERM);
-            return true;
+            return;
         }
         if (!plugin.getConfig().getBoolean("database.server.enabled", false)) {
             sender.sendMessage(RC.PRE + "§cLes sauvegardes se font sur le serveur Faction (hôte de la base).");
-            return true;
+            return;
         }
 
         String sub = args.length > 0 ? args[0].toLowerCase() : "";
@@ -53,7 +55,7 @@ public class BackupCommand implements CommandExecutor, TabCompleter {
                     manager.runBackup();
                     sender.sendMessage(RC.PRE + "§aSauvegarde terminée — voir le dossier Backup et la console.");
                 });
-                return true;
+                return;
 
             case "next":
                 long remaining = manager.getMillisUntilNext();
@@ -62,11 +64,11 @@ public class BackupCommand implements CommandExecutor, TabCompleter {
                 } else {
                     sender.sendMessage(RC.PRE + "§7Prochaine sauvegarde automatique dans §f" + formatDuration(remaining) + "§7.");
                 }
-                return true;
+                return;
 
             default:
                 sender.sendMessage(RC.PRE + "§7Usage : §f/dbbackup now §7| §f/dbbackup next");
-                return true;
+                return;
         }
     }
 

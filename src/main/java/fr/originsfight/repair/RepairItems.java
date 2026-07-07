@@ -2,23 +2,24 @@ package fr.originsfight.repair;
 
 import org.bukkit.inventory.ItemStack;
 
-public class RepairItems {
+/** Remise à neuf de la durabilité des items réparables. */
+public final class RepairItems {
 
-    public static boolean canRepair(ItemStack itemStack) {
-        return itemStack.getType().getMaxDurability() > 0 && itemStack.getDurability() > 0;
+    private RepairItems() {
     }
 
+    /** Répare tous les items endommagés du tableau. @return true si au moins un l'a été. */
     public static boolean repair(ItemStack[] items) {
-        if (items == null) return false;
-        boolean anyItemRepaired = false;
-
+        if (items == null) {
+            return false;
+        }
+        boolean any = false;
         for (ItemStack item : items) {
-            if (item != null && canRepair(item)) {
+            if (item != null && item.getType().getMaxDurability() > 0 && item.getDurability() > 0) {
                 item.setDurability((short) 0);
-                anyItemRepaired = true;
+                any = true;
             }
         }
-
-        return anyItemRepaired;
+        return any;
     }
 }

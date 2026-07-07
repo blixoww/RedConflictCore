@@ -1,42 +1,47 @@
 package fr.originsfight.trade;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.text.Text;
+import fr.originsfight.core.text.RC;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import fr.originsfight.core.command.CoreCommand;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class TradeCommand implements CommandExecutor, TabCompleter {
+/** /trade <joueur> | accept | deny — invitations d'échange avec boutons cliquables. */
+public class TradeCommand extends CoreCommand {
 
-    private final TradeManager manager = TradeManager.getInstance();
+    private final TradeManager manager;
+
+    public TradeCommand(JavaPlugin plugin, TradeManager manager) {
+        super(plugin, "trade", true);
+        this.manager = manager;
+    }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
         Player player = (Player) sender;
-        if (args.length == 0) { player.sendMessage(RC.TRADE_USAGE); return true; }
+        if (args.length == 0) { player.sendMessage(RC.TRADE_USAGE); return; }
 
         String sub = args[0].toLowerCase();
         if (sub.equals("accept")) handleAccept(player);
         else if (sub.equals("deny") || sub.equals("decline") || sub.equals("refuser")) handleDeny(player);
         else handleInvite(player, args[0]);
-        return true;
     }
 
     private void handleInvite(Player player, String targetName) {
         if (manager.isInTrade(player)) { player.sendMessage(RC.TRADE_IN_PROG); return; }
         Player target = Bukkit.getPlayerExact(targetName);
-        if (target == null || !target.isOnline()) { player.sendMessage(RC.TRADE_NOT_FOUND); return; }
+        if (target == null || !target.isOnline()) { player.sendMessage(RC.ERR_PLAYER_NOT_FOUND); return; }
         if (target.equals(player)) { player.sendMessage(RC.TRADE_SELF); return; }
         if (manager.isInTrade(target)) {
             player.sendMessage(RC.PRE + "§c" + target.getName() + " est déjà en train de trader."); return;
@@ -46,7 +51,7 @@ public class TradeCommand implements CommandExecutor, TabCompleter {
             doAccept(player, target); return;
         }
         if (!manager.invite(player, target)) { player.sendMessage(RC.TRADE_ALREADY); return; }
-        player.sendMessage(RC.fmt(RC.TRADE_SENT, target.getName()));
+        player.sendMessage(Text.fmt(RC.TRADE_SENT, target.getName()));
         sendInteractiveInvite(target, player.getName());
     }
 
@@ -80,15 +85,15 @@ public class TradeCommand implements CommandExecutor, TabCompleter {
         Player inviter = Bukkit.getPlayer(inviterUUID);
         if (inviter == null || !inviter.isOnline()) {
             manager.cleanupPlayer(player);
-            player.sendMessage(RC.TRADE_NOT_FOUND); return;
+            player.sendMessage(RC.ERR_PLAYER_NOT_FOUND); return;
         }
         doAccept(player, inviter);
     }
 
     private void doAccept(Player accepter, Player inviter) {
         manager.acceptInvite(inviter, accepter);
-        inviter.sendMessage(RC.fmt(RC.TRADE_ACCEPTED, accepter.getName()));
-        accepter.sendMessage(RC.fmt(RC.TRADE_ACCEPTED, inviter.getName()));
+        inviter.sendMessage(Text.fmt(RC.TRADE_ACCEPTED, accepter.getName()));
+        accepter.sendMessage(Text.fmt(RC.TRADE_ACCEPTED, inviter.getName()));
         String hint = RC.PRE + "§7Placez vos items et cliquez sur §aConfirmer §7quand vous êtes prêt.";
         inviter.sendMessage(hint);
         accepter.sendMessage(hint);
@@ -101,7 +106,7 @@ public class TradeCommand implements CommandExecutor, TabCompleter {
         manager.declineInvite(inviter != null ? inviter : player);
         player.sendMessage(RC.TRADE_CANCELLED);
         if (inviter != null && inviter.isOnline())
-            inviter.sendMessage(RC.fmt(RC.TRADE_DENIED, player.getName()));
+            inviter.sendMessage(Text.fmt(RC.TRADE_DENIED, player.getName()));
     }
 
     @Override

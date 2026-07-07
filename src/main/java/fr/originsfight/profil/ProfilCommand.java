@@ -1,9 +1,10 @@
 package fr.originsfight.profil;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.bounty.BountyInfo;
 import fr.originsfight.bounty.BountyManager;
-import fr.originsfight.bounty.KillstreakManager;
 import fr.originsfight.data.PlayerDatabase;
 import fr.originsfight.ks.KsListener;
 import fr.originsfight.packets.PacketBuilder;
@@ -27,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * /profil [joueur] — Ouvre la fiche de profil graphique d'un joueur.
  */
-public class ProfilCommand implements CommandExecutor, TabCompleter {
+public class ProfilCommand extends CoreCommand {
 
     private static final int PROFILE_OPEN = 0x90;
     private static final int PROFILE_DATA = 0x91;
@@ -41,40 +42,40 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
     private final PlayerDatabase playerDatabase;
 
     public ProfilCommand(OriginsFightCore plugin) {
+        super(plugin, "profil", false);
         this.plugin = plugin;
         this.playerDatabase = plugin.getPlayerDatabase();
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+    protected void execute(CommandSender sender, String label, String[] args) {
         if (!(sender instanceof Player)) {
             sender.sendMessage("§cCette commande ne peut être utilisée qu'en jeu.");
-            return true;
+            return;
         }
         Player requester = (Player) sender;
 
         if (args.length == 0 || args[0].equalsIgnoreCase(requester.getName())) {
             resolveAndSend(requester, requester.getUniqueId(), requester.getName(), PROFILE_OPEN);
-            return true;
+            return;
         }
 
         String targetName = args[0];
         Player online = Bukkit.getPlayer(targetName);
         if (online != null) {
             resolveAndSend(requester, online.getUniqueId(), online.getName(), PROFILE_DATA);
-            return true;
+            return;
         }
 
         @SuppressWarnings("deprecation")
         OfflinePlayer offline = Bukkit.getOfflinePlayer(targetName);
         if (!offline.hasPlayedBefore()) {
             requester.sendMessage("§cJoueur introuvable : §f" + targetName);
-            return true;
+            return;
         }
 
         String resolvedName = offline.getName() != null ? offline.getName() : targetName;
         resolveAndSend(requester, offline.getUniqueId(), resolvedName, PROFILE_DATA);
-        return true;
     }
 
     private void resolveAndSend(Player requester, UUID targetUuid, String targetName, int packetId) {
@@ -109,7 +110,7 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
         // ── Balance — fraîche depuis Vault (online) ou snapshot DB (offline) ─────
         long balance = 0L;
         boolean isOnline = Bukkit.getPlayer(uuid) != null;
-        Economy eco = plugin.getEconomy();
+        Economy eco = VaultEconomy.get();
         if (eco != null) {
             OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
             if (op != null) {
@@ -137,10 +138,9 @@ public class ProfilCommand implements CommandExecutor, TabCompleter {
         // ── Streak & Bounty — depuis les managers in-memory ──────────────────────
         int streak = 0;
         long bounty = 0L;
-        KillstreakManager ksm = KillstreakManager.getInstance();
-        if (ksm != null) streak = ksm.getStreak(uuid);
         BountyManager bm = BountyManager.getInstance();
         if (bm != null) {
+            streak = bm.getKillstreaks().getStreak(uuid);
             BountyInfo bi = bm.getBounty(uuid);
             if (bi != null) bounty = bi.getAmount();
         }

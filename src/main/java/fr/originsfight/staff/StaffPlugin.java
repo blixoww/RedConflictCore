@@ -1,11 +1,10 @@
 package fr.originsfight.staff;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.command.CommandRegistrar;
 import fr.originsfight.staff.commands.*;
 import fr.originsfight.useful.PlayerListManager;
 import org.bukkit.Bukkit;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.command.TabCompleter;
 
 /**
  * Classe d'initialisation du système staff.
@@ -45,47 +44,27 @@ public class StaffPlugin {
     }
 
     private void registerCommands() {
-        set("staffmode", new StaffModeCommand());
-        set("vanish",    new VanishCommand());
+        CommandRegistrar commands = new CommandRegistrar(plugin);
+        commands.register("staffmode", new StaffModeCommand(plugin));
+        commands.register("vanish", new VanishCommand(plugin));
+        commands.register("freeze", new FreezeCommand(plugin, listener, db));
 
-        FreezeCommand freeze = new FreezeCommand(listener, db);
-        set("freeze", freeze);
+        commands.register("warn", new WarnCommand(plugin, db, listener));
+        commands.register("kick", new KickCommand(plugin, db, listener));
+        commands.register("mute", new MuteCommand(plugin, db, listener, false));
+        commands.register("unmute", new MuteCommand(plugin, db, listener, true));
+        commands.register("ban", new BanCommand(plugin, db, listener, false));
+        commands.register("unban", new BanCommand(plugin, db, listener, true));
+        commands.register("sanctions", new SanctionsCommand(plugin, db));
+        commands.register("unsanction", new UnsanctionCommand(plugin, db, listener));
 
-        WarnCommand      warn      = new WarnCommand(db, listener);
-        KickCommand      kick      = new KickCommand(db, listener);
-        MuteCommand      mute      = new MuteCommand(db, listener, false);
-        MuteCommand      unmute    = new MuteCommand(db, listener, true);
-        BanCommand       ban       = new BanCommand(db, listener, false);
-        BanCommand       unban     = new BanCommand(db, listener, true);
-        SanctionsCommand sanctions = new SanctionsCommand(db);
-        UnsanctionCommand unsanction = new UnsanctionCommand(db, listener);
+        commands.register("sc", new StaffChatCommand(plugin, listener));
+        commands.register("clearchat", new ClearChatCommand(plugin));
+        commands.register("lockchat", new LockChatCommand(plugin));
 
-        set("warn",       warn);
-        set("kick",       kick);
-        set("mute",       mute);
-        set("unmute",     unmute);
-        set("ban",        ban);
-        set("unban",      unban);
-        set("sanctions",  sanctions);
-        set("unsanction", unsanction);
-
-        StaffChatCommand sc = new StaffChatCommand(listener);
-        set("sc", sc);
-        set("clearchat", new ClearChatCommand());
-        set("lockchat",  new LockChatCommand());
-
-        TopLuckCommand topLuck = new TopLuckCommand(db);
-        set("topluck", topLuck);
+        TopLuckCommand topLuck = new TopLuckCommand(plugin, db);
+        commands.register("topluck", topLuck);
         plugin.getServer().getPluginManager().registerEvents(topLuck, plugin);
-    }
-
-    private void set(String cmd, Object executor) {
-        PluginCommand pluginCmd = plugin.getCommand(cmd);
-        if (pluginCmd == null) return;
-        if (executor instanceof org.bukkit.command.CommandExecutor)
-            pluginCmd.setExecutor((org.bukkit.command.CommandExecutor) executor);
-        if (executor instanceof TabCompleter)
-            pluginCmd.setTabCompleter((TabCompleter) executor);
     }
 
     public StaffDatabase getDatabase()  { return db; }

@@ -1,6 +1,8 @@
 package fr.originsfight.data;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.RankResolver;
+import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.data.PlayerDatabase;
 import fr.originsfight.ks.KsListener;
 import fr.originsfight.packets.PacketBuilder;
@@ -58,28 +60,13 @@ public class PlayerDataServerHandler implements PluginMessageListener {
 
             // ── Balance — fraîche depuis Vault ───────────────────────────────────
             long balance = 0L;
-            Economy eco = plugin.getEconomy();
+            Economy eco = VaultEconomy.get();
             if (eco != null) {
                 try { balance = (long) eco.getBalance(player); } catch (Exception ignored) {}
             }
 
-            // ── Rang — frais depuis Vault Chat ───────────────────────────────────
-            String rank = "Joueur";
-            try {
-                RegisteredServiceProvider<Chat> rsp = Bukkit.getServicesManager().getRegistration(Chat.class);
-                if (rsp != null) {
-                    Chat chat = rsp.getProvider();
-                    String prefix = chat.getPlayerPrefix(player);
-                    if (prefix == null || prefix.isEmpty()) {
-                        String group = chat.getPrimaryGroup(player);
-                        if (group != null && !group.isEmpty()) prefix = group;
-                    }
-                    if (prefix != null && !prefix.trim().isEmpty()) {
-                        String plain = prefix.replaceAll("(?i)§.", "").replaceAll("(?i)&.", "").trim();
-                        if (!plain.isEmpty()) rank = prefix.trim();
-                    }
-                }
-            } catch (Exception ignored) {}
+            // Rang frais (Vault Chat, secours PlaceholderAPI).
+            String rank = RankResolver.resolve(player);
 
             // ── Faction — fraîche depuis RedFaction ───────────────────────────────
             String faction = "";
@@ -97,10 +84,9 @@ public class PlayerDataServerHandler implements PluginMessageListener {
             // ── Streak & Bounty — managers in-memory ─────────────────────────────
             int streak = 0;
             long bounty = 0L;
-            fr.originsfight.bounty.KillstreakManager ksm = fr.originsfight.bounty.KillstreakManager.getInstance();
-            if (ksm != null) streak = ksm.getStreak(player.getUniqueId());
             fr.originsfight.bounty.BountyManager bm = fr.originsfight.bounty.BountyManager.getInstance();
             if (bm != null) {
+                streak = bm.getKillstreaks().getStreak(player.getUniqueId());
                 fr.originsfight.bounty.BountyInfo bi = bm.getBounty(player.getUniqueId());
                 if (bi != null) bounty = bi.getAmount();
             }
@@ -145,42 +131,12 @@ public class PlayerDataServerHandler implements PluginMessageListener {
         OriginsFightCore plugin = OriginsFightCore.getInstance();
         PlayerDatabase db = plugin.getPlayerDatabase();
 
-        // ── Rang — frais depuis Vault Chat ───────────────────────────────────────
-        String rank = "Joueur";
-        try {
-            RegisteredServiceProvider<Chat> rsp = Bukkit.getServicesManager().getRegistration(Chat.class);
-            if (rsp != null) {
-                Chat chat = rsp.getProvider();
-                String prefix = chat.getPlayerPrefix(player);
-                if (prefix == null || prefix.isEmpty()) {
-                    String group = chat.getPrimaryGroup(player);
-                    if (group != null && !group.isEmpty()) prefix = group;
-                }
-                if (prefix != null && !prefix.trim().isEmpty()) {
-                    String plain = prefix.replaceAll("(?i)§.", "").replaceAll("(?i)&.", "").trim();
-                    if (!plain.isEmpty()) rank = prefix.trim();
-                }
-            }
-        } catch (Exception ignored) {}
-
-        if ("Joueur".equals(rank)) {
-            try {
-                Class<?> papi = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
-                java.lang.reflect.Method m = papi.getMethod("setPlaceholders", org.bukkit.entity.Player.class, String.class);
-                Object out = m.invoke(null, player, "%luckperms_prefix%");
-                if (out instanceof String) {
-                    String s = ((String) out).trim();
-                    if (!s.isEmpty() && !s.equals("%luckperms_prefix%")) {
-                        String plain = s.replaceAll("(?i)§.", "").replaceAll("(?i)&.", "").trim();
-                        if (!plain.isEmpty()) rank = s;
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
+        // Rang frais (Vault Chat, secours PlaceholderAPI).
+        String rank = RankResolver.resolve(player);
 
         // ── Balance — fraîche depuis Vault ───────────────────────────────────────
         long balance = 0L;
-        Economy eco = plugin.getEconomy();
+        Economy eco = VaultEconomy.get();
         if (eco != null) {
             balance = (long) eco.getBalance(player);
         }

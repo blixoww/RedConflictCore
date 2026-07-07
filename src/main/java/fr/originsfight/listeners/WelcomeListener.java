@@ -1,6 +1,7 @@
 package fr.originsfight.listeners;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.text.RC;
+import fr.originsfight.core.text.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -9,50 +10,45 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
- * Messages de connexion/déconnexion/bienvenue.
- * Personnalisez RC.JOIN_GLOBAL, RC.QUIT_GLOBAL, etc.
+ * Messages de connexion/déconnexion globaux et écran de bienvenue
+ * (variante enrichie à la première connexion).
  */
 public class WelcomeListener implements Listener {
 
-    private static final String SEP = RC.SEP;
-
-    // Lignes de bienvenue (connexion normale)
     private static final String[] WELCOME = {
-        SEP,
-        "§c§l  Bienvenue sur RedConflict §8!",
-        "§7  Serveur §f1.8.9 §7| PvP / Survie",
-        "§7  Discord §f: §bdiscord.gg/UMJUnfQq",
-        "§7  Tapez §f/commands §7pour voir les commandes.",
-        SEP
+            RC.SEP,
+            "§c§l  Bienvenue sur RedConflict §8!",
+            "§7  Serveur §f1.8.9 §7| PvP / Survie",
+            "§7  Discord §f: §bdiscord.gg/UMJUnfQq",
+            "§7  Tapez §f/commands §7pour voir les commandes.",
+            RC.SEP
     };
 
-    // Lignes pour la première connexion (joueur)
     private static final String[] FIRST_WELCOME = {
-        SEP,
-        "§6§l  ★ Première connexion ★",
-        "§7  Bienvenue §f%s §7sur §c§lRedConflict §7!",
-        "§7  Serveur §f1.8.9 §7| PvP / Survie",
-        "§7  Lis les règles avant de jouer.",
-        "§7  Discord §f: §bdiscord.gg/UMJUnfQq",
-        SEP
+            RC.SEP,
+            "§6§l  ★ Première connexion ★",
+            "§7  Bienvenue §f%s §7sur §c§lRedConflict §7!",
+            "§7  Serveur §f1.8.9 §7| PvP / Survie",
+            "§7  Lis les règles avant de jouer.",
+            "§7  Discord §f: §bdiscord.gg/UMJUnfQq",
+            RC.SEP
     };
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        Player p = event.getPlayer();
+        Player player = event.getPlayer();
         event.setJoinMessage(null);
 
-        boolean first = !p.hasPlayedBefore();
-        Bukkit.broadcastMessage(RC.fmt(first ? RC.FIRST_JOIN_GLOBAL : RC.JOIN_GLOBAL, p.getName()));
-
-        String[] lines = first ? FIRST_WELCOME : WELCOME;
-        for (String line : lines)
-            p.sendMessage(String.format(line, p.getName()));
+        boolean first = !player.hasPlayedBefore();
+        Bukkit.broadcastMessage(Text.fmt(first ? RC.FIRST_JOIN_GLOBAL : RC.JOIN_GLOBAL, player.getName()));
+        for (String line : first ? FIRST_WELCOME : WELCOME) {
+            player.sendMessage(String.format(line, player.getName()));
+        }
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         event.setQuitMessage(null);
-        Bukkit.broadcastMessage(RC.fmt(RC.QUIT_GLOBAL, event.getPlayer().getName()));
+        Bukkit.broadcastMessage(Text.fmt(RC.QUIT_GLOBAL, event.getPlayer().getName()));
     }
 }

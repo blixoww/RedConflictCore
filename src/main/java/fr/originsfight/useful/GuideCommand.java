@@ -1,41 +1,28 @@
 package fr.originsfight.useful;
 
-import fr.originsfight.RC;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.packets.PacketBuilder;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
-public class GuideCommand implements CommandExecutor {
+/** /guide — ouvre le GuiCraftGuide du client moddé (packet 0xC0 sur CUSTOM:S2C). */
+public class GuideCommand extends CoreCommand {
 
     private static final String CHANNEL_S2C = "CUSTOM:S2C";
-    /** PacketId.GUIDE_OPEN = 0xC0 — ouvre GuiCraftGuide côté client modifié. */
     private static final int GUIDE_OPEN = 0xC0;
 
-    private final OriginsFightCore plugin;
-
-    public GuideCommand(OriginsFightCore plugin) {
-        this.plugin = plugin;
+    public GuideCommand(JavaPlugin plugin) {
+        super(plugin, "guide", true);
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(RC.ERR_PLAYER_ONLY);
-            return true;
-        }
-        Player p = (Player) sender;
-
-        // Envoie le packet 0xC0 pour ouvrir le GuiCraftGuide sur le client modifié.
+    protected void execute(CommandSender sender, String label, String[] args) {
+        Player player = (Player) sender;
         try {
-            byte[] pkt = PacketBuilder.create(GUIDE_OPEN).build();
-            p.sendPluginMessage(plugin, CHANNEL_S2C, pkt);
+            player.sendPluginMessage(plugin, CHANNEL_S2C, PacketBuilder.create(GUIDE_OPEN).build());
         } catch (Exception e) {
             plugin.getLogger().warning("[Guide] Impossible d'envoyer le packet GUIDE_OPEN : " + e.getMessage());
         }
-
-        return true;
     }
 }

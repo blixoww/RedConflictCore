@@ -105,7 +105,7 @@ commands:
   hub:
     description: Se téléporter au serveur HUB
     usage: /hub
-    aliases: [lobby, spawn]
+    aliases: [lobby]
   minage:
     description: Se téléporter au serveur Minage
     usage: /minage
@@ -224,3 +224,175 @@ commands:
     permission: redconflict.staff
     # Pas de 'broadcast'/'bc' : déjà pris par EssentialsX (conflit). 'ann' est sûr.
     aliases: [ann]
+  # ── Module Essentials — administration ──────────────────────────────────
+  red:
+    description: Administration du Core (reload à chaud, état des modules, import EssentialsX)
+    usage: /red <reload|modules|import>
+    permission: redconflict.admin
+  # ── Module Essentials — téléportation ───────────────────────────────────
+  spawn:
+    description: Se téléporter au spawn du serveur
+    usage: /spawn
+  setspawn:
+    description: Définit le spawn du serveur (admin)
+    usage: /setspawn
+    permission: redconflict.setspawn
+  tpa:
+    description: Demande de téléportation vers un joueur
+    usage: /tpa <joueur>
+  tpaccept:
+    description: Accepte la demande de téléportation en attente
+    usage: /tpaccept
+    aliases: [tpyes]
+  tpno:
+    description: Refuse la demande de téléportation en attente
+    usage: /tpno
+    aliases: [tpdeny]
+  tpahere:
+    description: Demande à un joueur de venir vers vous
+    usage: /tpahere <joueur>
+  tp:
+    description: Téléportation directe (admin)
+    usage: /tp <joueur> [joueur2]
+    permission: redconflict.tp
+  top:
+    description: Se téléporter au sommet du bloc courant
+    usage: /top
+  back:
+    description: Retour à la position précédente (téléportation ou mort)
+    usage: /back
+  home:
+    description: Se téléporter à un home
+    usage: /home [nom]
+  sethome:
+    description: Définit un home
+    usage: /sethome [nom]
+  delhome:
+    description: Supprime un home
+    usage: /delhome <nom>
+  warp:
+    description: Se téléporter à un warp
+    usage: /warp <nom>
+  setwarp:
+    description: Définit un warp (admin)
+    usage: /setwarp <nom>
+    permission: redconflict.setwarp
+  delwarp:
+    description: Supprime un warp (admin)
+    usage: /delwarp <nom>
+    permission: redconflict.delwarp
+  # ── Module Essentials — inventaire / items ──────────────────────────────
+  give:
+    description: Donne un item à un joueur (admin)
+    usage: /give <joueur> <item> [quantité]
+    permission: redconflict.give
+  more:
+    description: Complète le stack tenu en main
+    usage: /more
+    permission: redconflict.more
+  clear:
+    description: Vide l'inventaire
+    usage: /clear [joueur]
+    permission: redconflict.clear
+    aliases: [ci, clearinventory]
+  enchant:
+    description: Enchante l'item tenu en main
+    usage: /enchant <enchantement> [niveau]
+    permission: redconflict.enchant
+  anvil:
+    description: Ouvre une enclume virtuelle
+    usage: /anvil
+    permission: redconflict.anvil
+  craft:
+    description: Ouvre une table de craft virtuelle
+    usage: /craft
+    permission: redconflict.craft
+    aliases: [wb, workbench]
+  ec:
+    description: Ouvre son enderchest
+    usage: /ec [joueur]
+    permission: redconflict.ec
+    aliases: [enderchest, echest]
+  hat:
+    description: Place l'item tenu en main sur la tête
+    usage: /hat
+    permission: redconflict.hat
+  invsee:
+    description: Consulte l'inventaire d'un joueur (staff, lecture seule)
+    usage: /invsee <joueur>
+    permission: redconflict.invsee
+  # ── Module Essentials — joueur / statut ─────────────────────────────────
+  feed:
+    description: Recharge la faim
+    usage: /feed [joueur]
+    permission: redconflict.feed
+  heal:
+    description: Soigne (vie, faim, feu, effets négatifs)
+    usage: /heal [joueur]
+    permission: redconflict.heal
+  kill:
+    description: Tue un joueur (admin)
+    usage: /kill [joueur]
+    permission: redconflict.kill
+  god:
+    description: Mode invincible (toggle)
+    usage: /god [joueur]
+    permission: redconflict.god
+  fly:
+    description: Mode vol (toggle)
+    usage: /fly [joueur]
+    permission: redconflict.fly
+  speed:
+    description: Vitesse de déplacement (marche ou vol)
+    usage: /speed <1-10|reset> [joueur]
+    permission: redconflict.speed
+  gm:
+    description: Change de mode de jeu
+    usage: /gm <0|1|2|3> [joueur]
+    permission: redconflict.gm
+    aliases: [gamemode]
+  xp:
+    description: Gère l'expérience (points, ou niveaux avec le suffixe l)
+    usage: /xp <give|set> <joueur> <montant>[l]
+    permission: redconflict.xp
+    aliases: [exp]
+  potion:
+    description: S'applique un effet de potion
+    usage: /potion <type> <durée> <niveau> | /potion clear
+    permission: redconflict.potion
+  # ── Module Essentials — économie ────────────────────────────────────────
+  pay:
+    description: Paie un joueur (hors ligne accepté)
+    usage: /pay <joueur> <montant>
+  money:
+    description: Consulte son solde
+    usage: /money [joueur]
+    aliases: [bal, balance, monnaie]
+  eco:
+    description: Administration de l'économie (admin)
+    usage: /eco <give|take|set> <joueur> <montant>
+    permission: redconflict.eco
+    aliases: [economy]
+  # ── Module Essentials — social / utilitaire ─────────────────────────────
+  ignore:
+    description: Masque les messages d'un joueur (toggle)
+    usage: /ignore <joueur>
+  near:
+    description: Joueurs proches, triés par distance
+    usage: /near [rayon]
+  seen:
+    description: Dernière connexion d'un joueur
+    usage: /seen <joueur>
+  list:
+    description: Joueurs connectés
+    usage: /list
+    aliases: [online]
+  help:
+    description: Aide générale (commandes disponibles)
+    usage: /help [page]
+  # ── Module Essentials — monde ───────────────────────────────────────────
+  weather:
+    description: Change la météo du monde courant (admin)
+    usage: /weather <sun|rain|storm>
+    permission: redconflict.weather
+    aliases: [meteo]

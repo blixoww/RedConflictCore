@@ -1,11 +1,12 @@
 package fr.originsfight.loto;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.text.RC;
+import fr.originsfight.core.text.Text;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,25 +21,22 @@ import java.util.List;
  *   - /loto start           → (Staff) Forcer le démarrage
  *   - /loto stop            → (Staff) Forcer l'arrêt + remboursement
  */
-public class LotoCommand implements CommandExecutor, TabCompleter {
+public class LotoCommand extends CoreCommand {
 
     private final LotoManager manager;
 
-    public LotoCommand(LotoManager manager) {
+    public LotoCommand(JavaPlugin plugin, LotoManager manager) {
+        super(plugin, "loto", true);
         this.manager = manager;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(RC.ERR_PLAYER_ONLY);
-            return true;
-        }
+    protected void execute(CommandSender sender, String label, String[] args) {
         Player player = (Player) sender;
 
         if (args.length == 0) {
             sendHelp(player);
-            return true;
+            return;
         }
 
         String sub = args[0].toLowerCase();
@@ -46,7 +44,7 @@ public class LotoCommand implements CommandExecutor, TabCompleter {
         // /loto help
         if (sub.equals("help")) {
             sendHelp(player);
-            return true;
+            return;
         }
 
         // /loto info
@@ -55,65 +53,65 @@ public class LotoCommand implements CommandExecutor, TabCompleter {
                 // Afficher le temps avant le prochain loto
                 long secs = manager.getSecondsUntilNext();
                 if (secs > 0) {
-                    player.sendMessage(RC.fmt(RC.LOTO_INFO_CLOSED_NEXT,
-                            LotoManager.formatDuration(secs)));
+                    player.sendMessage(Text.fmt(RC.LOTO_INFO_CLOSED_NEXT,
+                            Text.duration(secs * 1000L)));
                 } else {
                     player.sendMessage(RC.LOTO_INFO_CLOSED);
                 }
             } else {
                 long remaining = manager.getRemainingSeconds();
-                player.sendMessage(RC.fmt(RC.LOTO_INFO_OPEN,
+                player.sendMessage(Text.fmt(RC.LOTO_INFO_OPEN,
                         manager.getParticipantCount(),
                         manager.getTotalPool(),
-                        LotoManager.formatDuration(remaining)));
+                        Text.duration(remaining * 1000L)));
             }
-            return true;
+            return;
         }
 
         // /loto next
         if (sub.equals("next")) {
             if (manager.isOpen()) {
                 long remaining = manager.getRemainingSeconds();
-                player.sendMessage(RC.fmt(RC.LOTO_NEXT_IN_PROGRESS,
-                        LotoManager.formatDuration(remaining)));
+                player.sendMessage(Text.fmt(RC.LOTO_NEXT_IN_PROGRESS,
+                        Text.duration(remaining * 1000L)));
             } else {
                 long secs = manager.getSecondsUntilNext();
                 if (secs > 0) {
-                    player.sendMessage(RC.fmt(RC.LOTO_NEXT,
-                            LotoManager.formatDuration(secs)));
+                    player.sendMessage(Text.fmt(RC.LOTO_NEXT,
+                            Text.duration(secs * 1000L)));
                 } else {
                     player.sendMessage(RC.LOTO_NEXT_UNKNOWN);
                 }
             }
-            return true;
+            return;
         }
 
         // /loto start (staff)
         if (sub.equals("start")) {
             if (!player.isOp() && !player.hasPermission("staff.loto")) {
                 player.sendMessage(RC.ERR_NO_PERM);
-                return true;
+                return;
             }
             if (manager.forceStart()) {
                 player.sendMessage(RC.LOTO_FORCE_STARTED);
             } else {
                 player.sendMessage(RC.LOTO_ALREADY_OPEN);
             }
-            return true;
+            return;
         }
 
         // /loto stop (staff)
         if (sub.equals("stop")) {
             if (!player.isOp() && !player.hasPermission("staff.loto")) {
                 player.sendMessage(RC.ERR_NO_PERM);
-                return true;
+                return;
             }
             if (manager.forceStop()) {
                 player.sendMessage(RC.LOTO_FORCE_STOPPED);
             } else {
                 player.sendMessage(RC.LOTO_NOT_OPEN);
             }
-            return true;
+            return;
         }
 
         // /loto <montant>
@@ -122,16 +120,15 @@ public class LotoCommand implements CommandExecutor, TabCompleter {
             amount = Long.parseLong(sub);
         } catch (NumberFormatException e) {
             player.sendMessage(RC.LOTO_USAGE);
-            return true;
+            return;
         }
 
         if (amount <= 0) {
-            player.sendMessage(RC.LOTO_INVALID_AMOUNT);
-            return true;
+            player.sendMessage(RC.ERR_INVALID_AMOUNT);
+            return;
         }
 
         manager.placeBet(player, amount);
-        return true;
     }
 
     private void sendHelp(Player player) {

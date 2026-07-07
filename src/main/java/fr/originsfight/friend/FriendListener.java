@@ -1,5 +1,6 @@
 package fr.originsfight.friend;
 
+import fr.originsfight.core.text.RC;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -33,7 +34,7 @@ public class FriendListener implements Listener {
 
         if (manager.areFriends(damager.getUniqueId(), victim.getUniqueId())) {
             event.setCancelled(true);
-            damager.sendMessage(fr.originsfight.RC.PRE + "§7Vous ne pouvez pas attaquer §f" + victim.getName() + " §7(ami).");
+            damager.sendMessage(RC.PRE + "§7Vous ne pouvez pas attaquer §f" + victim.getName() + " §7(ami).");
         }
     }
 

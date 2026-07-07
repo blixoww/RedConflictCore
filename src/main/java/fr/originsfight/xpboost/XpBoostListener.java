@@ -1,6 +1,6 @@
 package fr.originsfight.xpboost;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.text.RC;
 import fr.originsfight.packets.CustomPacketServerHandler;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;

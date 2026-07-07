@@ -1,8 +1,10 @@
 package fr.originsfight.staff.commands;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffDatabase;
 import fr.originsfight.staff.StaffFormatter;
 import fr.originsfight.staff.StaffListener;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -15,26 +17,27 @@ import java.util.List;
  * /kick <joueur> [raison...]
  * Kick un joueur du serveur avec raison.
  */
-public class KickCommand implements CommandExecutor, TabCompleter {
+public class KickCommand extends CoreCommand {
 
     private final StaffDatabase db;
     private final StaffListener listener;
 
-    public KickCommand(StaffDatabase db, StaffListener listener) {
+    public KickCommand(JavaPlugin plugin, StaffDatabase db, StaffListener listener) {
+        super(plugin, "kick", false);
         this.db = db; this.listener = listener;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
-        if (args.length < 1) { sender.sendMessage("§cUsage : /kick <joueur> [raison]"); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
+        if (args.length < 1) { sender.sendMessage("§cUsage : /kick <joueur> [raison]"); return; }
 
         Player target = Bukkit.getPlayerExact(args[0]);
         String reason = args.length > 1 ? String.join(" ", Arrays.copyOfRange(args, 1, args.length))
                                         : "Aucune raison précisée";
         String staffName = sender instanceof Player ? ((Player) sender).getName() : "Console";
 
-        if (target == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return true; }
+        if (target == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return; }
 
         db.addSanction(target.getUniqueId().toString(), target.getName(),
                 StaffDatabase.SanctionType.KICK, reason, staffName, -1);
@@ -44,7 +47,6 @@ public class KickCommand implements CommandExecutor, TabCompleter {
 
         listener.broadcastStaff(StaffFormatter.sanctionBroadcastKick(target.getName(), reason, staffName));
         sender.sendMessage(StaffFormatter.PREFIX + "§a✔ §f" + target.getName() + " §aa été kick.");
-        return true;
     }
 
     private boolean isStaff(CommandSender s) {

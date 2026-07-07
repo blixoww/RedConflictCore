@@ -1,6 +1,8 @@
 package fr.originsfight.staff.commands;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffListener;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
@@ -9,20 +11,21 @@ import org.bukkit.entity.Player;
  *   - Sans argument : toggle le mode "staff chat" (tout ce qu'on tape va dans le staff chat)
  *   - Avec argument  : envoie un message ponctuel dans le staff chat
  */
-public class StaffChatCommand implements CommandExecutor {
+public class StaffChatCommand extends CoreCommand {
 
     private final StaffListener listener;
 
-    public StaffChatCommand(StaffListener listener) { this.listener = listener; }
+    public StaffChatCommand(JavaPlugin plugin, StaffListener listener) {
+        super(plugin, "sc", false); this.listener = listener; }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
         if (!(sender instanceof Player)) {
             // Console : envoi direct
-            if (args.length == 0) { sender.sendMessage("§cUsage console : /sc <message>"); return true; }
+            if (args.length == 0) { sender.sendMessage("§cUsage console : /sc <message>"); return; }
             listener.broadcastStaffChat(null, "Console", String.join(" ", args));
-            return true;
+            return;
         }
         Player p = (Player) sender;
         if (args.length == 0) {
@@ -32,7 +35,6 @@ public class StaffChatCommand implements CommandExecutor {
             // Envoi ponctuel (sans toggle)
             listener.broadcastStaffChat(p, p.getName(), String.join(" ", args));
         }
-        return true;
     }
 
     private boolean isStaff(CommandSender s) {

@@ -1,7 +1,9 @@
 package fr.originsfight.staff.commands;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffDatabase;
 import fr.originsfight.staff.StaffFormatter;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.*;
@@ -14,20 +16,21 @@ import java.util.List;
  * /sanctions <joueur> [page]
  * Alias : /hist, /historique
  */
-public class SanctionsCommand implements CommandExecutor, TabCompleter {
+public class SanctionsCommand extends CoreCommand {
 
     private static final int PER_PAGE = 6; // 6 sanctions × 2 lignes = 12 lignes max
     private final StaffDatabase db;
 
-    public SanctionsCommand(StaffDatabase db) { this.db = db; }
+    public SanctionsCommand(JavaPlugin plugin, StaffDatabase db) {
+        super(plugin, "sanctions", false); this.db = db; }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
-        if (args.length < 1) { sender.sendMessage("§cUsage : /sanctions <joueur> [page]"); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
+        if (args.length < 1) { sender.sendMessage("§cUsage : /sanctions <joueur> [page]"); return; }
 
         OfflinePlayer offline = Bukkit.getOfflinePlayer(args[0]);
-        if (offline == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return true; }
+        if (offline == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return; }
 
         int page = 1;
         if (args.length >= 2) {
@@ -39,7 +42,7 @@ public class SanctionsCommand implements CommandExecutor, TabCompleter {
 
         if (history.isEmpty()) {
             sender.sendMessage(StaffFormatter.PREFIX + "§7" + name + " n'a aucune sanction.");
-            return true;
+            return;
         }
 
         int totalPages = (int) Math.ceil((double) history.size() / PER_PAGE);
@@ -56,7 +59,6 @@ public class SanctionsCommand implements CommandExecutor, TabCompleter {
 
         if (page < totalPages)
             sender.sendMessage("§8> §7Suite : §f/sanctions " + name + " " + (page + 1));
-        return true;
     }
 
     private boolean isStaff(CommandSender s) {

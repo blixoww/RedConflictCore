@@ -1,7 +1,10 @@
 package fr.originsfight.bounty;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.economy.VaultEconomy;
+import fr.originsfight.core.text.RC;
+import fr.originsfight.core.text.Text;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -39,6 +42,7 @@ public class BountyManager {
 
     public BountyManager(KillstreakManager ksManager) {
         this.ksManager = ksManager;
+        ksManager.setThresholdListener(this::onThresholdCrossed);
         instance = this;
     }
 
@@ -63,16 +67,13 @@ public class BountyManager {
         return true;
     }
 
-    public void disable() {
-        // Rien à persister
-    }
-
     // ── Queries ───────────────────────────────────────────────────────────────
 
     public boolean hasBounty(UUID target)    { return activeBounties.containsKey(target); }
     public BountyInfo getBounty(UUID target) { return activeBounties.get(target); }
     public Map<UUID, BountyInfo> getActiveBounties() { return Collections.unmodifiableMap(activeBounties); }
     public FactionLeaveTracker getFactionTracker()    { return factionTracker; }
+    public KillstreakManager getKillstreaks()        { return ksManager; }
     public long getMinManualAmount()                  { return minManualAmount; }
 
     /** Retourne true si une prime a déjà été posée sur cette cible dans les dernières 24h. */
@@ -100,7 +101,7 @@ public class BountyManager {
      */
     public void placeManualBounty(UUID placerUuid, Player target, long amount, Economy eco) {
         // Débiter le poseur
-        if (eco != null) eco.withdrawPlayer(org.bukkit.Bukkit.getOfflinePlayer(placerUuid), amount);
+        if (eco != null) eco.withdrawPlayer(Bukkit.getOfflinePlayer(placerUuid), amount);
 
         // Créer ou augmenter la prime
         UUID tUuid = target.getUniqueId();
@@ -128,7 +129,7 @@ public class BountyManager {
 
         long amount = info.getAmount();
         activeBounties.remove(target);
-        if (eco != null) eco.depositPlayer(org.bukkit.Bukkit.getOfflinePlayer(placerUuid), amount);
+        if (eco != null) eco.depositPlayer(Bukkit.getOfflinePlayer(placerUuid), amount);
         return amount;
     }
 
@@ -169,19 +170,16 @@ public class BountyManager {
 
         // Kill légitime : verser la prime
         long amount = info.getAmount();
-        Economy eco = OriginsFightCore.getInstance().getEconomy();
+        Economy eco = VaultEconomy.get();
         if (eco != null) eco.depositPlayer(killer, amount);
 
         int streakAtDeath = ksManager.getStreak(victim.getUniqueId());
         BountyAnnouncer.bountyClaimed(killer.getName(), victim.getName(), amount, streakAtDeath);
-        killer.sendMessage("§a§l✦ §aPrime réclamée §8— §f§l+" + amount + "$ §acrédités sur votre compte !");
+        killer.sendMessage(Text.fmt(RC.BOUNTY_CLAIMED, victim.getName(), amount));
 
         // Nettoyer le placer manuel si applicable
         manualPlacer.values().remove(victim.getUniqueId());
         activeBounties.remove(victim.getUniqueId());
     }
 
-    public void onBountyTargetNonPvpDeath(Player victim) {
-        // La prime reste active
-    }
 }

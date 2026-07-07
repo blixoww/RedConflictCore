@@ -1,67 +1,64 @@
 package fr.originsfight.giveall;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.text.RC;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Arrays;
+import java.util.Collections;
 
-public class GiveAllCommand implements CommandExecutor {
+/**
+ * /giveall (staff) — ouvre l'inventaire de préparation : les slots 0-44
+ * reçoivent les items à distribuer, la ligne du bas porte les boutons
+ * Envoyer/Annuler (voir {@link GiveAllListener}).
+ */
+public class GiveAllCommand extends CoreCommand {
 
     public static final String INV_TITLE = "§8[§c§lGiveAll§8] §7Items à distribuer";
     public static final int SLOT_SEND   = 49;
     public static final int SLOT_CANCEL = 45;
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
-        Player player = (Player) sender;
-        if (!player.isOp() && !player.hasPermission("staff.giveall")) {
-            player.sendMessage(RC.ERR_NO_PERM); return true;
-        }
-        player.openInventory(buildGiveAllInventory());
-        player.sendMessage(RC.GIVEALL_HINT);
-        return true;
+    public GiveAllCommand(JavaPlugin plugin) {
+        super(plugin, "giveall", true);
     }
 
-    public static Inventory buildGiveAllInventory() {
+    @Override
+    protected void execute(CommandSender sender, String label, String[] args) {
+        Player player = (Player) sender;
+        if (!player.hasPermission("staff.giveall")) {
+            player.sendMessage(RC.ERR_NO_PERM);
+            return;
+        }
+        player.openInventory(buildInventory());
+        player.sendMessage(RC.GIVEALL_HINT);
+    }
+
+    private static Inventory buildInventory() {
         Inventory inv = Bukkit.createInventory(null, 54, INV_TITLE);
-        ItemStack glass = makeGlass();
-        for (int i = 45; i < 54; i++) inv.setItem(i, glass);
-        inv.setItem(SLOT_SEND,   makeSendButton());
-        inv.setItem(SLOT_CANCEL, makeCancelButton());
+        ItemStack glass = button(new ItemStack(Material.STAINED_GLASS_PANE, 1, (byte) 7), " ", null);
+        for (int i = 45; i < 54; i++) {
+            inv.setItem(i, glass);
+        }
+        inv.setItem(SLOT_SEND, button(new ItemStack(Material.EMERALD_BLOCK),
+                "§a§l✔ Distribuer à tous", "§7Distribue les items à tous les joueurs en ligne."));
+        inv.setItem(SLOT_CANCEL, button(new ItemStack(Material.BARRIER),
+                "§c§l✖ Annuler", "§7Ferme sans distribuer."));
         return inv;
     }
 
-    public static ItemStack makeSendButton() {
-        ItemStack item = new ItemStack(Material.EMERALD_BLOCK, 1);
+    private static ItemStack button(ItemStack item, String name, String lore) {
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§a§l✔ Distribuer à tous");
-        meta.setLore(Arrays.asList("§7Distribue les items à tous les joueurs en ligne."));
-        item.setItemMeta(meta); return item;
-    }
-
-    public static ItemStack makeCancelButton() {
-        ItemStack item = new ItemStack(Material.BARRIER, 1);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§c§l✖ Annuler");
-        meta.setLore(Arrays.asList("§7Ferme sans distribuer."));
-        item.setItemMeta(meta); return item;
-    }
-
-    private static ItemStack makeGlass() {
-        ItemStack item = new ItemStack(Material.STAINED_GLASS_PANE, 1, (byte) 7);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(" ");
-        item.setItemMeta(meta); return item;
+        meta.setDisplayName(name);
+        if (lore != null) {
+            meta.setLore(Collections.singletonList(lore));
+        }
+        item.setItemMeta(meta);
+        return item;
     }
 }
-
-

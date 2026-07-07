@@ -8,50 +8,34 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
- * Listener central du système killstreak/prime.
- *
- * Priorité MONITOR : s'exécute après tous les autres listeners (dont KsListener)
- * pour que le kill soit déjà comptabilisé.
+ * Listener central du système killstreak/prime. Priorité MONITOR pour passer
+ * après les autres listeners de mort (le kill est déjà comptabilisé).
  */
 public class BountyListener implements Listener {
 
-    private final BountyManager    bountyManager;
+    private final BountyManager bountyManager;
     private final KillstreakManager ksManager;
 
-    public BountyListener(BountyManager bm, KillstreakManager ksm) {
-        this.bountyManager = bm;
-        this.ksManager      = ksm;
+    public BountyListener(BountyManager bountyManager, KillstreakManager ksManager) {
+        this.bountyManager = bountyManager;
+        this.ksManager = ksManager;
     }
-
-    // ── Mort PvP ou autre ─────────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
         Player killer = victim.getKiller();
 
+        // Mort PvP : la prime de la victime est réclamée puis les killstreaks mis
+        // à jour. Mort non-PvP : la prime reste active, le streak est remis à zéro.
         if (killer != null && !killer.equals(victim)) {
-            // Mort PvP ─────────────────────────────────────────────────────────
-            // 1. Traiter la prime sur la victime (si elle en a une)
-            if (bountyManager.hasBounty(victim.getUniqueId())) {
-                bountyManager.onBountyTargetKilled(victim, killer);
-            }
-            // 2. Réinitialiser le killstreak de la victime
+            bountyManager.onBountyTargetKilled(victim, killer);
             ksManager.onDeath(victim);
-            // 3. Incrémenter le killstreak du tueur (déclenche paliers + seuils de prime)
             ksManager.onKill(killer);
         } else {
-            // Mort non-PvP (environnement, suicide) ───────────────────────────
-            // Réinitialiser le killstreak de la victime
             ksManager.onDeath(victim);
-            // La prime reste active (non réclamée)
-            if (bountyManager.hasBounty(victim.getUniqueId())) {
-                bountyManager.onBountyTargetNonPvpDeath(victim);
-            }
         }
     }
-
-    // ── Déconnexion ───────────────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {

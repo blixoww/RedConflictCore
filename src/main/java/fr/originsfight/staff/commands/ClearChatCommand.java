@@ -1,7 +1,9 @@
 package fr.originsfight.staff.commands;
 
 import fr.originsfight.staff.StaffFormatter;
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffManager;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -10,10 +12,14 @@ import org.bukkit.entity.Player;
  * /clearchat (/cc) — Efface le chat pour tous (envoie 100 lignes vides)
  *                    Le staff voit un message indiquant qui a clear.
  */
-public class ClearChatCommand implements CommandExecutor {
+public class ClearChatCommand extends CoreCommand {
+
+    public ClearChatCommand(JavaPlugin plugin) {
+        super(plugin, "clearchat", false);
+    }
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
 
         String name = sender instanceof Player ? ((Player) sender).getName() : "Console";
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -24,7 +30,6 @@ public class ClearChatCommand implements CommandExecutor {
                 p.sendMessage(StaffFormatter.PREFIX + "§7Le chat a ete efface.");
             }
         }
-        return true;
     }
 
     private boolean isStaff(CommandSender s) {

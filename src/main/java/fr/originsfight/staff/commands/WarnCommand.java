@@ -1,8 +1,10 @@
 package fr.originsfight.staff.commands;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffDatabase;
 import fr.originsfight.staff.StaffFormatter;
 import fr.originsfight.staff.StaffListener;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -15,25 +17,26 @@ import java.util.List;
  * /warn <joueur> <raison...>
  * Ajoute un avertissement, affiche le total au joueur et broadcast au staff.
  */
-public class WarnCommand implements CommandExecutor, TabCompleter {
+public class WarnCommand extends CoreCommand {
 
     private final StaffDatabase db;
     private final StaffListener listener;
 
-    public WarnCommand(StaffDatabase db, StaffListener listener) {
+    public WarnCommand(JavaPlugin plugin, StaffDatabase db, StaffListener listener) {
+        super(plugin, "warn", false);
         this.db = db; this.listener = listener;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
-        if (args.length < 2) { sender.sendMessage("§cUsage : /warn <joueur> <raison>"); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
+        if (args.length < 2) { sender.sendMessage("§cUsage : /warn <joueur> <raison>"); return; }
 
         Player target = Bukkit.getPlayerExact(args[0]);
         String reason = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         String staffName = sender instanceof Player ? ((Player) sender).getName() : "Console";
 
-        if (target == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return true; }
+        if (target == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return; }
 
         db.addSanction(target.getUniqueId().toString(), target.getName(),
                 StaffDatabase.SanctionType.WARN, reason, staffName, -1);
@@ -46,7 +49,6 @@ public class WarnCommand implements CommandExecutor, TabCompleter {
         listener.broadcastStaff(StaffFormatter.sanctionBroadcastWarn(target.getName(), reason, staffName));
         sender.sendMessage(StaffFormatter.PREFIX + "§a✔ Warn ajouté à §f" + target.getName() +
                 " §7(total : §c" + warnCount + " §7warn(s))");
-        return true;
     }
 
     private boolean isStaff(CommandSender s) {

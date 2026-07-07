@@ -1,8 +1,10 @@
 package fr.originsfight.staff.commands;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffDatabase;
 import fr.originsfight.staff.StaffFormatter;
 import fr.originsfight.staff.StaffListener;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.*;
@@ -19,28 +21,32 @@ import java.util.List;
  * Si le joueur est en ligne → kick immédiat avec écran de ban.
  * Vérification IP au login pour éviter le contournement.
  */
-public class BanCommand implements CommandExecutor, TabCompleter {
+public class BanCommand extends CoreCommand {
 
     private final StaffDatabase db;
     private final StaffListener listener;
     private final boolean isUnban;
 
-    public BanCommand(StaffDatabase db, StaffListener listener, boolean isUnban) {
+    public BanCommand(JavaPlugin plugin, StaffDatabase db, StaffListener listener, boolean isUnban) {
+        super(plugin, "ban", false);
         this.db = db; this.listener = listener; this.isUnban = isUnban;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
-        if (isUnban) return handleUnban(sender, args);
-        return handleBan(sender, args);
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
+        if (isUnban) {
+            handleUnban(sender, args);
+            return;
+        }
+        handleBan(sender, args);
     }
 
-    private boolean handleBan(CommandSender sender, String[] args) {
+    private void handleBan(CommandSender sender, String[] args) {
         if (args.length < 3) {
             sender.sendMessage("§cUsage : /ban <joueur> <durée|perm> <raison>");
             sender.sendMessage("§7Durées : §f1m, 1h, 1j, 7j, 30j, perm");
-            return true;
+            return;
         }
         String targetName = args[0];
         String durationStr = args[1];
@@ -51,14 +57,14 @@ public class BanCommand implements CommandExecutor, TabCompleter {
         long expiresAt = duration <= 0 ? -1 : System.currentTimeMillis() + duration;
 
         OfflinePlayer offline = Bukkit.getOfflinePlayer(targetName);
-        if (offline == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return true; }
+        if (offline == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return; }
         String uuid = offline.getUniqueId().toString();
         String name = offline.getName() != null ? offline.getName() : targetName;
 
         // Vérifier si déjà banni
         if (db.getActiveSanction(uuid, StaffDatabase.SanctionType.BAN) != null) {
             sender.sendMessage(StaffFormatter.PREFIX + "§c" + name + " est déjà banni. /unban d'abord.");
-            return true;
+            return;
         }
 
         db.addSanction(uuid, name, StaffDatabase.SanctionType.BAN, reason, staffName, expiresAt);
@@ -77,23 +83,21 @@ public class BanCommand implements CommandExecutor, TabCompleter {
             if (p.isOp() || p.hasPermission("staff.staff")) p.sendMessage(broadcastMsg);
 
         sender.sendMessage(StaffFormatter.PREFIX + "§a✔ §f" + name + " §abanni — " + expiryLabel);
-        return true;
     }
 
-    private boolean handleUnban(CommandSender sender, String[] args) {
-        if (args.length < 1) { sender.sendMessage("§cUsage : /unban <joueur>"); return true; }
+    private void handleUnban(CommandSender sender, String[] args) {
+        if (args.length < 1) { sender.sendMessage("§cUsage : /unban <joueur>"); return; }
         OfflinePlayer offline = Bukkit.getOfflinePlayer(args[0]);
-        if (offline == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return true; }
+        if (offline == null) { sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return; }
         String uuid = offline.getUniqueId().toString();
         String name = offline.getName() != null ? offline.getName() : args[0];
         String staffName = sender instanceof Player ? ((Player) sender).getName() : "Console";
 
         boolean lifted = db.liftSanction(uuid, StaffDatabase.SanctionType.BAN);
-        if (!lifted) { sender.sendMessage(StaffFormatter.PREFIX + "§c" + name + " n'est pas banni."); return true; }
+        if (!lifted) { sender.sendMessage(StaffFormatter.PREFIX + "§c" + name + " n'est pas banni."); return; }
 
         listener.broadcastStaff(StaffFormatter.PREFIX + "§a✔ §f" + staffName + " §aa débanni §f" + name);
         sender.sendMessage(StaffFormatter.PREFIX + "§a✔ §f" + name + " §adébanni avec succès.");
-        return true;
     }
 
     private boolean isStaff(CommandSender s) {

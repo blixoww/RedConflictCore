@@ -4,9 +4,11 @@ import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.flags.DefaultFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.text.RC;
+import fr.originsfight.core.text.Text;
 import fr.originsfight.cooldown.CooldownType;
-import fr.originsfight.utils.CooldownManager;
-import fr.originsfight.utils.TimeUnits;
+import fr.originsfight.cooldown.CooldownManager;
+import java.util.concurrent.TimeUnit;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -69,9 +71,9 @@ public class CombatLogListener implements Listener {
     private void tag(Player p) {
         if (p.isOp()) return;
         if (CooldownManager.instance().timeLeft(p, CooldownType.COMBAT) == 0) {
-            p.sendMessage("§7Tu viens d'entrer en combat.");
+            p.sendMessage(RC.CT_ENTER);
         }
-        CooldownManager.instance().set(p, 30, TimeUnits.SECONDS, CooldownType.COMBAT);
+        CooldownManager.instance().set(p, CooldownType.COMBAT, 30, TimeUnit.SECONDS);
         sender.send(p);
     }
 
@@ -80,7 +82,7 @@ public class CombatLogListener implements Listener {
         Player player = event.getPlayer();
         if (CooldownManager.instance().timeLeft(player, CooldownType.COMBAT) > 0) {
             player.setHealth(0);
-            Bukkit.broadcastMessage("§c" + player.getName() + " est mort suite à un combat log.");
+            Bukkit.broadcastMessage(Text.fmt(RC.CT_LOGOUT_DEATH, player.getName()));
         }
         sender.forget(player.getUniqueId());
     }

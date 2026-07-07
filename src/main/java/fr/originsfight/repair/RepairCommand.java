@@ -1,31 +1,41 @@
 package fr.originsfight.repair;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.text.RC;
+import fr.originsfight.core.text.Text;
+import fr.originsfight.cooldown.CooldownManager;
 import fr.originsfight.cooldown.CooldownType;
-import fr.originsfight.utils.CooldownManager;
-import fr.originsfight.utils.TimeUnits;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.plugin.java.JavaPlugin;
 
-public class RepairCommand implements CommandExecutor {
+import java.util.concurrent.TimeUnit;
+
+/** /repairall — répare inventaire et armure, cooldown 24 h (armé seulement si un item a été réparé). */
+public class RepairCommand extends CoreCommand {
+
+    public RepairCommand(JavaPlugin plugin) {
+        super(plugin, "repairall", true);
+    }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
         Player player = (Player) sender;
-        long timeLeft = CooldownManager.instance().timeLeft(player, CooldownType.REPAIR);
-        if (timeLeft > 0) {
-            player.sendMessage(RC.fmt(RC.REPAIR_COOLDOWN, CooldownManager.getFormattedTimeLeft(timeLeft)));
-            return true;
+
+        long left = CooldownManager.instance().timeLeft(player, CooldownType.REPAIR);
+        if (left > 0) {
+            player.sendMessage(Text.fmt(RC.REPAIR_COOLDOWN, Text.duration(left)));
+            return;
         }
+
         PlayerInventory inv = player.getInventory();
         boolean repaired = RepairItems.repair(inv.getContents()) | RepairItems.repair(inv.getArmorContents());
-        if (!repaired) { player.sendMessage(RC.REPAIR_NOTHING); return true; }
+        if (!repaired) {
+            player.sendMessage(RC.REPAIR_NOTHING);
+            return;
+        }
         player.sendMessage(RC.REPAIR_DONE);
-        CooldownManager.instance().set(player, 24, TimeUnits.HOURS, CooldownType.REPAIR);
-        return true;
+        CooldownManager.instance().set(player, CooldownType.REPAIR, 24, TimeUnit.HOURS);
     }
 }

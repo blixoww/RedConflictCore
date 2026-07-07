@@ -1,7 +1,9 @@
 package fr.originsfight.staff.commands;
 
 import fr.originsfight.staff.StaffFormatter;
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffManager;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -10,10 +12,14 @@ import org.bukkit.entity.Player;
  * /lockchat — Verrouille/déverrouille le chat public.
  * Seul le staff peut parler quand le chat est verrouillé.
  */
-public class LockChatCommand implements CommandExecutor {
+public class LockChatCommand extends CoreCommand {
+
+    public LockChatCommand(JavaPlugin plugin) {
+        super(plugin, "lockchat", false);
+    }
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
 
         String name = sender instanceof Player ? ((Player) sender).getName() : "Console";
         boolean locked = StaffManager.get().toggleChatLock();
@@ -30,8 +36,6 @@ public class LockChatCommand implements CommandExecutor {
                 : StaffFormatter.PREFIX + "§7(Déverrouillé par §a" + name + "§7)";
         for (Player p : Bukkit.getOnlinePlayers())
             if (StaffManager.get().isStaff(p)) p.sendMessage(staffInfo);
-
-        return true;
     }
 
     private boolean isStaff(CommandSender s) {

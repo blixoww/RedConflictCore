@@ -1,6 +1,7 @@
 package fr.originsfight.boutique;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.pb.PBManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -200,15 +201,15 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
             }
             return true;
         }
-        if (plugin.getEconomy() == null) {
+        if (VaultEconomy.get() == null) {
             BoutiquePacketSender.sendResult(p, false, "Économie indisponible.");
             return false;
         }
-        if (plugin.getEconomy().getBalance(p) < amount) {
+        if (VaultEconomy.get().getBalance(p) < amount) {
             BoutiquePacketSender.sendResult(p, false, "Argent insuffisant.");
             return false;
         }
-        if (!plugin.getEconomy().withdrawPlayer(p, amount).transactionSuccess()) {
+        if (!VaultEconomy.get().withdrawPlayer(p, amount).transactionSuccess()) {
             BoutiquePacketSender.sendResult(p, false, "Erreur retrait monnaie.");
             return false;
         }
@@ -218,8 +219,8 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
     private void refund(Player p, boolean payPB, long amount, String reason) {
         if (payPB && plugin.getPBManager() != null)
             plugin.getPBManager().add(p, (int) amount, "REFUND:" + reason);
-        else if (plugin.getEconomy() != null)
-            plugin.getEconomy().depositPlayer(p, amount);
+        else if (VaultEconomy.get() != null)
+            VaultEconomy.get().depositPlayer(p, amount);
     }
 
     // ── Récompenses ──────────────────────────────────────────────────────────

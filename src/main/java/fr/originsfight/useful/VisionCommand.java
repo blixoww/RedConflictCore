@@ -1,10 +1,10 @@
 package fr.originsfight.useful;
 
-import fr.originsfight.RC;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.text.RC;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -12,36 +12,30 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * /vision — Toggle la vision nocturne.
- * Permission : redconflict.nv
- */
-public class VisionCommand implements CommandExecutor {
+/** /vision — bascule la vision nocturne (permission redconflict.nv). */
+public class VisionCommand extends CoreCommand {
 
-    // Cache des joueurs avec vision nocturne activée manuellement
-    private static final Set<UUID> VISION_ON = new HashSet<>();
+    private final Set<UUID> active = new HashSet<>();
+
+    public VisionCommand(JavaPlugin plugin) {
+        super(plugin, "vision", true);
+    }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
-        Player p = (Player) sender;
-        if (!p.isOp() && !p.hasPermission("redconflict.nv")) {
-            p.sendMessage(RC.ERR_NO_PERM); return true;
+    protected void execute(CommandSender sender, String label, String[] args) {
+        Player player = (Player) sender;
+        if (!player.hasPermission("redconflict.nv")) {
+            player.sendMessage(RC.ERR_NO_PERM);
+            return;
         }
-
-        if (VISION_ON.contains(p.getUniqueId())) {
-            // Désactiver
-            VISION_ON.remove(p.getUniqueId());
-            p.removePotionEffect(PotionEffectType.NIGHT_VISION);
-            p.sendMessage(RC.VISION_OFF);
+        if (active.remove(player.getUniqueId())) {
+            player.removePotionEffect(PotionEffectType.NIGHT_VISION);
+            player.sendMessage(RC.VISION_OFF);
         } else {
-            // Activer
-            VISION_ON.add(p.getUniqueId());
-            p.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION,
+            active.add(player.getUniqueId());
+            player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION,
                     Integer.MAX_VALUE, 0, false, false));
-            p.sendMessage(RC.VISION_ON);
+            player.sendMessage(RC.VISION_ON);
         }
-        return true;
     }
 }
-

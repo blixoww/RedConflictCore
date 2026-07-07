@@ -1,0 +1,68 @@
+# ══════════════════════════════════════════════════════════════════════════
+# Module Essentials — commandes essentielles intégrées au Core
+# Rechargeable à chaud : /red reload
+# ══════════════════════════════════════════════════════════════════════════
+
+teleport:
+  # Délai d'attente (secondes) avant /spawn, /home, /warp, /back et les tpa.
+  # Annulé si le joueur bouge ou subit des dégâts. 0 = instantané.
+  # Bypass : permission redconflict.teleport.bypass
+  warmup-seconds: 5
+  cancel-on-move: true
+  cancel-on-damage: true
+
+tpa:
+  # Durée de validité d'une demande /tpa ou /tpahere (secondes).
+  expire-seconds: 60
+
+# Cooldown par commande (secondes, 0 = aucun).
+# Bypass : permission redconflict.cooldown.bypass
+cooldowns:
+  spawn: 10
+  home: 10
+  warp: 10
+  back: 30
+  tpa: 10
+  tpahere: 10
+  feed: 60
+  heal: 120
+  near: 30
+  more: 0
+  pay: 0
+
+back:
+  # Enregistrer la position de mort : /back ramène au point de mort.
+  save-on-death: true
+
+fly:
+  # true = /fly reste actif à la reconnexion ; false = coupé à la déconnexion.
+  persist-on-quit: true
+
+speed:
+  # Valeur maximale acceptée par /speed (1-10).
+  max: 10
+
+homes:
+  # Nombre de homes sans permission redconflict.sethome.multiple.<n>
+  # (redconflict.sethome.multiple.unlimited = illimité).
+  default-max: 1
+  permission-scan-max: 30
+
+warps:
+  # true = chaque warp exige la permission redconflict.warp.<nom>.
+  per-warp-permission: false
+
+near:
+  default-radius: 100
+  # Borne haute (bypass : redconflict.near.unlimited).
+  max-radius: 300
+
+help:
+  per-page: 8
+
+economy:
+  # true = le Core fournit le provider Vault Economy (remplace EssentialsX).
+  # Import des soldes existants : /red import essentials
+  enabled: true
+  starting-balance: 0.0
+  currency-symbol: "$"

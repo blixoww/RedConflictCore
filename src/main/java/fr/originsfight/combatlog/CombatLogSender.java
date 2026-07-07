@@ -3,7 +3,7 @@ package fr.originsfight.combatlog;
 import fr.originsfight.OriginsFightCore;
 import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.packets.PacketBuilder;
-import fr.originsfight.utils.CooldownManager;
+import fr.originsfight.cooldown.CooldownManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;

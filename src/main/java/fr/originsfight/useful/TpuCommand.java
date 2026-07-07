@@ -1,71 +1,64 @@
 package fr.originsfight.useful;
 
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.text.RC;
+import fr.originsfight.friend.FriendManager;
 import fr.redfaction.api.RedFactionAPI;
 import fr.redfaction.entity.Faction;
-import fr.originsfight.RC;
-import fr.originsfight.friend.FriendManager;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * /tpu — Toggle "TP Unavailable".
- * Quand actif, bloque toutes les demandes de téléportation entrantes
- * sauf celles des amis et membres de la même faction.
+ * /tpu — bascule le blocage des demandes de téléportation entrantes, sauf
+ * celles des amis et des membres de la même faction. La politique statique
+ * {@link #shouldBlock} est branchée sur le TeleportRequestService d'essentials.
  */
-public class TpuCommand implements CommandExecutor {
+public class TpuCommand extends CoreCommand {
 
-    private static final Set<UUID> blocked = new HashSet<>();
+    private static final Set<UUID> BLOCKED = new HashSet<>();
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(RC.ERR_PLAYER_ONLY);
-            return true;
-        }
-        Player p = (Player) sender;
-        UUID uid = p.getUniqueId();
-        if (blocked.contains(uid)) {
-            blocked.remove(uid);
-            p.sendMessage(RC.TPU_OFF);
-        } else {
-            blocked.add(uid);
-            p.sendMessage(RC.TPU_ON);
-        }
-        return true;
+    public TpuCommand(JavaPlugin plugin) {
+        super(plugin, "tpu", true);
     }
 
-    /**
-     * Retourne true si la demande de TP de {@code requester} vers {@code target} doit être bloquée.
-     * Appelé par tout système de TP (tpa, tpahere, etc.) avant d'envoyer la demande.
-     */
+    @Override
+    protected void execute(CommandSender sender, String label, String[] args) {
+        Player player = (Player) sender;
+        if (BLOCKED.remove(player.getUniqueId())) {
+            player.sendMessage(RC.TPU_OFF);
+        } else {
+            BLOCKED.add(player.getUniqueId());
+            player.sendMessage(RC.TPU_ON);
+        }
+    }
+
+    /** @return true si la demande de TP de {@code requester} vers {@code target} doit être bloquée. */
     public static boolean shouldBlock(Player requester, Player target) {
-        if (!blocked.contains(target.getUniqueId())) return false;
-        FriendManager fm = FriendManager.getInstance();
-        if (fm != null && fm.areFriends(requester.getUniqueId(), target.getUniqueId())) return false;
+        if (!BLOCKED.contains(target.getUniqueId())) {
+            return false;
+        }
+        FriendManager friends = FriendManager.getInstance();
+        if (friends != null && friends.areFriends(requester.getUniqueId(), target.getUniqueId())) {
+            return false;
+        }
         return !sameFaction(requester, target);
     }
 
-    public static boolean isActive(UUID playerUid) {
-        return blocked.contains(playerUid);
-    }
-
-    // ── Vérification faction via l'API RedFaction ──
-
     private static boolean sameFaction(Player a, Player b) {
         try {
-            if (!RedFactionAPI.isAvailable()) return false;
-            RedFactionAPI api = RedFactionAPI.get();
-            Faction fA = api.getPlayerFaction(a);
-            Faction fB = api.getPlayerFaction(b);
-            if (fA == null || fB == null) return false;
-            return fA.getId().equals(fB.getId());
-        } catch (Exception ignored) {}
-        return false;
+            if (!RedFactionAPI.isAvailable()) {
+                return false;
+            }
+            Faction factionA = RedFactionAPI.get().getPlayerFaction(a);
+            Faction factionB = RedFactionAPI.get().getPlayerFaction(b);
+            return factionA != null && factionB != null && factionA.getId().equals(factionB.getId());
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

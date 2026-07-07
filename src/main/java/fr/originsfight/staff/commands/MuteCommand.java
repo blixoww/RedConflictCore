@@ -3,7 +3,9 @@ package fr.originsfight.staff.commands;
 import fr.originsfight.staff.StaffDatabase;
 import fr.originsfight.staff.StaffFormatter;
 import fr.originsfight.staff.StaffListener;
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffManager;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.*;
@@ -19,21 +21,25 @@ import java.util.List;
  *
  * Durée : 1h, 2j, 30m, perm
  */
-public class MuteCommand implements CommandExecutor, TabCompleter {
+public class MuteCommand extends CoreCommand {
 
     private final StaffDatabase db;
     private final StaffListener listener;
     private final boolean isUnmute;
 
-    public MuteCommand(StaffDatabase db, StaffListener listener, boolean isUnmute) {
+    public MuteCommand(JavaPlugin plugin, StaffDatabase db, StaffListener listener, boolean isUnmute) {
+        super(plugin, "mute", false);
         this.db = db; this.listener = listener; this.isUnmute = isUnmute;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
-        if (isUnmute) return handleUnmute(sender, args);
-        return handleMute(sender, args);
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
+        if (isUnmute) {
+            handleUnmute(sender, args);
+            return;
+        }
+        handleMute(sender, args);
     }
 
     private boolean handleMute(CommandSender sender, String[] args) {

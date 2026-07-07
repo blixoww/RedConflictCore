@@ -1,8 +1,8 @@
 package fr.originsfight.friend;
 
+import fr.originsfight.OriginsFightCore;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 
@@ -13,7 +13,7 @@ import java.util.*;
  *  - Maximum 5 amis par joueur.
  *  - Relation bidirectionnelle : si A et B sont amis, ils ne se font pas de dégâts.
  *  - Demande nécessaire : A envoie une demande, B doit l'accepter.
- *  - Persistance SQLite dans friends.db.
+ *  - Persistance dans la base H2 centrale (voir FriendDatabase).
  *  - Cache mémoire pour les demandes en attente (fiabilité immédiate).
  */
 public class FriendManager {
@@ -36,8 +36,8 @@ public class FriendManager {
 
     // ── Initialisation ────────────────────────────────────────────────────────
 
-    public boolean enable(JavaPlugin plugin) {
-        database = new FriendDatabase(((fr.originsfight.OriginsFightCore) plugin).getCoreDatabase());
+    public boolean enable(OriginsFightCore plugin) {
+        database = new FriendDatabase(plugin.getCoreDatabase());
         if (!database.init()) return false;
         // Charger les demandes existantes depuis la BDD dans le cache
         loadRequestsCache();

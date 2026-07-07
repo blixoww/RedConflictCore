@@ -5,9 +5,14 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+/** Annule proprement la session d'un joueur qui se déconnecte en plein trade. */
 public class TradeListener implements Listener {
 
-    private final TradeManager manager = TradeManager.getInstance();
+    private final TradeManager manager;
+
+    public TradeListener(TradeManager manager) {
+        this.manager = manager;
+    }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {

@@ -6,16 +6,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * État des trades : invitations en attente et sessions actives, indexées par
+ * joueur. Créé et injecté par {@link TradeModule}.
+ */
 public class TradeManager {
 
-    private static TradeManager instance;
     private final Map<UUID, TradeSession> activeSessions = new HashMap<>();
     private final Map<UUID, UUID> pendingInvites = new HashMap<>();
-
-    public static TradeManager getInstance() {
-        if (instance == null) instance = new TradeManager();
-        return instance;
-    }
 
     public boolean invite(Player sender, Player target) {
         if (isInTrade(sender) || isInTrade(target)) return false;

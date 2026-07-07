@@ -1,6 +1,8 @@
 package fr.originsfight.ks;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.RankResolver;
+import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.data.PlayerDatabase;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.economy.Economy;
@@ -28,7 +30,7 @@ public class KsListener implements Listener {
     private final OriginsFightCore plugin;
 
     // Timestamp de connexion par joueur (pour calculer le temps de jeu)
-    private static final Map<UUID, Long> joinTimes = new HashMap<>();
+    private static final Map<UUID, Long> JOIN_TIMES = new HashMap<>();
 
     public KsListener(PlayerDatabase db, OriginsFightCore plugin) {
         this.db = db;
@@ -36,14 +38,14 @@ public class KsListener implements Listener {
     }
 
     /** Retourne le timestamp de connexion d'un joueur (pour la session en cours). */
-    public static Long getJoinTime(UUID uuid) { return joinTimes.get(uuid); }
+    public static Long getJoinTime(UUID uuid) { return JOIN_TIMES.get(uuid); }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
         db.ensurePlayer(p);
         long now = System.currentTimeMillis();
-        joinTimes.put(p.getUniqueId(), now);
+        JOIN_TIMES.put(p.getUniqueId(), now);
         db.setJoinTime(p.getUniqueId(), now);
 
         // Synchronisation asynchrone des snapshots externes (balance, rank, faction)
@@ -53,7 +55,7 @@ public class KsListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         Player p = event.getPlayer();
-        Long joinTime = joinTimes.remove(p.getUniqueId());
+        Long joinTime = JOIN_TIMES.remove(p.getUniqueId());
         if (joinTime != null) {
             long seconds = (System.currentTimeMillis() - joinTime) / 1000;
             db.addPlaytime(p.getUniqueId(), seconds);
@@ -85,7 +87,7 @@ public class KsListener implements Listener {
         UUID uuid = p.getUniqueId();
 
         // Balance (Vault Economy)
-        Economy eco = plugin.getEconomy();
+        Economy eco = VaultEconomy.get();
         if (eco != null) {
             try {
                 long balance = (long) eco.getBalance(p);
@@ -93,47 +95,13 @@ public class KsListener implements Listener {
             } catch (Exception ignored) {}
         }
 
-        // Rang (Vault Chat)
-        String rank = resolveRank(p);
+        // Rang (Vault Chat, secours PlaceholderAPI)
+        String rank = RankResolver.resolve(p);
         db.updateRank(uuid, rank);
 
         // Faction
         String faction = resolveFaction(uuid, p);
         db.updateFaction(uuid, faction);
-    }
-
-    private String resolveRank(Player p) {
-        try {
-            RegisteredServiceProvider<Chat> rsp = Bukkit.getServicesManager().getRegistration(Chat.class);
-            if (rsp != null) {
-                Chat chat = rsp.getProvider();
-                String prefix = chat.getPlayerPrefix(p);
-                if (prefix == null || prefix.isEmpty()) {
-                    String group = chat.getPrimaryGroup(p);
-                    if (group != null && !group.isEmpty()) prefix = group;
-                }
-                if (prefix != null && !prefix.trim().isEmpty()) {
-                    String plain = prefix.replaceAll("(?i)§.", "").replaceAll("(?i)&.", "").trim();
-                    if (!plain.isEmpty()) return prefix.trim();
-                }
-            }
-        } catch (Exception ignored) {}
-
-        // Fallback PlaceholderAPI
-        try {
-            Class<?> papi = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
-            java.lang.reflect.Method m = papi.getMethod("setPlaceholders", Player.class, String.class);
-            Object out = m.invoke(null, p, "%luckperms_prefix%");
-            if (out instanceof String) {
-                String s = ((String) out).trim();
-                if (!s.isEmpty() && !s.equals("%luckperms_prefix%")) {
-                    String plain = s.replaceAll("(?i)§.", "").replaceAll("(?i)&.", "").trim();
-                    if (!plain.isEmpty()) return s;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        return "Joueur";
     }
 
     private String resolveFaction(UUID uuid, Player p) {

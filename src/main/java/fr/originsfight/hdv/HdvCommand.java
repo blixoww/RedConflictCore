@@ -1,6 +1,5 @@
 package fr.originsfight.hdv;
 
-import fr.originsfight.OriginsFightCore;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -10,13 +9,13 @@ import java.util.Collections;
 import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import fr.originsfight.core.command.CoreCommand;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
-public class HdvCommand implements CommandExecutor, TabCompleter {
+public class HdvCommand extends CoreCommand {
     private static final String PRE = ChatColor.GOLD + "[HDV] " + ChatColor.RESET;
 
     private static final String NOPERM = ChatColor.RED + "Vous n'avez pas la permission.";
@@ -25,41 +24,49 @@ public class HdvCommand implements CommandExecutor, TabCompleter {
 
     private final HdvManager manager;
 
-    public HdvCommand(HdvManager manager) {
+    public HdvCommand(JavaPlugin plugin, HdvManager manager) {
+        super(plugin, "hdv", false);
         this.manager = manager;
     }
 
-    public boolean onCommand(CommandSender s, Command cmd, String label, String[] args) {
+    @Override
+    protected void execute(CommandSender s, String label, String[] args) {
         if (args.length == 0) {
-            // Ouvre directement l'HDV si c'est un joueur, sinon affiche l'aide
+            // Ouvre directement l'HDV si c'est un joueur, sinon affiche l'aide.
             if (s instanceof Player) {
                 this.manager.sendOpen((Player) s);
             } else {
                 help(s);
             }
-            return true;
+            return;
         }
         switch (args[0].toLowerCase()) {
             case "help":
                 help(s);
-                return true;
+                return;
             case "info":
-                return info(s);
+                info(s);
+                return;
             case "collect":
-                return collect(s);
+                collect(s);
+                return;
             case "history":
-                return history(s, args);
+                history(s, args);
+                return;
             case "list":
-                return list(s, args);
+                list(s, args);
+                return;
             case "clear":
-                return clear(s, args);
+                clear(s, args);
+                return;
             case "reload":
-                return reload(s);
+                reload(s);
+                return;
             case "expire":
-                return expire(s, args);
+                expire(s, args);
+                return;
         }
         s.sendMessage(PRE + ChatColor.RED + "Sous-commande inconnue. Tapez " + ChatColor.YELLOW + "/hdv help" + ChatColor.RED + " pour la liste des commandes.");
-        return true;
     }
 
     private void help(CommandSender s) {
@@ -137,7 +144,7 @@ public class HdvCommand implements CommandExecutor, TabCompleter {
         // Afficher un apercu avant de collecter
         s.sendMessage(PRE + ChatColor.YELLOW + "Collecte de " + ChatColor.GOLD + fmt(pending) + " $" + ChatColor.YELLOW + " en cours...");
         Bukkit.getScheduler().runTask(
-                OriginsFightCore.getInstance(), () -> this.manager.handleCollect(p));
+                plugin, () -> this.manager.handleCollect(p));
         return true;
     }
 

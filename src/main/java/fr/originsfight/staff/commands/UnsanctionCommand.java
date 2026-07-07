@@ -3,7 +3,9 @@ package fr.originsfight.staff.commands;
 import fr.originsfight.staff.StaffDatabase;
 import fr.originsfight.staff.StaffFormatter;
 import fr.originsfight.staff.StaffListener;
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffManager;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.*;
@@ -17,24 +19,25 @@ import java.util.List;
  * Remet à zéro l'ensemble des sanctions actives d'un joueur (warn, mute, ban).
  * Lève aussi le mute en cache mémoire.
  */
-public class UnsanctionCommand implements CommandExecutor, TabCompleter {
+public class UnsanctionCommand extends CoreCommand {
 
     private final StaffDatabase db;
     private final StaffListener listener;
 
-    public UnsanctionCommand(StaffDatabase db, StaffListener listener) {
+    public UnsanctionCommand(JavaPlugin plugin, StaffDatabase db, StaffListener listener) {
+        super(plugin, "unsanction", false);
         this.db = db;
         this.listener = listener;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return true; }
-        if (args.length < 1) { sender.sendMessage("§cUsage : /unsanction <joueur>"); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
+        if (!isStaff(sender)) { sender.sendMessage("§cPermission insuffisante."); return; }
+        if (args.length < 1) { sender.sendMessage("§cUsage : /unsanction <joueur>"); return; }
 
         OfflinePlayer offline = Bukkit.getOfflinePlayer(args[0]);
         if (offline == null || offline.getUniqueId() == null) {
-            sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return true;
+            sender.sendMessage(StaffFormatter.PREFIX + "§cJoueur introuvable."); return;
         }
 
         String uuid = offline.getUniqueId().toString();
@@ -44,7 +47,7 @@ public class UnsanctionCommand implements CommandExecutor, TabCompleter {
         int count = db.resetAllSanctions(uuid);
         if (count == 0) {
             sender.sendMessage(StaffFormatter.PREFIX + "§7" + name + " n'a aucune sanction active.");
-            return true;
+            return;
         }
 
         // Lever le mute du cache mémoire si en ligne
@@ -58,7 +61,6 @@ public class UnsanctionCommand implements CommandExecutor, TabCompleter {
         listener.broadcastStaff(StaffFormatter.PREFIX + "§a[Reset] §f" + staffName
                 + " §aa efface §e" + count + " §asanction(s) de §f" + name);
         sender.sendMessage(StaffFormatter.PREFIX + "§a" + count + " sanction(s) de §f" + name + " §alevee(s).");
-        return true;
     }
 
     private boolean isStaff(CommandSender s) {

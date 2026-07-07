@@ -1,12 +1,12 @@
 package fr.originsfight.friend;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.text.RC;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 
@@ -21,7 +21,7 @@ import java.util.*;
  *   /friend list             – liste des amis (connectés / déconnectés)
  *   /friend requests         – demandes reçues en attente
  */
-public class FriendCommand implements CommandExecutor, TabCompleter {
+public class FriendCommand extends CoreCommand {
 
     private static final String PRE = RC.PRE;
     private static final String SEP = RC.SEP;
@@ -29,21 +29,18 @@ public class FriendCommand implements CommandExecutor, TabCompleter {
 
     private final FriendManager manager;
 
-    public FriendCommand(FriendManager manager) {
+    public FriendCommand(JavaPlugin plugin, FriendManager manager) {
+        super(plugin, "friend", true);
         this.manager = manager;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(RC.ERR_PLAYER_ONLY);
-            return true;
-        }
+    protected void execute(CommandSender sender, String label, String[] args) {
         Player player = (Player) sender;
 
         if (args.length == 0) {
             sendHelp(player);
-            return true;
+            return;
         }
 
         switch (args[0].toLowerCase()) {
@@ -58,7 +55,6 @@ public class FriendCommand implements CommandExecutor, TabCompleter {
             case "demandes": doRequests(player);        break;
             default:         sendHelp(player);          break;
         }
-        return true;
     }
 
     // ── /friend add <joueur> ─────────────────────────────────────────────────

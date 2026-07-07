@@ -1,126 +1,141 @@
 package fr.originsfight.bounty;
 
-import fr.originsfight.OriginsFightCore;
-import fr.originsfight.RC;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.economy.VaultEconomy;
+import fr.originsfight.core.text.RC;
+import fr.originsfight.core.text.Text;
 import fr.originsfight.friend.FriendManager;
+import fr.redfaction.api.RedFactionAPI;
+import fr.redfaction.entity.Faction;
+import fr.redfaction.entity.Relation;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
- * Commande /prime (alias /bounty).
+ * /prime (alias /bounty) — primes manuelles et consultation des killstreaks.
  *
- *   /prime <joueur> <montant>  – poser une prime manuelle
- *   /prime cancel              – annuler sa prime manuelle active
- *   /prime list                – primes actives
- *   /prime info [joueur]       – killstreak & prime d'un joueur
- *   /prime top                 – top primes de la session
+ * <p>Sous-commandes : {@code <joueur> <montant>} (poser), {@code cancel},
+ * {@code list}, {@code info [joueur]}, {@code top}.
  *
- * Restrictions :
- *   - Impossible de cibler un membre de sa faction, un allié ou un ami.
- *   - Délai 24h entre deux primes sur le même joueur (anti-harcèlement).
+ * <p>Restrictions : impossible de cibler un membre de sa faction, un allié,
+ * une trêve ou un ami ; délai de 24 h entre deux primes sur la même cible.
  */
-public class BountyCommand implements CommandExecutor, TabCompleter {
+public class BountyCommand extends CoreCommand {
 
-    private static final String BAR = "§8§m━━━━━━��━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+    private static final String BAR = "§8§m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+    private static final List<String> SUBCOMMANDS = Arrays.asList("list", "info", "top", "cancel");
 
-    private final BountyManager     bountyManager;
+    private final BountyManager bountyManager;
     private final KillstreakManager ksManager;
 
-    public BountyCommand(BountyManager bm, KillstreakManager ksm) {
-        this.bountyManager = bm;
-        this.ksManager      = ksm;
+    public BountyCommand(JavaPlugin plugin, BountyManager bountyManager, KillstreakManager ksManager) {
+        super(plugin, "prime", true);
+        this.bountyManager = bountyManager;
+        this.ksManager = ksManager;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage(RC.ERR_PLAYER_ONLY); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
         Player player = (Player) sender;
-
-        if (args.length == 0) { sendHelp(player); return true; }
-
-        String sub = args[0].toLowerCase();
-        switch (sub) {
-            case "list":   doList(player);              break;
-            case "top":    doTop(player);               break;
-            case "info":   doInfo(player, args);        break;
-            case "cancel": doCancel(player);            break;
-            default:       doPlace(player, args);       break; // /prime <joueur> <montant>
+        if (args.length == 0) {
+            sendHelp(player);
+            return;
         }
-        return true;
+        switch (args[0].toLowerCase()) {
+            case "list":
+                doList(player);
+                break;
+            case "top":
+                doTop(player);
+                break;
+            case "info":
+                doInfo(player, args);
+                break;
+            case "cancel":
+                doCancel(player);
+                break;
+            default:
+                doPlace(player, args);
+        }
     }
 
     // ── /prime <joueur> <montant> ─────────────────────────────────────────────
 
     private void doPlace(Player placer, String[] args) {
-        if (args.length < 2) { sendHelp(placer); return; }
-
-        // Trouver la cible
+        if (args.length < 2) {
+            sendHelp(placer);
+            return;
+        }
         Player target = Bukkit.getPlayer(args[0]);
-        if (target == null) { placer.sendMessage(RC.BOUNTY_NOT_FOUND); return; }
-        if (target.equals(placer)) { placer.sendMessage(RC.BOUNTY_SELF); return; }
-
-        // Montant
-        long amount;
-        try { amount = Long.parseLong(args[1]); } catch (NumberFormatException e) {
-            placer.sendMessage(RC.BOUNTY_INVALID_AMOUNT); return;
+        if (target == null) {
+            placer.sendMessage(RC.ERR_PLAYER_NOT_FOUND);
+            return;
         }
-        if (amount <= 0) { placer.sendMessage(RC.BOUNTY_INVALID_AMOUNT); return; }
+        if (target.equals(placer)) {
+            placer.sendMessage(RC.BOUNTY_SELF);
+            return;
+        }
+
+        Long amount = parsePositiveLong(placer, args[1]);
+        if (amount == null) {
+            return;
+        }
         long min = bountyManager.getMinManualAmount();
-        if (amount < min) { placer.sendMessage(RC.fmt(RC.BOUNTY_TOO_LOW, min)); return; }
-
-        // Déjà une prime manuelle active
+        if (amount < min) {
+            placer.sendMessage(Text.fmt(RC.BOUNTY_TOO_LOW, min));
+            return;
+        }
         if (bountyManager.getManualTarget(placer.getUniqueId()) != null) {
-            placer.sendMessage(RC.BOUNTY_ALREADY_PLACED); return;
+            placer.sendMessage(RC.BOUNTY_ALREADY_PLACED);
+            return;
         }
-
-        // Cooldown 24h sur la cible
         if (bountyManager.isTargetOnCooldown(target.getUniqueId())) {
-            String remaining = formatDuration(bountyManager.targetCooldownRemaining(target.getUniqueId()));
-            placer.sendMessage(RC.fmt(RC.BOUNTY_TARGET_COOLDOWN, target.getName(), remaining)); return;
+            String remaining = Text.duration(bountyManager.targetCooldownRemaining(target.getUniqueId()));
+            placer.sendMessage(Text.fmt(RC.BOUNTY_TARGET_COOLDOWN, target.getName(), remaining));
+            return;
         }
-
-        // Vérification faction / ami
         if (isFriendlyTarget(placer, target)) {
-            placer.sendMessage(RC.BOUNTY_FRIENDLY_TARGET); return;
+            placer.sendMessage(RC.BOUNTY_FRIENDLY_TARGET);
+            return;
         }
 
-        // Fonds suffisants
-        Economy eco = OriginsFightCore.getInstance().getEconomy();
+        Economy eco = VaultEconomy.get();
         if (eco != null && eco.getBalance(placer) < amount) {
-            placer.sendMessage(RC.BOUNTY_NO_MONEY); return;
+            placer.sendMessage(RC.ERR_NO_MONEY);
+            return;
         }
 
-        // Placement
         bountyManager.placeManualBounty(placer.getUniqueId(), target, amount, eco);
-        placer.sendMessage(RC.fmt(RC.BOUNTY_PLACED, target.getName(), amount));
-        Bukkit.broadcastMessage(RC.fmt(RC.BOUNTY_BROADCAST, placer.getName(), amount, target.getName()));
+        placer.sendMessage(Text.fmt(RC.BOUNTY_PLACED, target.getName(), amount));
+        Bukkit.broadcastMessage(Text.fmt(RC.BOUNTY_BROADCAST, placer.getName(), amount, target.getName()));
     }
 
     // ── /prime cancel ─────────────────────────────────────────────────────────
 
     private void doCancel(Player placer) {
-        Economy eco = OriginsFightCore.getInstance().getEconomy();
         UUID target = bountyManager.getManualTarget(placer.getUniqueId());
         if (target == null) {
             placer.sendMessage(RC.PRE + "§cVous n'avez aucune prime manuelle active à annuler.");
             return;
         }
-        String targetName = bountyManager.getBounty(target) != null
-                ? bountyManager.getBounty(target).getTargetName() : "Inconnu";
-        long refund = bountyManager.cancelManualBounty(placer.getUniqueId(), eco);
+        BountyInfo info = bountyManager.getBounty(target);
+        String targetName = info != null ? info.getTargetName() : RC.BOUNTY_UNKNOWN;
+        long refund = bountyManager.cancelManualBounty(placer.getUniqueId(), VaultEconomy.get());
         if (refund < 0) {
-            placer.sendMessage(RC.PRE + "§cErreur lors de l'annulation."); return;
+            placer.sendMessage(RC.ERR_INTERNAL);
+            return;
         }
-        placer.sendMessage(RC.fmt(RC.BOUNTY_CANCELLED, targetName, refund));
+        placer.sendMessage(Text.fmt(RC.BOUNTY_CANCELLED, targetName, refund));
     }
 
     // ── /prime list ───────────────────────────────────────────────────────────
@@ -133,9 +148,9 @@ public class BountyCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("  §8┃ §7Aucune prime active pour le moment.");
         } else {
             for (BountyInfo info : all.values()) {
-                int ks = ksManager.getStreak(info.getTarget());
                 player.sendMessage("  §8┃ §c§l" + info.getTargetName()
-                    + " §8| §f§l" + info.getAmount() + "$ §8| §7killstreak : §e" + ks);
+                        + " §8| §f§l" + info.getAmount() + "$ §8| §7killstreak : §e"
+                        + ksManager.getStreak(info.getTarget()));
             }
         }
         player.sendMessage(BAR);
@@ -144,32 +159,32 @@ public class BountyCommand implements CommandExecutor, TabCompleter {
     // ── /prime info [joueur] ──────────────────────────────────────────────────
 
     private void doInfo(Player player, String[] args) {
-        UUID targetUuid;
-        String targetName;
+        UUID targetUuid = player.getUniqueId();
+        String targetName = player.getName();
         if (args.length >= 2) {
-            Player t = Bukkit.getPlayer(args[1]);
-            if (t == null) { player.sendMessage(RC.PRE + "§cJoueur introuvable."); return; }
-            targetUuid = t.getUniqueId(); targetName = t.getName();
-        } else {
-            targetUuid = player.getUniqueId(); targetName = player.getName();
+            Player target = findOnline(player, args[1]);
+            if (target == null) {
+                return;
+            }
+            targetUuid = target.getUniqueId();
+            targetName = target.getName();
         }
 
-        int ks = ksManager.getStreak(targetUuid);
+        int streak = ksManager.getStreak(targetUuid);
         BountyInfo info = bountyManager.getBounty(targetUuid);
 
         player.sendMessage(BAR);
         player.sendMessage("  §e§lInfos — §f" + targetName);
-        player.sendMessage("  §8┃ §7Killstreak actuel : §e§l" + ks);
+        player.sendMessage("  §8┃ §7Killstreak actuel : §e§l" + streak);
         if (info != null) {
             player.sendMessage("  §8┃ §7Prime active : §f§l" + info.getAmount() + "$");
             player.sendMessage("  §8┃ §7Killstreak à la création : §c" + info.getKillstreakAtCreation());
         } else {
             player.sendMessage("  §8┃ §7Aucune prime active sur ce joueur.");
         }
-        List<Integer> thresholds = ksManager.getBountyThresholdKills();
-        int next = nextThreshold(thresholds, ks);
+        int next = nextThreshold(ksManager.getBountyThresholdKills(), streak);
         if (next > 0) {
-            player.sendMessage("  §8┃ §7Prochain seuil : §c" + next + " kills §8(§7encore §c" + (next - ks) + "§8)");
+            player.sendMessage("  §8┃ §7Prochain seuil : §c" + next + " kills §8(§7encore §c" + (next - streak) + "§8)");
         }
         player.sendMessage(BAR);
     }
@@ -183,21 +198,17 @@ public class BountyCommand implements CommandExecutor, TabCompleter {
         if (bounties.isEmpty()) {
             player.sendMessage("  §8┃ §7Aucune prime active pour le moment.");
         } else {
-            List<BountyInfo> sorted = bounties.values().stream()
-                .sorted((a, b) -> Long.compare(b.getAmount(), a.getAmount()))
-                .collect(Collectors.toList());
+            List<BountyInfo> sorted = new ArrayList<>(bounties.values());
+            sorted.sort((a, b) -> Long.compare(b.getAmount(), a.getAmount()));
             int rank = 1;
-            for (BountyInfo b : sorted) {
-                int streak = ksManager.getStreak(b.getTarget());
-                player.sendMessage("  §8┃ §7#" + rank + " §f" + b.getTargetName()
-                    + " §8— §c" + b.getAmount() + "$ §8| §e" + streak + " kills");
-                rank++;
+            for (BountyInfo bounty : sorted) {
+                player.sendMessage("  §8┃ §7#" + rank++ + " §f" + bounty.getTargetName()
+                        + " §8— §c" + bounty.getAmount() + "$ §8| §e"
+                        + ksManager.getStreak(bounty.getTarget()) + " kills");
             }
         }
         player.sendMessage(BAR);
     }
-
-    // ── Aide ──────────────────────────────────────────────────────────────────
 
     private void sendHelp(Player player) {
         player.sendMessage(BAR);
@@ -211,75 +222,65 @@ public class BountyCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(BAR);
     }
 
-    // ── Vérifie si la cible est amie / même faction / alliée ─────────────────
-
-    /**
-     * Retourne true si la cible est un ami ou dans une faction amicale (own/ally/truce).
-     */
+    /** @return true si la cible est un ami ou en relation faction amicale (même faction, allié, trêve). */
     private boolean isFriendlyTarget(Player requester, Player target) {
-        // Vérif ami
-        FriendManager fm = FriendManager.getInstance();
-        if (fm != null && fm.areFriends(requester.getUniqueId(), target.getUniqueId())) return true;
-
-        // Vérif faction via l'API RedFaction
+        FriendManager friends = FriendManager.getInstance();
+        if (friends != null && friends.areFriends(requester.getUniqueId(), target.getUniqueId())) {
+            return true;
+        }
         try {
-            if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return false;
-            fr.redfaction.api.RedFactionAPI api = fr.redfaction.api.RedFactionAPI.get();
-            fr.redfaction.entity.Faction fRequester = api.getPlayerFaction(requester);
-            fr.redfaction.entity.Faction fTarget    = api.getPlayerFaction(target);
-            if (fRequester == null || fTarget == null) return false;
-
-            fr.redfaction.entity.Relation rel = api.getRelation(fRequester, fTarget);
-            if (rel == null) return false;
-            // SELF = même faction, ALLY = allié, TRUCE = trêve → tous considérés amicaux
-            return rel == fr.redfaction.entity.Relation.SELF
-                || rel == fr.redfaction.entity.Relation.ALLY
-                || rel == fr.redfaction.entity.Relation.TRUCE;
-        } catch (Exception ignored) {}
-        return false;
+            if (!RedFactionAPI.isAvailable()) {
+                return false;
+            }
+            RedFactionAPI api = RedFactionAPI.get();
+            Faction requesterFaction = api.getPlayerFaction(requester);
+            Faction targetFaction = api.getPlayerFaction(target);
+            if (requesterFaction == null || targetFaction == null) {
+                return false;
+            }
+            Relation relation = api.getRelation(requesterFaction, targetFaction);
+            return relation == Relation.SELF || relation == Relation.ALLY || relation == Relation.TRUCE;
+        } catch (Exception e) {
+            return false;
+        }
     }
-
-    // ── Tab completion ────────────────────────────────────────────────────────
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
             String prefix = args[0].toLowerCase();
-            for (String s : Arrays.asList("list", "info", "top", "cancel")) {
-                if (s.startsWith(prefix)) completions.add(s);
+            for (String sub : SUBCOMMANDS) {
+                if (sub.startsWith(prefix)) {
+                    completions.add(sub);
+                }
             }
-            // Complétion joueurs pour /prime <joueur>
             for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.getName().toLowerCase().startsWith(prefix)) completions.add(p.getName());
+                if (p.getName().toLowerCase().startsWith(prefix)) {
+                    completions.add(p.getName());
+                }
             }
         } else if (args.length == 2) {
             if (args[0].equalsIgnoreCase("info")) {
                 String prefix = args[1].toLowerCase();
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (p.getName().toLowerCase().startsWith(prefix)) completions.add(p.getName());
+                    if (p.getName().toLowerCase().startsWith(prefix)) {
+                        completions.add(p.getName());
+                    }
                 }
-            }
-            // Pour /prime <joueur> <montant> : suggestions de montants
-            if (!Arrays.asList("list", "top", "cancel", "info").contains(args[0].toLowerCase())) {
+            } else if (!SUBCOMMANDS.contains(args[0].toLowerCase())) {
                 completions.addAll(Arrays.asList("100", "500", "1000", "5000"));
             }
         }
         return completions;
     }
 
-    // ── Utilitaires ───────────────────────────────────────────────────────────
-
     private static int nextThreshold(List<Integer> thresholds, int current) {
-        for (int t : thresholds) if (t > current) return t;
+        for (int threshold : thresholds) {
+            if (threshold > current) {
+                return threshold;
+            }
+        }
         return -1;
-    }
-
-    /** Formate une durée en ms en "Xh Ym" lisible. */
-    private static String formatDuration(long ms) {
-        long hours   = TimeUnit.MILLISECONDS.toHours(ms);
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60;
-        if (hours > 0) return hours + "h " + minutes + "min";
-        return minutes + "min";
     }
 }

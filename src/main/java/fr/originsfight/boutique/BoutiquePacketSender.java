@@ -1,6 +1,7 @@
 package fr.originsfight.boutique;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -33,7 +34,7 @@ public final class BoutiquePacketSender {
         pb.writeString(plugin.getBoutiqueConfig().getString("boutique.titre", "&c&lBoutique RedConflict"));
 
         long money = 0L;
-        try { if (plugin.getEconomy() != null) money = (long) plugin.getEconomy().getBalance(player); }
+        try { if (VaultEconomy.get() != null) money = (long) VaultEconomy.get().getBalance(player); }
         catch (Exception ignored) {}
         int playerPB = plugin.getPBManager() != null ? plugin.getPBManager().get(player) : 0;
         pb.writeLong(money);

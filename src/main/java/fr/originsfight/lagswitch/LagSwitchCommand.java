@@ -1,7 +1,8 @@
 package fr.originsfight.lagswitch;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.OriginsFightCore;
-import fr.originsfight.RC;
+import fr.originsfight.core.text.RC;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -26,31 +27,32 @@ import java.util.stream.Stream;
  *   /lagswitch reload               — Recharge config.yml
  *   /lagswitch debug                — Toggle logs debug
  */
-public class LagSwitchCommand implements CommandExecutor, TabCompleter {
+public class LagSwitchCommand extends CoreCommand {
 
     private final OriginsFightCore plugin;
     private final LagSwitchManager manager;
 
     public LagSwitchCommand(OriginsFightCore plugin, LagSwitchManager manager) {
+        super(plugin, "lagswitch", false);
         this.plugin = plugin;
         this.manager = manager;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    protected void execute(CommandSender sender, String label, String[] args) {
         if (!sender.hasPermission("redconflict.staff") && !sender.isOp()) {
             sender.sendMessage(RC.ERR_NO_PERM);
-            return true;
+            return;
         }
 
-        if (args.length == 0) { sendHelp(sender); return true; }
+        if (args.length == 0) { sendHelp(sender); return; }
 
         switch (args[0].toLowerCase()) {
 
             // ── info ──────────────────────────────────────────────────────────
             case "info": {
                 Player target = resolveTarget(sender, args, 1);
-                if (target == null) return true;
+                if (target == null) return;
                 printInfo(sender, target);
                 break;
             }
@@ -59,12 +61,12 @@ public class LagSwitchCommand implements CommandExecutor, TabCompleter {
             case "unfreeze": {
                 if (args.length < 2) {
                     sender.sendMessage(RC.PRE + "§cUsage §f: /lagswitch unfreeze <joueur>");
-                    return true;
+                    return;
                 }
                 Player target = Bukkit.getPlayerExact(args[1]);
                 if (target == null) {
                     sender.sendMessage(RC.PRE + "§cJoueur introuvable ou hors-ligne.");
-                    return true;
+                    return;
                 }
                 boolean wasRestricted = manager.isRestricted(target);
                 manager.unfreeze(target.getUniqueId());
@@ -81,16 +83,16 @@ public class LagSwitchCommand implements CommandExecutor, TabCompleter {
             case "freeze": {
                 if (args.length < 2) {
                     sender.sendMessage(RC.PRE + "§cUsage §f: /lagswitch freeze <joueur>");
-                    return true;
+                    return;
                 }
                 Player target = Bukkit.getPlayerExact(args[1]);
                 if (target == null) {
                     sender.sendMessage(RC.PRE + "§cJoueur introuvable ou hors-ligne.");
-                    return true;
+                    return;
                 }
                 if (target.isOp()) {
                     sender.sendMessage(RC.PRE + "§cImpossible de freezer un OP.");
-                    return true;
+                    return;
                 }
                 manager.manualFreeze(target);
                 sender.sendMessage(RC.PRE + "§e" + target.getName() + " §efreezeé manuellement."
@@ -103,12 +105,12 @@ public class LagSwitchCommand implements CommandExecutor, TabCompleter {
             case "reset": {
                 if (args.length < 2) {
                     sender.sendMessage(RC.PRE + "§cUsage §f: /lagswitch reset <joueur>");
-                    return true;
+                    return;
                 }
                 Player target = Bukkit.getPlayerExact(args[1]);
                 if (target == null) {
                     sender.sendMessage(RC.PRE + "§cJoueur introuvable ou hors-ligne.");
-                    return true;
+                    return;
                 }
                 manager.resetPlayer(target.getUniqueId());
                 manager.resetIncidents(target.getUniqueId());
@@ -165,7 +167,6 @@ public class LagSwitchCommand implements CommandExecutor, TabCompleter {
                 sendHelp(sender);
                 break;
         }
-        return true;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

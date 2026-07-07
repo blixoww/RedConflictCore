@@ -1,7 +1,9 @@
 package fr.originsfight.loto;
 
+import fr.originsfight.core.text.Text;
 import fr.originsfight.OriginsFightCore;
-import fr.originsfight.RC;
+import fr.originsfight.core.economy.VaultEconomy;
+import fr.originsfight.core.text.RC;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -22,8 +24,6 @@ import java.util.*;
  *      - Multiplicateur (1.0 → 2.0) selon le nombre de joueurs
  */
 public class LotoManager {
-
-    private static LotoManager instance;
 
     /** Durée d'un loto ouvert en ticks (2 minutes = 2400 ticks). */
     private static final long LOTO_DURATION_TICKS = 20L * 60 * 2;
@@ -62,11 +62,8 @@ public class LotoManager {
     /** Tâche du prochain loto programmé. */
     private BukkitTask nextScheduledTask;
 
-    public static LotoManager getInstance() { return instance; }
-
     public LotoManager(OriginsFightCore plugin) {
         this.plugin = plugin;
-        instance = this;
     }
 
     // ── Scheduling ───────────────────────────────────────────────────────────
@@ -120,21 +117,21 @@ public class LotoManager {
         // Rappel à 1 minute restante (= 1 min après le début)
         reminderTasks.add(Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
             public void run() {
-                if (open) broadcast(RC.fmt(RC.LOTO_REMINDER, "1 minute"));
+                if (open) broadcast(Text.fmt(RC.LOTO_REMINDER, "1 minute"));
             }
         }, 20L * 60));
 
         // Rappel à 30 secondes restantes (= 1min30 après le début)
         reminderTasks.add(Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
             public void run() {
-                if (open) broadcast(RC.fmt(RC.LOTO_REMINDER, "30 secondes"));
+                if (open) broadcast(Text.fmt(RC.LOTO_REMINDER, "30 secondes"));
             }
         }, 20L * 90));
 
         // Rappel à 10 secondes restantes (= 1min50 après le début)
         reminderTasks.add(Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
             public void run() {
-                if (open) broadcast(RC.fmt(RC.LOTO_REMINDER, "10 secondes"));
+                if (open) broadcast(Text.fmt(RC.LOTO_REMINDER, "10 secondes"));
             }
         }, 20L * 110));
     }
@@ -147,18 +144,18 @@ public class LotoManager {
 
         if (bets.size() < MIN_PARTICIPANTS) {
             // Annulation : rembourser tout le monde
-            Economy eco = plugin.getEconomy();
+            Economy eco = VaultEconomy.get();
             if (eco != null) {
                 for (Map.Entry<UUID, Long> entry : bets.entrySet()) {
                     // Utiliser OfflinePlayer pour rembourser même les joueurs déconnectés
                     eco.depositPlayer(Bukkit.getOfflinePlayer(entry.getKey()), entry.getValue());
                     Player p = Bukkit.getPlayer(entry.getKey());
                     if (p != null) {
-                        p.sendMessage(RC.fmt(RC.LOTO_REFUND, entry.getValue()));
+                        p.sendMessage(Text.fmt(RC.LOTO_REFUND, entry.getValue()));
                     }
                 }
             }
-            broadcast(RC.fmt(RC.LOTO_CANCELLED, bets.size(), MIN_PARTICIPANTS));
+            broadcast(Text.fmt(RC.LOTO_CANCELLED, bets.size(), MIN_PARTICIPANTS));
         } else {
             // Calcul du multiplicateur (1.0 à 2.0) basé sur le nombre de joueurs
             double multiplier = 1.0 + Math.min(1.0, (bets.size() - MIN_PARTICIPANTS) / 10.0);
@@ -175,17 +172,17 @@ public class LotoManager {
             String winnerName = betNames.get(winnerId);
 
             // Verser au vainqueur (même s'il s'est déconnecté)
-            Economy eco = plugin.getEconomy();
+            Economy eco = VaultEconomy.get();
             if (eco != null) {
                 eco.depositPlayer(Bukkit.getOfflinePlayer(winnerId), finalPool);
                 Player winner = Bukkit.getPlayer(winnerId);
                 if (winner != null) {
-                    winner.sendMessage(RC.fmt(RC.LOTO_WIN_PERSONAL, finalPool));
+                    winner.sendMessage(Text.fmt(RC.LOTO_WIN_PERSONAL, finalPool));
                 }
             }
 
             // Annonce globale
-            broadcast(RC.fmt(RC.LOTO_WIN_BROADCAST, winnerName, finalPool,
+            broadcast(Text.fmt(RC.LOTO_WIN_BROADCAST, winnerName, finalPool,
                     bets.size(), String.format("%.1fx", multiplier)));
         }
 
@@ -226,17 +223,17 @@ public class LotoManager {
             return;
         }
         if (amount <= 0) {
-            player.sendMessage(RC.LOTO_INVALID_AMOUNT);
+            player.sendMessage(RC.ERR_INVALID_AMOUNT);
             return;
         }
 
-        Economy eco = plugin.getEconomy();
+        Economy eco = VaultEconomy.get();
         if (eco == null) {
-            player.sendMessage(RC.LOTO_ECO_ERROR);
+            player.sendMessage(RC.ERR_ECONOMY);
             return;
         }
         if ((long) eco.getBalance(player) < amount) {
-            player.sendMessage(RC.LOTO_NO_MONEY);
+            player.sendMessage(RC.ERR_NO_MONEY);
             return;
         }
 
@@ -244,8 +241,8 @@ public class LotoManager {
         bets.put(player.getUniqueId(), amount);
         betNames.put(player.getUniqueId(), player.getName());
 
-        player.sendMessage(RC.fmt(RC.LOTO_BET_OK, amount));
-        broadcast(RC.fmt(RC.LOTO_BET_BROADCAST, player.getName(), bets.size()));
+        player.sendMessage(Text.fmt(RC.LOTO_BET_OK, amount));
+        broadcast(Text.fmt(RC.LOTO_BET_BROADCAST, player.getName(), bets.size()));
     }
 
     /** Force le démarrage d'un loto (commande staff). Ignore le minimum de joueurs en ligne. */
@@ -273,19 +270,19 @@ public class LotoManager {
 
         reminderTasks.add(Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
             public void run() {
-                if (open) broadcast(RC.fmt(RC.LOTO_REMINDER, "1 minute"));
+                if (open) broadcast(Text.fmt(RC.LOTO_REMINDER, "1 minute"));
             }
         }, 20L * 60));
 
         reminderTasks.add(Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
             public void run() {
-                if (open) broadcast(RC.fmt(RC.LOTO_REMINDER, "30 secondes"));
+                if (open) broadcast(Text.fmt(RC.LOTO_REMINDER, "30 secondes"));
             }
         }, 20L * 90));
 
         reminderTasks.add(Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
             public void run() {
-                if (open) broadcast(RC.fmt(RC.LOTO_REMINDER, "10 secondes"));
+                if (open) broadcast(Text.fmt(RC.LOTO_REMINDER, "10 secondes"));
             }
         }, 20L * 110));
 
@@ -300,14 +297,14 @@ public class LotoManager {
             if (task != null) task.cancel();
         }
         // Rembourser tout le monde
-        Economy eco = plugin.getEconomy();
+        Economy eco = VaultEconomy.get();
         if (eco != null) {
             for (Map.Entry<UUID, Long> entry : bets.entrySet()) {
                 // Utiliser OfflinePlayer pour rembourser même les joueurs déconnectés
                 eco.depositPlayer(Bukkit.getOfflinePlayer(entry.getKey()), entry.getValue());
                 Player p = Bukkit.getPlayer(entry.getKey());
                 if (p != null) {
-                    p.sendMessage(RC.fmt(RC.LOTO_REFUND, entry.getValue()));
+                    p.sendMessage(Text.fmt(RC.LOTO_REFUND, entry.getValue()));
                 }
             }
         }
@@ -356,18 +353,6 @@ public class LotoManager {
         return Math.max(0, remaining);
     }
 
-    /** Formate un nombre de secondes en "Xh Xmin Xs". */
-    public static String formatDuration(long totalSeconds) {
-        if (totalSeconds <= 0) return "0s";
-        long h = totalSeconds / 3600;
-        long m = (totalSeconds % 3600) / 60;
-        long s = totalSeconds % 60;
-        StringBuilder sb = new StringBuilder();
-        if (h > 0) sb.append(h).append("h ");
-        if (m > 0) sb.append(m).append("min ");
-        if (s > 0 || sb.length() == 0) sb.append(s).append("s");
-        return sb.toString().trim();
-    }
 
     // ── Utilitaire ───────────────────────────────────────────────────────────
 

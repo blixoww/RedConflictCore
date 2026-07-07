@@ -22,11 +22,12 @@ public class TradeC2SHandler implements PluginMessageListener {
     /** Clic style inventaire : byte region | varint slot | byte button | byte shift */
     private static final int TRADE_CLICK   = 0xA6;
 
-    private final TradeManager manager = TradeManager.getInstance();
+    private final TradeManager manager;
     private final OriginsFightCore plugin;
 
-    public TradeC2SHandler(OriginsFightCore plugin) {
+    public TradeC2SHandler(OriginsFightCore plugin, TradeManager manager) {
         this.plugin = plugin;
+        this.manager = manager;
     }
 
     @Override

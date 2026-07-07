@@ -1,5 +1,6 @@
 package fr.originsfight.announce;
 
+import fr.originsfight.core.text.Text;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;

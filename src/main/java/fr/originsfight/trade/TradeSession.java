@@ -1,7 +1,8 @@
 package fr.originsfight.trade;
 
 import fr.originsfight.OriginsFightCore;
-import fr.originsfight.RC;
+import fr.originsfight.core.economy.VaultEconomy;
+import fr.originsfight.core.text.RC;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -324,7 +325,7 @@ public class TradeSession {
         if (!isA && !isB) return;
 
         // Plafonnement par le solde Vault disponible
-        Economy econ = OriginsFightCore.getInstance().getEconomy();
+        Economy econ = VaultEconomy.get();
         long cap = Long.MAX_VALUE;
         if (econ != null) {
             try { cap = (long) econ.getBalance(player); } catch (Exception ignored) {}
@@ -432,7 +433,7 @@ public class TradeSession {
         executing = true;
 
         // ── Re-validation des montants vs solde courant (anti-cheat) ─────────
-        Economy econ = OriginsFightCore.getInstance().getEconomy();
+        Economy econ = VaultEconomy.get();
         if (econ != null) {
             if (moneyA > 0 && econ.getBalance(playerA) < moneyA) { abortInsufficient(playerA); return; }
             if (moneyB > 0 && econ.getBalance(playerB) < moneyB) { abortInsufficient(playerB); return; }

@@ -1,41 +1,28 @@
 package fr.originsfight.annonyme;
 
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
+import fr.originsfight.core.command.CoreCommand;
+import fr.originsfight.core.text.RC;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Collections;
-import java.util.List;
-
-public class AnonymeCommand implements CommandExecutor, TabCompleter {
+/** /annonyme — bascule le masquage du pseudo, de la faction et du grade. */
+public class AnonymeCommand extends CoreCommand {
 
     private final AnonymeManager anonymeManager;
 
-    public AnonymeCommand(AnonymeManager anonymeManager) {
+    public AnonymeCommand(JavaPlugin plugin, AnonymeManager anonymeManager) {
+        super(plugin, "annonyme", true);
         this.anonymeManager = anonymeManager;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("Cette commande ne peut être utilisée que par un joueur.");
-            return true;
-        }
-
+    protected void execute(CommandSender sender, String label, String[] args) {
         Player player = (Player) sender;
-
         if (anonymeManager.toggleAnonymity(player)) {
-            player.sendMessage("§aVous êtes maintenant anonyme. Votre pseudo et votre faction sont cachés.");
+            player.sendMessage(RC.PRE + "§aVous êtes maintenant anonyme. Votre pseudo et votre faction sont cachés.");
         } else {
-            player.sendMessage("§cVous n'êtes plus anonyme. Votre pseudo et votre faction sont visibles.");
+            player.sendMessage(RC.PRE + "§cVous n'êtes plus anonyme. Votre pseudo et votre faction sont visibles.");
         }
-        return true;
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        return Collections.emptyList();
     }
 }

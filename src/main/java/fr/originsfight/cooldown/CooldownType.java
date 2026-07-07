@@ -1,13 +1,8 @@
 package fr.originsfight.cooldown;
 
+/** Cooldowns gameplay suivis par le {@link CooldownManager}. */
 public enum CooldownType {
-    ENDERPEARL,
-    APPLE,
-    GOLDENAPPLE,
     RTP,
     REPAIR,
-    FRAISE,
-    COMBAT,
-    HEALSTICK,
-    PUMPKIE_PIE;
+    COMBAT
 }

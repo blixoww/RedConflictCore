@@ -1,6 +1,7 @@
 package fr.originsfight.useful;
 
 import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.data.PlayerDatabase;
 import fr.originsfight.staff.StaffManager;
 import net.milkbowl.vault.chat.Chat;
@@ -110,7 +111,7 @@ public class PlayerListManager {
             String header = "\n\u00a7c\u00a7lRedConflict\n\u00a77Joueurs \u00a78: \u00a7f" + online + " \u00a78/ \u00a77" + max + "\n";
 
             // Monnaie
-            Economy eco = plugin.getEconomy();
+            Economy eco = VaultEconomy.get();
             String balanceStr = eco != null ? String.valueOf((long) eco.getBalance(p)) : "?";
 
             // Stats KS (kills, deaths, killstreak)

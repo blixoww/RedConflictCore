@@ -1,6 +1,6 @@
 package fr.originsfight.feature;
 
-import fr.originsfight.RC;
+import fr.originsfight.core.text.RC;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;

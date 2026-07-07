@@ -1,5 +1,6 @@
 package fr.originsfight.clearlagg;
 
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.OriginsFightCore;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -27,28 +28,29 @@ import java.util.List;
  *
  * Permission : redconflict.staff (pour now / reload / count)
  */
-public class ClearLaggCommand implements CommandExecutor, TabCompleter {
+public class ClearLaggCommand extends CoreCommand {
 
     private final OriginsFightCore plugin;
     private final ClearLaggManager manager;
 
     public ClearLaggCommand(OriginsFightCore plugin, ClearLaggManager manager) {
+        super(plugin, "clearlagg", false);
         this.plugin  = plugin;
         this.manager = manager;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+    protected void execute(CommandSender sender, String label, String[] args) {
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             sendHelp(sender);
-            return true;
+            return;
         }
 
         switch (args[0].toLowerCase()) {
 
             // ── now ───────────────────────────────────────────────────────────
             case "now": {
-                if (!hasStaffPerm(sender)) return true;
+                if (!hasStaffPerm(sender)) return;
                 sender.sendMessage("§8[§6§lClearLagg§8] §eLancement immédiat du clearlagg…");
                 // Planifier sur le prochain tick pour rester thread-safe
                 Bukkit.getScheduler().runTask(plugin, () -> {
@@ -96,7 +98,7 @@ public class ClearLaggCommand implements CommandExecutor, TabCompleter {
 
             // ── reload ────────────────────────────────────────────────────────
             case "reload": {
-                if (!hasStaffPerm(sender)) return true;
+                if (!hasStaffPerm(sender)) return;
                 plugin.reloadConfig();
                 manager.reload();
                 sender.sendMessage("§8[§6§lClearLagg§8] §aConfiguration rechargée !");
@@ -105,7 +107,7 @@ public class ClearLaggCommand implements CommandExecutor, TabCompleter {
 
             // ── count ─────────────────────────────────────────────────────────
             case "count": {
-                if (!hasStaffPerm(sender)) return true;
+                if (!hasStaffPerm(sender)) return;
                 String worldName = args.length > 1 ? args[1] : null;
                 List<World> worlds = worldName != null
                         ? Collections.singletonWorld(worldName)
@@ -113,7 +115,7 @@ public class ClearLaggCommand implements CommandExecutor, TabCompleter {
 
                 if (worldName != null && worlds.isEmpty()) {
                     sender.sendMessage("§cMonde introuvable : §f" + worldName);
-                    return true;
+                    return;
                 }
 
                 sender.sendMessage("§8[§6§lClearLagg§8] §eEntités par monde :");
@@ -146,7 +148,6 @@ public class ClearLaggCommand implements CommandExecutor, TabCompleter {
             default:
                 sendHelp(sender);
         }
-        return true;
     }
 
     // ── Tab-complétion ────────────────────────────────────────────────────────

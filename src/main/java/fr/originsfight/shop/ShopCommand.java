@@ -1,10 +1,10 @@
 package fr.originsfight.shop;
 
+import fr.originsfight.core.command.CoreCommand;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,34 +12,35 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-public class ShopCommand implements CommandExecutor, TabCompleter {
+public class ShopCommand extends CoreCommand {
 
     private final ShopManager manager;
 
-    public ShopCommand(ShopManager manager) {
+    public ShopCommand(JavaPlugin plugin, ShopManager manager) {
+        super(plugin, "shop", false);
         this.manager = manager;
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+    protected void execute(CommandSender sender, String label, String[] args) {
         String cmdName = label.toLowerCase(Locale.ROOT);
 
         // ── /shopdebug ─────────────────────────────────────────────────────
         if (cmdName.equals("shopdebug")) {
             if (!sender.hasPermission("shop.admin")) {
                 sender.sendMessage("§cVous n'avez pas la permission.");
-                return true;
+                return;
             }
             if (args.length == 0) {
                 sender.sendMessage("§cUsage: /shopdebug <tick all|info|reset>");
-                return true;
+                return;
             }
             String sub = args[0].toLowerCase(Locale.ROOT);
             switch (sub) {
                 case "tick": {
                     if (args.length < 2 || !args[1].equalsIgnoreCase("all")) {
                         sender.sendMessage("§cUsage: /shopdebug tick all");
-                        return true;
+                        return;
                     }
                     sender.sendMessage("§6[Shop] §eDébut de la simulation de 24h (async)...");
                     manager.simulateDailyRegression(() -> {
@@ -47,7 +48,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage("§7Les prix ont été rapprochés de leur valeur de base.");
                         sender.sendMessage("§7L'historique des prix a été mis à jour.");
                     });
-                    return true;
+                    return;
                 }
                 case "info": {
                     String[] summary = manager.getDatabase().getMarketSummary();
@@ -63,24 +64,24 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
                     } else {
                         sender.sendMessage("§7Prochaine régression : §finconnue");
                     }
-                    return true;
+                    return;
                 }
                 case "reset": {
                     sender.sendMessage("§6[Shop] §eRéinitialisation du catalogue...");
                     manager.resetAndReloadShop();
                     sender.sendMessage("§6[Shop] §aCatalogue rechargé avec succès !");
-                    return true;
+                    return;
                 }
                 default:
                     sender.sendMessage("§cUsage: /shopdebug <tick all|info|reset>");
-                    return true;
+                    return;
             }
         }
 
         // ── /shop ──────────────────────────────────────────────────────────
         if (!(sender instanceof Player)) {
             sender.sendMessage("§cCette commande est réservée aux joueurs.");
-            return true;
+            return;
         }
 
         Player player = (Player) sender;
@@ -89,7 +90,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
         if (args.length == 0) {
             manager.openShop(player);
             manager.sendCategories(player);
-            return true;
+            return;
         }
 
         // /shop help
@@ -104,7 +105,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("§7  /shopdebug tick all §f- Simuler une régression 24h");
                 player.sendMessage("§7  /shopdebug reset §f- Réinitialiser le catalogue");
             }
-            return true;
+            return;
         }
 
         // /shop next => prochain rééquilibrage
@@ -112,7 +113,7 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
             long nextTick = manager.getNextRegressionTime();
             if (nextTick <= 0) {
                 player.sendMessage("§6[Shop] §cInformation indisponible.");
-                return true;
+                return;
             }
             long remaining = (nextTick - System.currentTimeMillis()) / 1000L;
             if (remaining < 0) remaining = 0;
@@ -123,11 +124,11 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§6[Shop] §eProchain rééquilibrage des prix :");
             player.sendMessage("§7  → dans §f" + hours + "h " + minutes + "min " + seconds + "s");
             player.sendMessage("§8  (Les prix sont recalculés toutes les 24h en fonction de l'offre et de la demande des 7 derniers jours)");
-            return true;
+            return;
         }
 
         player.sendMessage("§cSous-commande inconnue. Tapez §e/shop help §cpour la liste des commandes.");
-        return true;
+        return;
     }
 
     @Override

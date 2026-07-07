@@ -1,8 +1,9 @@
 package fr.originsfight.staff.commands;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.staff.StaffDatabase;
 import fr.originsfight.staff.StaffFormatter;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.*;
@@ -28,7 +29,7 @@ import java.util.*;
  *
  * Affichage : PAPER (pas de skull NMS) — tri par ratio décroissant.
  */
-public class TopLuckCommand implements CommandExecutor, TabCompleter, Listener {
+public class TopLuckCommand extends CoreCommand implements Listener {
 
     // ── Configuration suspect ─────────────────────────────────────────────────
     /** Minimum de minerais moddés pour être affiché (filtre les joueurs avec 1 seul bloc) */
@@ -40,18 +41,15 @@ public class TopLuckCommand implements CommandExecutor, TabCompleter, Listener {
     private static final String TITLE_PREFIX   = "SuspectMinage|";
 
     private final StaffDatabase db;
-    private final OriginsFightCore plugin;
 
-    public TopLuckCommand(StaffDatabase db) {
+    public TopLuckCommand(JavaPlugin plugin, StaffDatabase db) {
+        super(plugin, "topluck", true);
         this.db     = db;
-        this.plugin = OriginsFightCore.getInstance();
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage("§cEn jeu uniquement."); return true; }
+    protected void execute(CommandSender sender, String label, String[] args) {
         openPage((Player) sender, 1);
-        return true;
     }
 
     // ── Chargement asynchrone ─────────────────────────────────────────────────
