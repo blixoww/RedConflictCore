@@ -1,6 +1,6 @@
 name: RedConflictCore
 version: '${project.version}'
-main: fr.originsfight.RedConflictCore
+main: fr.redconflict.RedConflictCore
 prefix: RedConflictCore
 authors: [leziink]
 description: Plugin RedConflict - gestion du serveur
