@@ -1,6 +1,6 @@
 package fr.originsfight.ping;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.friend.FriendManager;
 import fr.originsfight.packets.PacketBuilder;
 import fr.originsfight.packets.PacketReader;
@@ -44,9 +44,9 @@ public class PingServerHandler implements PluginMessageListener {
     private static final int RELATION_ALLY    = 1;
     private static final int RELATION_FRIEND  = 2;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public PingServerHandler(OriginsFightCore plugin) {
+    public PingServerHandler(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

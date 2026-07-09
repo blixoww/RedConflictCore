@@ -1,6 +1,6 @@
 package fr.originsfight.trade;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
@@ -23,9 +23,9 @@ public class TradeC2SHandler implements PluginMessageListener {
     private static final int TRADE_CLICK   = 0xA6;
 
     private final TradeManager manager;
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public TradeC2SHandler(OriginsFightCore plugin, TradeManager manager) {
+    public TradeC2SHandler(RedConflictCore plugin, TradeManager manager) {
         this.plugin = plugin;
         this.manager = manager;
     }

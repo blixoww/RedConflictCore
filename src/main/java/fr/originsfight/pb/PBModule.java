@@ -1,6 +1,6 @@
 package fr.originsfight.pb;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 import fr.originsfight.data.PlayerDatabase;
@@ -11,13 +11,13 @@ import fr.originsfight.data.PlayerDatabase;
  */
 public class PBModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final PlayerDatabase playerDatabase;
 
     private PBManager manager;
     private StaffAlertManager staffAlerts;
 
-    public PBModule(OriginsFightCore plugin, PlayerDatabase playerDatabase) {
+    public PBModule(RedConflictCore plugin, PlayerDatabase playerDatabase) {
         this.plugin = plugin;
         this.playerDatabase = playerDatabase;
     }

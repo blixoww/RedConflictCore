@@ -1,6 +1,6 @@
 package fr.originsfight.data;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.RankResolver;
 import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.data.PlayerDatabase;
@@ -18,9 +18,9 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 public class PlayerDataServerHandler implements PluginMessageListener {
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public PlayerDataServerHandler(OriginsFightCore plugin) {
+    public PlayerDataServerHandler(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 
@@ -128,7 +128,7 @@ public class PlayerDataServerHandler implements PluginMessageListener {
     }
 
     public static void sendAllPlayerData(Player player) {
-        OriginsFightCore plugin = OriginsFightCore.getInstance();
+        RedConflictCore plugin = RedConflictCore.getInstance();
         PlayerDatabase db = plugin.getPlayerDatabase();
 
         // Rang frais (Vault Chat, secours PlaceholderAPI).
@@ -175,20 +175,20 @@ public class PlayerDataServerHandler implements PluginMessageListener {
     }
 
     public static void sendBalance(Player player, long balance) {
-        OriginsFightCore plugin = OriginsFightCore.getInstance();
+        RedConflictCore plugin = RedConflictCore.getInstance();
         byte[] data = PacketBuilder.create(80).writeLong(balance).build();
         player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
     }
 
     public static void sendRank(Player player, String rank) {
-        OriginsFightCore plugin = OriginsFightCore.getInstance();
+        RedConflictCore plugin = RedConflictCore.getInstance();
         byte[] data = PacketBuilder.create(81).writeString(rank).build();
         player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
     }
 
     /** Envoie le solde PB courant du joueur (packet PLAYER_PB = 0x53). */
     public static void sendPB(Player player, int pb) {
-        OriginsFightCore plugin = OriginsFightCore.getInstance();
+        RedConflictCore plugin = RedConflictCore.getInstance();
         byte[] data = PacketBuilder.create(0x53).writeVarInt(pb).build();
         player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
     }

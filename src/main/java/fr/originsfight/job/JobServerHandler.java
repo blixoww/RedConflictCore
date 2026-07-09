@@ -1,6 +1,6 @@
 package fr.originsfight.job;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.packets.PacketReader;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
@@ -24,11 +24,11 @@ public class JobServerHandler implements PluginMessageListener {
     private static final int PKT_JOB_REQUEST_DATA       = 0xE2;
     private static final int PKT_JOB_REQUEST_XP_SOURCES = 0xE3;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final JobManager       manager;
     private final JobPacketSender  sender;
 
-    public JobServerHandler(OriginsFightCore plugin, JobManager manager, JobPacketSender sender) {
+    public JobServerHandler(RedConflictCore plugin, JobManager manager, JobPacketSender sender) {
         this.plugin  = plugin;
         this.manager = manager;
         this.sender  = sender;

@@ -3,7 +3,7 @@ package fr.originsfight.faction;
 import fr.redfaction.api.RedFactionAPI;
 import fr.redfaction.entity.Faction;
 import fr.redfaction.entity.Relation;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -41,11 +41,11 @@ public class FactionZoneSender implements Listener {
     private static final String FACTION_S2C  = "CUSTOM:FACTION_S2C";
     private static final int    FACTION_ZONE = 0x81;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     /** Cache de la dernière donnée envoyée : UUID → "owner|rel|own" */
     private final Map<UUID, String> lastSent = new ConcurrentHashMap<>();
 
-    public FactionZoneSender(OriginsFightCore plugin) {
+    public FactionZoneSender(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

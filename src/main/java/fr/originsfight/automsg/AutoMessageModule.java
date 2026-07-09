@@ -1,6 +1,6 @@
 package fr.originsfight.automsg;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 
 /**
@@ -8,9 +8,9 @@ import fr.originsfight.core.Module;
  */
 public class AutoMessageModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public AutoMessageModule(OriginsFightCore plugin) {
+    public AutoMessageModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

@@ -1,6 +1,6 @@
 package fr.originsfight.friend;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -36,7 +36,7 @@ public class FriendManager {
 
     // ── Initialisation ────────────────────────────────────────────────────────
 
-    public boolean enable(OriginsFightCore plugin) {
+    public boolean enable(RedConflictCore plugin) {
         database = new FriendDatabase(plugin.getCoreDatabase());
         if (!database.init()) return false;
         // Charger les demandes existantes depuis la BDD dans le cache

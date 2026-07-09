@@ -1,6 +1,6 @@
 package fr.originsfight.bounty;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 
@@ -10,9 +10,9 @@ import fr.originsfight.core.command.CommandRegistrar;
  */
 public class BountyModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public BountyModule(OriginsFightCore plugin) {
+    public BountyModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

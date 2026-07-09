@@ -1,6 +1,6 @@
 package fr.originsfight.boutique;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.command.CoreCommand;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -22,9 +22,9 @@ public class BoutiqueCommand extends CoreCommand {
 
     private static final String PERM_ADMIN = "redconflict.boutique.admin";
 
-    private final OriginsFightCore core;
+    private final RedConflictCore core;
 
-    public BoutiqueCommand(OriginsFightCore plugin) {
+    public BoutiqueCommand(RedConflictCore plugin) {
         super(plugin, "pbshop", false);
         this.core = plugin;
     }

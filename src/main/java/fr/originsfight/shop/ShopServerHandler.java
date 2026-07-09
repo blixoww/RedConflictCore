@@ -1,6 +1,6 @@
 package fr.originsfight.shop;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.packets.PacketReader;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
@@ -14,9 +14,9 @@ public class ShopServerHandler implements PluginMessageListener {
     private static final int SHOP_SELL                = 0x33;
     private static final int SHOP_ITEM_DETAIL_REQUEST = 0x34;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public ShopServerHandler(OriginsFightCore plugin) {
+    public ShopServerHandler(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

@@ -1,6 +1,6 @@
 package fr.originsfight.job;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -34,13 +34,13 @@ public class JobPacketSender {
     private static final int PKT_JOB_OPEN = 0xE5;
     private static final int PKT_JOB_XP_SOURCES = 0xE6;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final JobConfig config;
     private final JobDatabase database;
     /** Optionnel : permet d'inclure le temps de boost x2 restant dans JOB_DATA. */
     private fr.originsfight.xpboost.XpBoostManager xpBoostManager;
 
-    public JobPacketSender(OriginsFightCore plugin, JobConfig config, JobDatabase database) {
+    public JobPacketSender(RedConflictCore plugin, JobConfig config, JobDatabase database) {
         this.plugin = plugin;
         this.config = config;
         this.database = database;

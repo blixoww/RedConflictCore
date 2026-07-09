@@ -1,6 +1,6 @@
 package fr.originsfight.boutique;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Bukkit;
@@ -28,7 +28,7 @@ public final class BoutiquePacketSender {
     private BoutiquePacketSender() {}
 
     public static void sendData(Player player) {
-        OriginsFightCore plugin = OriginsFightCore.getInstance();
+        RedConflictCore plugin = RedConflictCore.getInstance();
         PacketBuilder pb = PacketBuilder.create(BOUTIQUE_DATA);
 
         pb.writeString(plugin.getBoutiqueConfig().getString("boutique.titre", "&c&lBoutique RedConflict"));
@@ -71,7 +71,7 @@ public final class BoutiquePacketSender {
                 .writeBoolean(success)
                 .writeString(truncate(message, 200))
                 .build();
-        player.sendPluginMessage((Plugin) OriginsFightCore.getInstance(), CHANNEL_S2C, data);
+        player.sendPluginMessage((Plugin) RedConflictCore.getInstance(), CHANNEL_S2C, data);
     }
 
     // ── Sérialisation catégorie ──────────────────────────────────────────────

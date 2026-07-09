@@ -21,7 +21,7 @@ import java.util.UUID;
 
 /**
  * Gère les 8 slots ring par joueur.
- * Stockage : plugins/OriginsFightCore/rings/<uuid>.json
+ * Stockage : plugins/RedConflictCore/rings/<uuid>.json
  */
 public class RingManager {
 

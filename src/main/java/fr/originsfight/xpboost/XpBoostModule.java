@@ -1,6 +1,6 @@
 package fr.originsfight.xpboost;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.data.PlayerDatabase;
 import fr.originsfight.job.JobManager;
@@ -11,12 +11,12 @@ import fr.originsfight.job.JobManager;
  */
 public class XpBoostModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final PlayerDatabase playerDatabase;
     /** Null si le module Jobs a échoué : le boost reste consommable, sans effet métier. */
     private final JobManager jobManager;
 
-    public XpBoostModule(OriginsFightCore plugin, PlayerDatabase playerDatabase, JobManager jobManager) {
+    public XpBoostModule(RedConflictCore plugin, PlayerDatabase playerDatabase, JobManager jobManager) {
         this.plugin = plugin;
         this.playerDatabase = playerDatabase;
         this.jobManager = jobManager;

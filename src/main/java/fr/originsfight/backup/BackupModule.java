@@ -1,6 +1,6 @@
 package fr.originsfight.backup;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 
@@ -10,10 +10,10 @@ import fr.originsfight.core.command.CommandRegistrar;
  */
 public class BackupModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private BackupManager manager;
 
-    public BackupModule(OriginsFightCore plugin) {
+    public BackupModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

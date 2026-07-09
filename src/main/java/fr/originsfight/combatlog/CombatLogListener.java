@@ -3,7 +3,7 @@ package fr.originsfight.combatlog;
 import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.flags.DefaultFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.text.RC;
 import fr.originsfight.core.text.Text;
 import fr.originsfight.cooldown.CooldownType;
@@ -25,7 +25,7 @@ public class CombatLogListener implements Listener {
     // WorldGuard est optionnel : calculé une fois au démarrage. Sur un serveur sans WorldGuard
     // (ex. Minage), hasPvP() n'est jamais appelé → la JVM ne charge pas les classes WorldGuard
     // (pas de NoClassDefFoundError), et le PvP est autorisé partout par défaut.
-    private final boolean wgPresent = OriginsFightCore.getInstance().getWorldGuard() != null;
+    private final boolean wgPresent = RedConflictCore.getInstance().getWorldGuard() != null;
 
     private final CombatLogSender sender;
 
@@ -96,7 +96,7 @@ public class CombatLogListener implements Listener {
     }
 
     public boolean hasPvP(Player player) {
-        RegionManager regionManager = OriginsFightCore.getInstance().getWorldGuard().getRegionManager(player.getWorld());
+        RegionManager regionManager = RedConflictCore.getInstance().getWorldGuard().getRegionManager(player.getWorld());
         ApplicableRegionSet set = regionManager.getApplicableRegions(player.getLocation());
         if (set.size() == 0)
             return true;

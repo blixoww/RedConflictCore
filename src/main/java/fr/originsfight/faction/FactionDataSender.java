@@ -3,7 +3,7 @@ package fr.originsfight.faction;
 import fr.redfaction.api.RedFactionAPI;
 import fr.redfaction.entity.Faction;
 import fr.redfaction.entity.Relation;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.annonyme.AnonymeManager; // Import AnonymeManager
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Bukkit;
@@ -31,10 +31,10 @@ public class FactionDataSender implements Runnable {
     private static final int    INTERVAL_TICKS = 40;  // 2 secondes
     private static final double RENDER_RANGE   = 64.0;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final AnonymeManager anonymeManager; // Added AnonymeManager field
 
-    public FactionDataSender(OriginsFightCore plugin) {
+    public FactionDataSender(RedConflictCore plugin) {
         this.plugin = plugin;
         this.anonymeManager = plugin.getAnonymeManager(); // Get AnonymeManager instance
     }

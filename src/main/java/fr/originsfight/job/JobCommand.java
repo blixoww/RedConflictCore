@@ -1,6 +1,6 @@
 package fr.originsfight.job;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.command.CoreCommand;
 import fr.originsfight.core.text.RC;
 import org.bukkit.Bukkit;
@@ -33,7 +33,7 @@ public class JobCommand extends CoreCommand {
     private static final List<String> JOB_NAMES = Arrays.asList("MINER", "FARMER", "ARTISAN");
     private static final List<String> TOP_KEYS  = Arrays.asList("ALL", "MINER", "FARMER", "ARTISAN");
 
-    public JobCommand(OriginsFightCore plugin, JobManager manager, JobPacketSender sender) {
+    public JobCommand(RedConflictCore plugin, JobManager manager, JobPacketSender sender) {
         super(plugin, "metier", false);
         this.manager = manager;
         this.sender  = sender;

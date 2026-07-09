@@ -1,6 +1,6 @@
 package fr.originsfight.combatlog;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.packets.PacketBuilder;
 import fr.originsfight.cooldown.CooldownManager;
@@ -30,11 +30,11 @@ public class CombatLogSender {
     private static final int  PACKET_ID      = 1;
     private static final long INTERVAL_TICKS = 10L; // 0.5s
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final Set<UUID> inCombat = new HashSet<>();
     private BukkitTask task;
 
-    public CombatLogSender(OriginsFightCore plugin) {
+    public CombatLogSender(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

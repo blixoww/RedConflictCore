@@ -1,6 +1,6 @@
 package fr.originsfight.job;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 import fr.originsfight.db.Database;
@@ -12,14 +12,14 @@ import fr.originsfight.db.Database;
  */
 public class JobModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final Database database;
 
     private JobDatabase jobDatabase;
     private JobManager jobManager;
     private JobTopManager jobTopManager;
 
-    public JobModule(OriginsFightCore plugin, Database database) {
+    public JobModule(RedConflictCore plugin, Database database) {
         this.plugin = plugin;
         this.database = database;
     }

@@ -1,7 +1,7 @@
 package fr.originsfight.backup;
 
 import fr.originsfight.core.command.CoreCommand;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.text.RC;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -26,10 +26,10 @@ import java.util.List;
  */
 public class BackupCommand extends CoreCommand {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final BackupManager manager;
 
-    public BackupCommand(OriginsFightCore plugin, BackupManager manager) {
+    public BackupCommand(RedConflictCore plugin, BackupManager manager) {
         super(plugin, "backup", false);
         this.plugin = plugin;
         this.manager = manager;

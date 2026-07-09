@@ -1,6 +1,6 @@
 package fr.originsfight.annonyme;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -21,7 +21,7 @@ public final class AnonymousDataSender {
 
     /** Broadcast l'état d'un joueur cible à tous les viewers en ligne (sauf le joueur lui-même). */
     public static void broadcast(Player target, boolean anonymous) {
-        OriginsFightCore plugin = OriginsFightCore.getInstance();
+        RedConflictCore plugin = RedConflictCore.getInstance();
         if (plugin == null || target == null) return;
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             if (viewer.equals(target)) continue; // ne pas se masquer à soi-même
@@ -31,7 +31,7 @@ public final class AnonymousDataSender {
 
     /** Synchronise tous les joueurs anonymes actuellement en ligne vers un seul viewer (typiquement à la connexion). */
     public static void syncAll(Player viewer) {
-        OriginsFightCore plugin = OriginsFightCore.getInstance();
+        RedConflictCore plugin = RedConflictCore.getInstance();
         if (plugin == null || viewer == null) return;
         AnonymeManager mgr = plugin.getAnonymeManager();
         if (mgr == null) return;
@@ -41,7 +41,7 @@ public final class AnonymousDataSender {
         }
     }
 
-    private static void sendTo(OriginsFightCore plugin, Player viewer, String targetName, boolean anonymous) {
+    private static void sendTo(RedConflictCore plugin, Player viewer, String targetName, boolean anonymous) {
         // Staff avec perm voit toujours le pseudo réel
         boolean effective = anonymous && !viewer.hasPermission(STAFF_PERM);
         byte[] payload = PacketBuilder.create(ID)

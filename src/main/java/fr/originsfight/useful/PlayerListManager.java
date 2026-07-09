@@ -1,6 +1,6 @@
 package fr.originsfight.useful;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.data.PlayerDatabase;
 import fr.originsfight.staff.StaffManager;
@@ -13,10 +13,10 @@ import org.bukkit.scoreboard.*;
 
 public class PlayerListManager {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final StaffManager mgr = StaffManager.get();
 
-    public PlayerListManager(OriginsFightCore plugin) { this.plugin = plugin; }
+    public PlayerListManager(RedConflictCore plugin) { this.plugin = plugin; }
 
     public void start() {
         Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {

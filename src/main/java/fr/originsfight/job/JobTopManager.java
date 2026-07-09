@@ -1,6 +1,6 @@
 package fr.originsfight.job;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 
@@ -37,7 +37,7 @@ public class JobTopManager {
     /** Nombre d'entrées conservées par classement. */
     private static final int TOP_SIZE = 10;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final JobDatabase      database;
 
     /** Cache mémoire : catégorie → liste ordonnée (rang 1..N). Remplacé atomiquement. */
@@ -48,7 +48,7 @@ public class JobTopManager {
     private volatile boolean refreshing = false;
     private int taskId = -1;
 
-    public JobTopManager(OriginsFightCore plugin, JobDatabase database) {
+    public JobTopManager(RedConflictCore plugin, JobDatabase database) {
         this.plugin   = plugin;
         this.database = database;
     }

@@ -1,6 +1,6 @@
 package fr.originsfight.boutique;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -18,12 +18,12 @@ import java.nio.charset.StandardCharsets;
  */
 public class PBShopModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
     private FileConfiguration boutiqueConfig;
     private OffresManager offresManager;
 
-    public PBShopModule(OriginsFightCore plugin) {
+    public PBShopModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

@@ -2,7 +2,7 @@ package fr.originsfight.db;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.h2.Driver;
 import org.h2.tools.Server;
@@ -14,10 +14,10 @@ import java.sql.SQLException;
 /**
  * Provider central de connexions vers la base H2 partagée (mode serveur TCP local).
  *
- * <p>Architecture multi-serveur : les serveurs Minecraft qui font tourner OriginsFightCore
+ * <p>Architecture multi-serveur : les serveurs Minecraft qui font tourner RedConflictCore
  * (Faction, Minage) tournent sur la même machine et partagent UNE base H2. Un seul serveur
  * héberge le serveur H2 TCP ({@code database.server.enabled: true}) : c'est le FACTION, car
- * le HUB est un lobby verrouillé sans OriginsFightCore. Les autres serveurs (Minage) s'y
+ * le HUB est un lobby verrouillé sans RedConflictCore. Les autres serveurs (Minage) s'y
  * connectent en client TCP avec {@code host: 127.0.0.1} (PAS {@code localhost} : voir le
  * piège documenté dans {@link #start()}).
  *
@@ -33,14 +33,14 @@ import java.sql.SQLException;
  */
 public class Database {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
     private HikariDataSource dataSource;
     private Server tcpServer;       // non-null uniquement si ce serveur héberge H2
     private String serverId;        // identifiant de CE serveur (faction|minage|hub)
     private boolean kickOnConflict;
 
-    public Database(OriginsFightCore plugin) {
+    public Database(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

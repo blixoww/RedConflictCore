@@ -1,6 +1,6 @@
 package fr.originsfight.hdv;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 
@@ -10,10 +10,10 @@ import fr.originsfight.core.command.CommandRegistrar;
  */
 public class HdvModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private HdvManager manager;
 
-    public HdvModule(OriginsFightCore plugin) {
+    public HdvModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

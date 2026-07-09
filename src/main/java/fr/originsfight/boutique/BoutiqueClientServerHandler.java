@@ -1,6 +1,6 @@
 package fr.originsfight.boutique;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.pb.PBManager;
 import org.bukkit.Bukkit;
@@ -29,9 +29,9 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
     private static final int BOUTIQUE_REQUEST = 0xB0;
     private static final int BOUTIQUE_BUY     = 0xB1;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public BoutiqueClientServerHandler(OriginsFightCore plugin) {
+    public BoutiqueClientServerHandler(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

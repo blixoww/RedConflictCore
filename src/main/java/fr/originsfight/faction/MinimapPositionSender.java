@@ -2,7 +2,7 @@ package fr.originsfight.faction;
 
 import fr.redfaction.api.RedFactionAPI;
 import fr.redfaction.entity.Faction;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.friend.FriendManager;
 import fr.originsfight.packets.PacketBuilder;
 import org.bukkit.Bukkit;
@@ -51,12 +51,12 @@ public class MinimapPositionSender implements Runnable {
      */
     private static final double RANGE_SQ = 160.0 * 160.0;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
     /** Viewers ayant reçu au moins un joueur au tick précédent (pour vider proprement). */
     private final Set<UUID> hadPlayers = new HashSet<>();
 
-    public MinimapPositionSender(OriginsFightCore plugin) {
+    public MinimapPositionSender(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

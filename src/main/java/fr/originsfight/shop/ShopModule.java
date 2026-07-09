@@ -1,6 +1,6 @@
 package fr.originsfight.shop;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 import org.bukkit.Bukkit;
@@ -14,10 +14,10 @@ import org.bukkit.event.player.PlayerJoinEvent;
  */
 public class ShopModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private ShopManager manager;
 
-    public ShopModule(OriginsFightCore plugin) {
+    public ShopModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

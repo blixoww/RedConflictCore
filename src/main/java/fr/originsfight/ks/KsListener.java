@@ -1,6 +1,6 @@
 package fr.originsfight.ks;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.RankResolver;
 import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.data.PlayerDatabase;
@@ -27,12 +27,12 @@ import java.util.UUID;
 public class KsListener implements Listener {
 
     private final PlayerDatabase db;
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
     // Timestamp de connexion par joueur (pour calculer le temps de jeu)
     private static final Map<UUID, Long> JOIN_TIMES = new HashMap<>();
 
-    public KsListener(PlayerDatabase db, OriginsFightCore plugin) {
+    public KsListener(PlayerDatabase db, RedConflictCore plugin) {
         this.db = db;
         this.plugin = plugin;
     }

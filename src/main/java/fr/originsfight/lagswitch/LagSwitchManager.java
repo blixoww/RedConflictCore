@@ -1,6 +1,6 @@
 package fr.originsfight.lagswitch;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -93,7 +93,7 @@ public class LagSwitchManager {
     /** Joueurs freezés manuellement par un admin (non soumis à unfreeze automatique). */
     private final Set<UUID> manualFreeze            = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private BukkitTask checkTask;
     private String nmsVersion;
 
@@ -107,7 +107,7 @@ public class LagSwitchManager {
 
     private int scanIndex = 0;
 
-    public LagSwitchManager(OriginsFightCore plugin) {
+    public LagSwitchManager(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

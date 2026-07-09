@@ -1,6 +1,6 @@
 package fr.originsfight.combatlog;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 
@@ -10,10 +10,10 @@ import fr.originsfight.core.command.CommandRegistrar;
  */
 public class CombatLogModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private CombatLogSender sender;
 
-    public CombatLogModule(OriginsFightCore plugin) {
+    public CombatLogModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

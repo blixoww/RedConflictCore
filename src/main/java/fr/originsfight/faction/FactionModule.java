@@ -1,6 +1,6 @@
 package fr.originsfight.faction;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 
 /**
@@ -10,9 +10,9 @@ import fr.originsfight.core.Module;
  */
 public class FactionModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public FactionModule(OriginsFightCore plugin) {
+    public FactionModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

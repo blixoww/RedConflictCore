@@ -21,7 +21,7 @@ public class RingLoginListener implements Listener {
         manager.loadPlayer(e.getPlayer().getUniqueId());
         // Légère temporisation pour laisser le client enregistrer ses canaux
         org.bukkit.Bukkit.getScheduler().runTaskLater(
-            org.bukkit.Bukkit.getPluginManager().getPlugin("OriginsFightCore"),
+            org.bukkit.Bukkit.getPluginManager().getPlugin("RedConflictCore"),
             () -> sender.sendSync(e.getPlayer()),
             40L
         );

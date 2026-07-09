@@ -1,6 +1,6 @@
 package fr.originsfight.trade;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.core.text.RC;
 import net.milkbowl.vault.economy.Economy;
@@ -354,8 +354,8 @@ public class TradeSession {
 
         int cap = Integer.MAX_VALUE;
         try {
-            if (OriginsFightCore.getInstance().getPBManager() != null) {
-                cap = OriginsFightCore.getInstance().getPBManager().get(player);
+            if (RedConflictCore.getInstance().getPBManager() != null) {
+                cap = RedConflictCore.getInstance().getPBManager().get(player);
             }
         } catch (Exception ignored) {}
         int capped = Math.max(0, Math.min(amount, cap));
@@ -438,7 +438,7 @@ public class TradeSession {
             if (moneyA > 0 && econ.getBalance(playerA) < moneyA) { abortInsufficient(playerA); return; }
             if (moneyB > 0 && econ.getBalance(playerB) < moneyB) { abortInsufficient(playerB); return; }
         }
-        fr.originsfight.pb.PBManager pbm = OriginsFightCore.getInstance().getPBManager();
+        fr.originsfight.pb.PBManager pbm = RedConflictCore.getInstance().getPBManager();
         if (pbm != null) {
             if (pbA > 0 && pbm.get(playerA) < pbA) { abortInsufficientPB(playerA); return; }
             if (pbB > 0 && pbm.get(playerB) < pbB) { abortInsufficientPB(playerB); return; }
@@ -541,7 +541,7 @@ public class TradeSession {
     private void logTradeFile(String status, List<ItemStack> snapA, List<ItemStack> snapB,
                               long mA, long mB, int ppA, int ppB) {
         try {
-            java.io.File f = new java.io.File(OriginsFightCore.getInstance().getDataFolder(), "social/trade_logs.txt");
+            java.io.File f = new java.io.File(RedConflictCore.getInstance().getDataFolder(), "social/trade_logs.txt");
             f.getParentFile().mkdirs();
             try (java.io.FileWriter w = new java.io.FileWriter(f, true)) {
                 String ts = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());

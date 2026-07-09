@@ -1,6 +1,6 @@
 package fr.originsfight.shop;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.db.Database;
 
 import java.io.File;
@@ -12,10 +12,10 @@ import java.util.logging.Logger;
 public class ShopDatabase {
     private static final Logger LOG = Logger.getLogger("Shop-DB");
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final Database db;
 
-    public ShopDatabase(OriginsFightCore plugin, Database db) {
+    public ShopDatabase(RedConflictCore plugin, Database db) {
         this.plugin = plugin;
         this.db = db;
     }

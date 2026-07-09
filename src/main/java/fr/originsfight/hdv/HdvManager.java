@@ -1,6 +1,6 @@
 package fr.originsfight.hdv;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.packets.CustomPacketServerHandler;
 import fr.originsfight.packets.PacketBuilder;
 import java.util.ArrayList;
@@ -20,7 +20,7 @@ public class HdvManager {
 
     private static HdvManager instance;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
     private final HdvDatabase database;
 
@@ -32,7 +32,7 @@ public class HdvManager {
         return instance;
     }
 
-    public HdvManager(OriginsFightCore plugin) {
+    public HdvManager(RedConflictCore plugin) {
         this.plugin = plugin;
         this.database = new HdvDatabase(plugin, plugin.getCoreDatabase());
         instance = this;

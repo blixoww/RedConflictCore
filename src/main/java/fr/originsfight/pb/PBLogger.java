@@ -1,6 +1,6 @@
 package fr.originsfight.pb;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -9,7 +9,7 @@ import java.util.Date;
 
 /**
  * Logger fichier pour toutes les opérations PB.
- * Fichier : plugins/OriginsFightCore/pb_logs.txt
+ * Fichier : plugins/RedConflictCore/pb_logs.txt
  */
 public class PBLogger {
 
@@ -17,7 +17,7 @@ public class PBLogger {
     private final SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final Object lock = new Object();
 
-    public PBLogger(OriginsFightCore plugin) {
+    public PBLogger(RedConflictCore plugin) {
         this.file = new File(plugin.getDataFolder(), "pb/pb_logs.txt");
         this.file.getParentFile().mkdirs();
     }

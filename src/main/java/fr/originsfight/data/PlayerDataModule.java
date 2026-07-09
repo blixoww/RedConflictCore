@@ -1,6 +1,6 @@
 package fr.originsfight.data;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 import fr.originsfight.db.Database;
@@ -17,11 +17,11 @@ import org.bukkit.entity.Player;
  */
 public class PlayerDataModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final Database database;
     private PlayerDatabase playerDatabase;
 
-    public PlayerDataModule(OriginsFightCore plugin, Database database) {
+    public PlayerDataModule(RedConflictCore plugin, Database database) {
         this.plugin = plugin;
         this.database = database;
     }

@@ -1,6 +1,6 @@
 package fr.originsfight.packets;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Locale;
@@ -15,9 +15,9 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 public class CustomPacketServerHandler implements PluginMessageListener {
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public CustomPacketServerHandler(OriginsFightCore plugin) {
+    public CustomPacketServerHandler(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

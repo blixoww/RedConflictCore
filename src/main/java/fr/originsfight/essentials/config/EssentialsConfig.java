@@ -124,7 +124,7 @@ public class EssentialsConfig {
 
     // ── Économie ───────────────────────────────────────────────────────────────
 
-    /** true = OriginsFightCore fournit le provider Vault Economy (remplace EssentialsX). */
+    /** true = RedConflictCore fournit le provider Vault Economy (remplace EssentialsX). */
     public boolean economyEnabled() {
         return config.getBoolean("economy.enabled", true);
     }

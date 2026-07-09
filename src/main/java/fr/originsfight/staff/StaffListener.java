@@ -1,6 +1,6 @@
 package fr.originsfight.staff;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -32,12 +32,12 @@ public class StaffListener implements Listener {
 
     private final StaffManager mgr = StaffManager.get();
     private final StaffDatabase db;
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
     private final Set<UUID> staffChatOnly = new HashSet<>();
     private final Map<UUID, Location> previousLocations = new HashMap<>();
 
-    public StaffListener(StaffDatabase db, OriginsFightCore plugin) {
+    public StaffListener(StaffDatabase db, RedConflictCore plugin) {
         this.db = db;
         this.plugin = plugin;
     }

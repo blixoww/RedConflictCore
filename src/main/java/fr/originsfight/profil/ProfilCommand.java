@@ -1,7 +1,7 @@
 package fr.originsfight.profil;
 
 import fr.originsfight.core.command.CoreCommand;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.bounty.BountyInfo;
 import fr.originsfight.bounty.BountyManager;
@@ -38,10 +38,10 @@ public class ProfilCommand extends CoreCommand {
     private static final long CACHE_TTL_MS = 3000L;
     private final Map<UUID, CachedPayload> payloadCache = new ConcurrentHashMap<>();
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final PlayerDatabase playerDatabase;
 
-    public ProfilCommand(OriginsFightCore plugin) {
+    public ProfilCommand(RedConflictCore plugin) {
         super(plugin, "profil", false);
         this.plugin = plugin;
         this.playerDatabase = plugin.getPlayerDatabase();

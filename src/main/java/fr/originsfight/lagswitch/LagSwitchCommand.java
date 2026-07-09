@@ -1,7 +1,7 @@
 package fr.originsfight.lagswitch;
 
 import fr.originsfight.core.command.CoreCommand;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.text.RC;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -29,10 +29,10 @@ import java.util.stream.Stream;
  */
 public class LagSwitchCommand extends CoreCommand {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final LagSwitchManager manager;
 
-    public LagSwitchCommand(OriginsFightCore plugin, LagSwitchManager manager) {
+    public LagSwitchCommand(RedConflictCore plugin, LagSwitchManager manager) {
         super(plugin, "lagswitch", false);
         this.plugin = plugin;
         this.manager = manager;

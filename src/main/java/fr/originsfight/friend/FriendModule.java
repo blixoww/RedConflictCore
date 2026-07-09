@@ -1,6 +1,6 @@
 package fr.originsfight.friend;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 
@@ -10,10 +10,10 @@ import fr.originsfight.core.command.CommandRegistrar;
  */
 public class FriendModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private FriendManager manager;
 
-    public FriendModule(OriginsFightCore plugin) {
+    public FriendModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

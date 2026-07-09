@@ -1,6 +1,6 @@
 package fr.originsfight.backup;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -31,7 +31,7 @@ import java.util.zip.ZipOutputStream;
  */
 public class BackupManager {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private BukkitTask task;
     private volatile boolean running = false;
 
@@ -40,7 +40,7 @@ public class BackupManager {
     /** Horodatage (epoch ms) de la prochaine sauvegarde auto programmée. 0 si non programmée. */
     private volatile long nextBackupAt = 0L;
 
-    public BackupManager(OriginsFightCore plugin) {
+    public BackupManager(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

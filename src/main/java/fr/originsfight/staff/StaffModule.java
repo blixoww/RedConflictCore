@@ -1,6 +1,6 @@
 package fr.originsfight.staff;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 
 /**
@@ -10,10 +10,10 @@ import fr.originsfight.core.Module;
  */
 public class StaffModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private StaffPlugin staffPlugin;
 
-    public StaffModule(OriginsFightCore plugin) {
+    public StaffModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

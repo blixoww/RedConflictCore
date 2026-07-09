@@ -1,6 +1,6 @@
 package fr.originsfight.lagswitch;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -26,10 +26,10 @@ import org.bukkit.event.player.*;
  */
 public class LagSwitchListener implements Listener {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final LagSwitchManager manager;
 
-    public LagSwitchListener(OriginsFightCore plugin, LagSwitchManager manager) {
+    public LagSwitchListener(RedConflictCore plugin, LagSwitchManager manager) {
         this.plugin = plugin;
         this.manager = manager;
     }

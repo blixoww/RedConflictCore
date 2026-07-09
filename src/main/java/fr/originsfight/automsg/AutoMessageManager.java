@@ -1,6 +1,6 @@
 package fr.originsfight.automsg;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 
 import java.util.Arrays;
@@ -105,7 +105,7 @@ public class AutoMessageManager {
 
     private int index = 0;
 
-    public AutoMessageManager(OriginsFightCore plugin) {
+    public AutoMessageManager(RedConflictCore plugin) {
         Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
             public void run() {
                 sendNext();

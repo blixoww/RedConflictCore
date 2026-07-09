@@ -1,7 +1,7 @@
-name: OriginsFightCore
+name: RedConflictCore
 version: '${project.version}'
-main: fr.originsfight.OriginsFightCore
-prefix: OriginsFightCore
+main: fr.originsfight.RedConflictCore
+prefix: RedConflictCore
 authors: [leziink]
 description: Plugin RedConflict - gestion du serveur
 # Dépendances optionnelles : présentes sur le Faction, absentes sur le Minage.

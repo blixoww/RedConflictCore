@@ -1,6 +1,6 @@
 package fr.originsfight.clearlagg;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.*;
@@ -92,7 +92,7 @@ public class ClearLaggManager {
 
     // ── État interne ──────────────────────────────────────────────────────────
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private BukkitTask warningTask;
 
     /** Timestamp (ms) du prochain clearlagg. */
@@ -105,7 +105,7 @@ public class ClearLaggManager {
      */
     private final Set<Integer> sentWarnings = ConcurrentHashMap.newKeySet();
 
-    public ClearLaggManager(OriginsFightCore plugin) {
+    public ClearLaggManager(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

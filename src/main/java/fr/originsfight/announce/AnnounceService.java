@@ -4,7 +4,7 @@ import fr.originsfight.core.text.Text;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
@@ -27,9 +27,9 @@ public class AnnounceService implements PluginMessageListener {
     public static final String SUBCHANNEL = "RC_ANNOUNCE";
     private static final String BUNGEE = "BungeeCord";
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public AnnounceService(OriginsFightCore plugin) {
+    public AnnounceService(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

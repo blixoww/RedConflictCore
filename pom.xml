@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>fr.originsfight</groupId>
-    <artifactId>OriginsFightCore</artifactId>
+    <artifactId>RedConflictCore</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>OriginsFightCore</name>
+    <name>RedConflictCore</name>
 
     <description>Plugin qui gere les elements de base du serveur OriginsFight</description>
     <properties>

@@ -5,7 +5,7 @@ import fr.originsfight.core.text.Text;
 import fr.originsfight.cooldown.CooldownManager;
 import fr.originsfight.cooldown.CooldownType;
 import fr.originsfight.db.Database;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -99,7 +99,7 @@ public class RtpService {
 
     /** Le serveur Minage laisse /rtp sans cooldown (déplacement libre dans la mine). */
     private boolean isFreeServer() {
-        Database db = OriginsFightCore.getInstance().getCoreDatabase();
+        Database db = RedConflictCore.getInstance().getCoreDatabase();
         return db != null && "minage".equalsIgnoreCase(db.getServerId());
     }
 }

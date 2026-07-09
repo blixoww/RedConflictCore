@@ -1,6 +1,6 @@
 package fr.originsfight.useful;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 import org.bukkit.Bukkit;
@@ -20,12 +20,12 @@ import java.util.Map;
  */
 public class UtilityModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
     /** Recettes de cuisson vanilla indexées pour /furnace (entrée → résultat). */
     private final Map<Material, ItemStack> smeltableItems = new HashMap<>();
 
-    public UtilityModule(OriginsFightCore plugin) {
+    public UtilityModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

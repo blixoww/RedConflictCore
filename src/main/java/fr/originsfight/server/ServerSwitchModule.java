@@ -1,6 +1,6 @@
 package fr.originsfight.server;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 
@@ -10,9 +10,9 @@ import fr.originsfight.core.command.CommandRegistrar;
  */
 public class ServerSwitchModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public ServerSwitchModule(OriginsFightCore plugin) {
+    public ServerSwitchModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

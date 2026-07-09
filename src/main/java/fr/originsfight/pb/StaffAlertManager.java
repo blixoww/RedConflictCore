@@ -1,6 +1,6 @@
 package fr.originsfight.pb;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -14,9 +14,9 @@ import org.bukkit.entity.Player;
  */
 public class StaffAlertManager {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public StaffAlertManager(OriginsFightCore plugin) {
+    public StaffAlertManager(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

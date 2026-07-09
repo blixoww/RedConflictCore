@@ -1,6 +1,6 @@
 package fr.originsfight.pb;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.data.PlayerDataServerHandler;
 import fr.originsfight.data.PlayerDatabase;
 import org.bukkit.Bukkit;
@@ -17,12 +17,12 @@ import java.util.UUID;
  */
 public class PBManager {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final PlayerDatabase db;
     private final PBLogger logger;
     private final StaffAlertManager alerts;
 
-    public PBManager(OriginsFightCore plugin, PlayerDatabase db, PBLogger logger, StaffAlertManager alerts) {
+    public PBManager(RedConflictCore plugin, PlayerDatabase db, PBLogger logger, StaffAlertManager alerts) {
         this.plugin = plugin;
         this.db = db;
         this.logger = logger;

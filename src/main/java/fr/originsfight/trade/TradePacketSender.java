@@ -1,6 +1,6 @@
 package fr.originsfight.trade;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -83,7 +83,7 @@ public final class TradePacketSender {
 
     private static void send(Player player, byte[] payload) {
         if (payload == null || !player.isOnline()) return;
-        player.sendPluginMessage(OriginsFightCore.getInstance(), CHANNEL_S2C, payload);
+        player.sendPluginMessage(RedConflictCore.getInstance(), CHANNEL_S2C, payload);
     }
 
     private static byte[] build(CheckedConsumer<DataOutputStream> writer) {

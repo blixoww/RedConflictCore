@@ -1,6 +1,6 @@
 package fr.originsfight.staff;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.command.CommandRegistrar;
 import fr.originsfight.staff.commands.*;
 import fr.originsfight.useful.PlayerListManager;
@@ -8,15 +8,15 @@ import org.bukkit.Bukkit;
 
 /**
  * Classe d'initialisation du système staff.
- * Appelée depuis OriginsFightCore.onEnable().
+ * Appelée depuis RedConflictCore.onEnable().
  */
 public class StaffPlugin {
 
     private final StaffDatabase db;
     private final StaffListener listener;
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public StaffPlugin(OriginsFightCore plugin) {
+    public StaffPlugin(RedConflictCore plugin) {
         this.plugin = plugin;
         this.db = new StaffDatabase(plugin.getCoreDatabase());
         this.listener = new StaffListener(db, plugin);

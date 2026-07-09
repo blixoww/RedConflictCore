@@ -1,6 +1,6 @@
 package fr.originsfight.shop;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.shop.ShopDatabase.ShopEventRow;
 import fr.originsfight.shop.ShopDatabase.ShopItem;
 import org.bukkit.Bukkit;
@@ -38,7 +38,7 @@ public class ShopEventManager {
     private static ShopEventManager instance;
     public static ShopEventManager getInstance() { return instance; }
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final ShopManager shopManager;
     private final ShopDatabase database;
     private final Random rng = new Random();
@@ -61,7 +61,7 @@ public class ShopEventManager {
 
     private int tickTaskId = -1;
 
-    public ShopEventManager(OriginsFightCore plugin, ShopManager shopManager) {
+    public ShopEventManager(RedConflictCore plugin, ShopManager shopManager) {
         this.plugin = plugin;
         this.shopManager = shopManager;
         this.database = shopManager.getDatabase();

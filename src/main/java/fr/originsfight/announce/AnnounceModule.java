@@ -1,6 +1,6 @@
 package fr.originsfight.announce;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
 
@@ -10,9 +10,9 @@ import fr.originsfight.core.command.CommandRegistrar;
  */
 public class AnnounceModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public AnnounceModule(OriginsFightCore plugin) {
+    public AnnounceModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

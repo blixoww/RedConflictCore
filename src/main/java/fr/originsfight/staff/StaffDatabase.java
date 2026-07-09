@@ -64,7 +64,7 @@ public class StaffDatabase {
             );
             return true;
         } catch (SQLException e) {
-            fr.originsfight.OriginsFightCore.getInstance().getLogger().severe("[Staff] Erreur H2 : " + e.getMessage());
+            fr.originsfight.RedConflictCore.getInstance().getLogger().severe("[Staff] Erreur H2 : " + e.getMessage());
             return false;
         }
     }
@@ -353,7 +353,7 @@ public class StaffDatabase {
     // ── Utilitaires ───────────────────────────────────────────────────────────
 
     private void log(String msg) {
-        fr.originsfight.OriginsFightCore.getInstance().getLogger().warning("[StaffDB] " + msg);
+        fr.originsfight.RedConflictCore.getInstance().getLogger().warning("[StaffDB] " + msg);
     }
 
     // ── Records internes ──────────────────────────────────────────────────────

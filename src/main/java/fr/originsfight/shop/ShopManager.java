@@ -1,6 +1,6 @@
 package fr.originsfight.shop;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.packets.PacketBuilder;
 import fr.originsfight.ring.RingEffects;
 import fr.originsfight.shop.ShopDatabase.ShopCategory;
@@ -32,7 +32,7 @@ public class ShopManager {
 
     private static ShopManager instance;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final ShopDatabase database;
     private Economy economy;
     private int priceSnapshotTaskId = -1;
@@ -69,7 +69,7 @@ public class ShopManager {
 
     public static ShopManager getInstance() { return instance; }
 
-    public ShopManager(OriginsFightCore plugin) {
+    public ShopManager(RedConflictCore plugin) {
         this.plugin = plugin;
         this.database = new ShopDatabase(plugin, plugin.getCoreDatabase());
         instance = this;

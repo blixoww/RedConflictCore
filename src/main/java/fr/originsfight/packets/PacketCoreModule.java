@@ -1,6 +1,6 @@
 package fr.originsfight.packets;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 import fr.originsfight.data.PlayerDataServerHandler;
 import fr.originsfight.ping.PingServerHandler;
@@ -12,9 +12,9 @@ import fr.originsfight.ping.PingServerHandler;
  */
 public class PacketCoreModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public PacketCoreModule(OriginsFightCore plugin) {
+    public PacketCoreModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

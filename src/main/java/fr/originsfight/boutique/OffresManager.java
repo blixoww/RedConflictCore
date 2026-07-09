@@ -1,6 +1,6 @@
 package fr.originsfight.boutique;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -15,14 +15,14 @@ import java.util.*;
  */
 public class OffresManager {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final Map<String, OffreSpeciale> definitions = new LinkedHashMap<>();
     private OffreSpeciale current;
     private BukkitTask tickTask;
     private final Random random = new Random();
     private long lastDailyRoll = 0L;
 
-    public OffresManager(OriginsFightCore plugin) {
+    public OffresManager(RedConflictCore plugin) {
         this.plugin = plugin;
         reload();
     }

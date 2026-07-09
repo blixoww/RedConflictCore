@@ -65,9 +65,9 @@ import org.bukkit.plugin.java.JavaPlugin;
  * <p>Les accesseurs en bas de classe délèguent aux modules : ils existent pour
  * le code des domaines qui résout ses dépendances via {@link #getInstance()}.
  */
-public class OriginsFightCore extends JavaPlugin {
+public class RedConflictCore extends JavaPlugin {
 
-    private static OriginsFightCore instance;
+    private static RedConflictCore instance;
 
     private Database database;
     private PlayerLockService playerLockService;
@@ -234,7 +234,7 @@ public class OriginsFightCore extends JavaPlugin {
     }
 
 
-    public static OriginsFightCore getInstance() {
+    public static RedConflictCore getInstance() {
         return instance;
     }
 

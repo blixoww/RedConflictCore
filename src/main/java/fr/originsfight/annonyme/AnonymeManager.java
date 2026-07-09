@@ -1,6 +1,6 @@
 package fr.originsfight.annonyme;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -22,7 +22,7 @@ import java.util.UUID;
 
 public class AnonymeManager {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final Set<UUID> anonymousPlayers;
     private final Map<UUID, Team> originalTeams;
     private final Map<UUID, String> originalDisplayNames;
@@ -31,7 +31,7 @@ public class AnonymeManager {
     private FileConfiguration anonymousPlayersConfig;
     private BukkitTask enforcementTask;
 
-    public AnonymeManager(OriginsFightCore plugin) {
+    public AnonymeManager(RedConflictCore plugin) {
         this.plugin = plugin;
         this.anonymousPlayers = new HashSet<>();
         this.originalTeams = new HashMap<>();

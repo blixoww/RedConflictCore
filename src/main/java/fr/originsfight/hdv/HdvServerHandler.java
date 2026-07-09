@@ -1,6 +1,6 @@
 package fr.originsfight.hdv;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.packets.PacketBuilder;
 import fr.originsfight.packets.PacketReader;
 import org.bukkit.entity.Player;
@@ -8,9 +8,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 public class HdvServerHandler implements PluginMessageListener {
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public HdvServerHandler(OriginsFightCore plugin) {
+    public HdvServerHandler(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 
@@ -84,6 +84,6 @@ public class HdvServerHandler implements PluginMessageListener {
 
     public static void sendActionResult(Player player, boolean success, String message) {
         byte[] pkt = PacketBuilder.create(34).writeBoolean(success).writeString(message).build();
-        player.sendPluginMessage(OriginsFightCore.getInstance(), "CUSTOM:HDV_S2C", pkt);
+        player.sendPluginMessage(RedConflictCore.getInstance(), "CUSTOM:HDV_S2C", pkt);
     }
 }

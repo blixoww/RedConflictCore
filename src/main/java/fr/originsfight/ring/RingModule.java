@@ -1,6 +1,6 @@
 package fr.originsfight.ring;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.Module;
 
 /**
@@ -12,10 +12,10 @@ public class RingModule implements Module {
     /** Auto-sauvegarde des rings toutes les 5 minutes (6000 ticks). */
     private static final int AUTOSAVE_TICKS = 6000;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private RingManager manager;
 
-    public RingModule(OriginsFightCore plugin) {
+    public RingModule(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

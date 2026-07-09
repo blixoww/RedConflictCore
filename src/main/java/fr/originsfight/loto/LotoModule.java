@@ -1,6 +1,6 @@
 package fr.originsfight.loto;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.FeatureToggles;
 import fr.originsfight.core.Module;
 import fr.originsfight.core.command.CommandRegistrar;
@@ -12,10 +12,10 @@ import fr.originsfight.core.command.CommandRegistrar;
  */
 public class LotoModule implements Module {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final FeatureToggles features;
 
-    public LotoModule(OriginsFightCore plugin, FeatureToggles features) {
+    public LotoModule(RedConflictCore plugin, FeatureToggles features) {
         this.plugin = plugin;
         this.features = features;
     }

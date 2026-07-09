@@ -1,6 +1,6 @@
 package fr.originsfight.hdv;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -9,9 +9,9 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.Plugin;
 
 public class HdvLoginListener implements Listener {
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
 
-    public HdvLoginListener(OriginsFightCore plugin) {
+    public HdvLoginListener(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 

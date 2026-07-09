@@ -1,7 +1,7 @@
 package fr.originsfight.clearlagg;
 
 import fr.originsfight.core.command.CoreCommand;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -30,10 +30,10 @@ import java.util.List;
  */
 public class ClearLaggCommand extends CoreCommand {
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final ClearLaggManager manager;
 
-    public ClearLaggCommand(OriginsFightCore plugin, ClearLaggManager manager) {
+    public ClearLaggCommand(RedConflictCore plugin, ClearLaggManager manager) {
         super(plugin, "clearlagg", false);
         this.plugin  = plugin;
         this.manager = manager;

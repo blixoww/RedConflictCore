@@ -1,6 +1,6 @@
 package fr.originsfight.hdv;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.db.Database;
 import fr.originsfight.packets.CustomPacketServerHandler;import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,7 +30,7 @@ public class HdvDatabase {
 
     private final Database db;
 
-    public HdvDatabase(OriginsFightCore plugin, Database db) {
+    public HdvDatabase(RedConflictCore plugin, Database db) {
         this.db = db;
     }
 

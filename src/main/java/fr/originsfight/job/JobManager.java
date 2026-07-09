@@ -1,6 +1,6 @@
 package fr.originsfight.job;
 
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.job.JobPacketSender;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -21,7 +21,7 @@ public class JobManager {
     private static final Logger LOG = Logger.getLogger("Jobs");
     private static JobManager instance;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final JobDatabase     database;
     private final JobConfig       config;
     private JobPacketSender        packetSender;
@@ -34,7 +34,7 @@ public class JobManager {
 
     public static JobManager getInstance() { return instance; }
 
-    public JobManager(OriginsFightCore plugin, JobDatabase database, JobConfig config) {
+    public JobManager(RedConflictCore plugin, JobDatabase database, JobConfig config) {
         this.plugin   = plugin;
         this.database = database;
         this.config   = config;

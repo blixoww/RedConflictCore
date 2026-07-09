@@ -1,7 +1,7 @@
 package fr.originsfight.loto;
 
 import fr.originsfight.core.text.Text;
-import fr.originsfight.OriginsFightCore;
+import fr.originsfight.RedConflictCore;
 import fr.originsfight.core.economy.VaultEconomy;
 import fr.originsfight.core.text.RC;
 import net.milkbowl.vault.economy.Economy;
@@ -39,7 +39,7 @@ public class LotoManager {
     /** Minimum de participants pour valider le loto. */
     private static final int MIN_PARTICIPANTS = 3;
 
-    private final OriginsFightCore plugin;
+    private final RedConflictCore plugin;
     private final Random random = new Random();
 
     /** Mises des joueurs pour le loto en cours. Clé = UUID, Valeur = montant. */
@@ -62,7 +62,7 @@ public class LotoManager {
     /** Tâche du prochain loto programmé. */
     private BukkitTask nextScheduledTask;
 
-    public LotoManager(OriginsFightCore plugin) {
+    public LotoManager(RedConflictCore plugin) {
         this.plugin = plugin;
     }
 
