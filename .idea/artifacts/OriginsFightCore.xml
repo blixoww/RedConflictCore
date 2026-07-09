@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="OriginsFightCore">
-    <output-path>$PROJECT_DIR$/../../../../Serv local 1.8/plugins</output-path>
-    <root id="archive" name="OriginsFightCore.jar">
-      <element id="module-output" name="OriginsFightCore" />
-    </root>
-  </artifact>
-</component>
