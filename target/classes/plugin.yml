@@ -1,7 +1,7 @@
-name: OriginsFightCore
+name: RedConflictCore
 version: '1.0.0'
-main: fr.originsfight.OriginsFightCore
-prefix: OriginsFightCore
+main: fr.redconflict.RedConflictCore
+prefix: RedConflictCore
 authors: [leziink]
 description: Plugin RedConflict - gestion du serveur
 # Dépendances optionnelles : présentes sur le Faction, absentes sur le Minage.
@@ -105,7 +105,6 @@ commands:
   hub:
     description: Se téléporter au serveur HUB
     usage: /hub
-    # 'spawn' n'est plus un alias : c'est la commande essentials /spawn.
     aliases: [lobby]
   minage:
     description: Se téléporter au serveur Minage
@@ -368,7 +367,7 @@ commands:
   money:
     description: Consulte son solde
     usage: /money [joueur]
-    aliases: [bal, balance]
+    aliases: [bal, balance, monnaie]
   eco:
     description: Administration de l'économie (admin)
     usage: /eco <give|take|set> <joueur> <montant>
@@ -397,3 +396,11 @@ commands:
     usage: /weather <sun|rain|storm>
     permission: redconflict.weather
     aliases: [meteo]
+
+permissions:
+  # Déclarée explicitement en default false : sans déclaration, Bukkit accorde
+  # la permission aux OP par défaut et la téléportation devient instantanée
+  # (aucun compte à rebours). À donner via LuckPerms si un grade doit bypass.
+  redconflict.teleport.bypass:
+    description: Saute le délai d'attente des téléportations (/spawn, /home, /warp, /back, tpa)
+    default: false

@@ -44,6 +44,12 @@ public class TeleportService {
         this.backService = backService;
     }
 
+    /** Délai d'attente effectif pour ce joueur, en secondes (0 si désactivé ou bypass). */
+    public int effectiveWarmupSeconds(Player player) {
+        int warmup = config.warmupSeconds();
+        return warmup <= 0 || player.hasPermission(BYPASS_WARMUP) ? 0 : warmup;
+    }
+
     /**
      * Téléporte le joueur après le délai d'attente configuré.
      *
@@ -51,8 +57,8 @@ public class TeleportService {
      */
     public void delayedTeleport(final Player player, final Supplier<Location> destination,
                                 final String cooldownKey) {
-        int warmup = config.warmupSeconds();
-        if (warmup <= 0 || player.hasPermission(BYPASS_WARMUP)) {
+        int warmup = effectiveWarmupSeconds(player);
+        if (warmup <= 0) {
             complete(player, destination, cooldownKey);
             return;
         }

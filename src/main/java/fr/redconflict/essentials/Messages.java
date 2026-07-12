@@ -22,10 +22,10 @@ public final class Messages {
 
     // Téléportation
     /** %d = secondes. */
-    public static final String TP_WARMUP           = Text.info("Téléportation dans §f%d s §7— ne bougez pas !");
-    public static final String TP_CANCELLED_MOVE   = Text.error("Téléportation annulée : vous avez bougé.");
-    public static final String TP_CANCELLED_DAMAGE = Text.error("Téléportation annulée : vous avez subi des dégâts.");
-    public static final String TP_DONE             = Text.success("Téléportation effectuée.");
+    public static final String TP_WARMUP           = Text.info("Téléportation dans §c%ds§7... §fNe bougez pas !");
+    public static final String TP_CANCELLED_MOVE   = Text.error("Téléportation annulée §7— vous avez bougé.");
+    public static final String TP_CANCELLED_DAMAGE = Text.error("Téléportation annulée §7— vous avez subi des dégâts.");
+    public static final String TP_DONE             = Text.success("Téléportation réussie.");
     public static final String TP_DEST_INVALID     = Text.error("Destination invalide (monde non chargé ?).");
 
     private Messages() {

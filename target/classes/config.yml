@@ -248,12 +248,12 @@ features:
 #
 # 1) Mode EMBARQUÉ (défaut, serveur standalone) :
 #    server.enabled: false  +  host: localhost
-#    → La base est un simple fichier local (plugins/OriginsFightCore/data/central.mv.db).
+#    → La base est un simple fichier local (plugins/RedConflictCore/data/central.mv.db).
 #      Aucun port réseau requis. Idéal si vous n'avez qu'UN seul serveur Minecraft.
 #
 # 2) Mode SERVEUR TCP (multi-serveur, un seul serveur héberge H2) :
 #    server.enabled: true  sur LE serveur qui héberge la base : c'est le FACTION
-#    (le HUB est un lobby verrouillé SANS OriginsFightCore, il n'héberge pas H2).
+#    (le HUB est un lobby verrouillé SANS RedConflictCore, il n'héberge pas H2).
 #    server.enabled: false + host: 127.0.0.1 sur les AUTRES serveurs (ex. le Minage).
 #    ⚠️ NE PAS mettre host: localhost sur un client : "enabled:false + localhost"
 #       bascule en mode FICHIER ISOLÉ (mode 1) → la base n'est PAS partagée,

@@ -396,3 +396,11 @@ commands:
     usage: /weather <sun|rain|storm>
     permission: redconflict.weather
     aliases: [meteo]
+
+permissions:
+  # Déclarée explicitement en default false : sans déclaration, Bukkit accorde
+  # la permission aux OP par défaut et la téléportation devient instantanée
+  # (aucun compte à rebours). À donner via LuckPerms si un grade doit bypass.
+  redconflict.teleport.bypass:
+    description: Saute le délai d'attente des téléportations (/spawn, /home, /warp, /back, tpa)
+    default: false

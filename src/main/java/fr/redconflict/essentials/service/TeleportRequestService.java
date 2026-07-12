@@ -46,14 +46,14 @@ public class TeleportRequestService {
         requestsByTarget.put(target.getUniqueId(),
                 new TeleportRequest(requester.getUniqueId(), target.getUniqueId(), type));
 
-        requester.sendMessage(Text.success("Demande envoyée à §f" + target.getName() + "§a."));
+        requester.sendMessage(Text.info("Demande de téléportation envoyée à §f" + target.getName() + "§7..."));
         if (type == TeleportRequest.Type.TO_TARGET) {
-            target.sendMessage(Text.info("§f" + requester.getName() + " §7demande à se téléporter vers vous."));
+            target.sendMessage(Text.info("§f" + requester.getName() + " §7souhaite se téléporter §fvers vous§7."));
         } else {
-            target.sendMessage(Text.info("§f" + requester.getName() + " §7vous demande de venir à lui."));
+            target.sendMessage(Text.info("§f" + requester.getName() + " §7souhaite vous téléporter §fà lui§7."));
         }
-        target.sendMessage(Text.info("§f/tpaccept §7pour accepter, §f/tpno §7pour refuser. §8(expire dans "
-                + config.tpaExpireSeconds() + " s)"));
+        target.sendMessage(Text.info("§a/tpyes §7pour accepter§8, §c/tpno §7pour refuser. §8Expire dans "
+                + config.tpaExpireSeconds() + "s."));
         return true;
     }
 
@@ -74,13 +74,21 @@ public class TeleportRequestService {
             return;
         }
 
-        target.sendMessage(Text.success("Demande de §f" + requester.getName() + " §aacceptée."));
-        requester.sendMessage(Text.success("§f" + target.getName() + " §aa accepté votre demande."));
-
         // /tpa : le demandeur bouge ; /tpahere : la cible bouge. La destination est
         // évaluée au moment du départ (position actuelle du point d'ancrage).
         final Player mover = request.getType() == TeleportRequest.Type.TO_TARGET ? requester : target;
         final Player anchor = request.getType() == TeleportRequest.Type.TO_TARGET ? target : requester;
+
+        target.sendMessage(Text.success("Demande de §f" + requester.getName() + " §aacceptée."));
+        requester.sendMessage(Text.success("§f" + target.getName() + " §aa accepté votre demande de téléportation."));
+
+        // Celui qui bouge reçoit son compte à rebours via le TeleportService (TP_WARMUP) ;
+        // on prévient aussi celui qui attend l'arrivée.
+        int delay = teleports.effectiveWarmupSeconds(mover);
+        if (delay > 0) {
+            anchor.sendMessage(Text.info("§f" + mover.getName() + " §7sera téléporté sur vous dans §c"
+                    + delay + "s§7."));
+        }
         teleports.delayedTeleport(mover,
                 () -> anchor.isOnline() ? anchor.getLocation() : null, null);
     }
@@ -92,7 +100,7 @@ public class TeleportRequestService {
             target.sendMessage(Text.error("Vous n'avez aucune demande de téléportation en attente."));
             return;
         }
-        target.sendMessage(Text.success("Demande refusée."));
+        target.sendMessage(Text.info("Demande de téléportation refusée."));
         Player requester = Bukkit.getPlayer(request.getRequester());
         if (requester != null && requester.isOnline()) {
             requester.sendMessage(Text.error("§f" + target.getName() + " §ca refusé votre demande de téléportation."));
