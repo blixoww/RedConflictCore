@@ -63,7 +63,7 @@ public final class BoutiquePacketSender {
         // Packs — extension en fin de paquet (lue via try/catch côté client pour compat.)
         writeCategory(pb, plugin.getBoutiqueConfig().getList("boutique.packs"), "commandes");
 
-        player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
+        player.sendPluginMessage(plugin, CHANNEL_S2C, pb.build());
     }
 
     public static void sendResult(Player player, boolean success, String message) {
@@ -71,7 +71,7 @@ public final class BoutiquePacketSender {
                 .writeBoolean(success)
                 .writeString(truncate(message, 200))
                 .build();
-        player.sendPluginMessage((Plugin) RedConflictCore.getInstance(), CHANNEL_S2C, data);
+        player.sendPluginMessage(RedConflictCore.getInstance(), CHANNEL_S2C, data);
     }
 
     // ── Sérialisation catégorie ──────────────────────────────────────────────
