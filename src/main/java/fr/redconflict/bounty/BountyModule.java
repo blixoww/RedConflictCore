@@ -3,6 +3,7 @@ package fr.redconflict.bounty;
 import fr.redconflict.RedConflictCore;
 import fr.redconflict.core.Module;
 import fr.redconflict.core.command.CommandRegistrar;
+import fr.redconflict.faction.FactionHook;
 
 /**
  * Module bounty : primes PvP (/prime), killstreaks et annonces, avec suivi
@@ -30,7 +31,11 @@ public class BountyModule implements Module {
         }
         new CommandRegistrar(plugin).register("prime", new BountyCommand(plugin, manager, killstreaks));
         plugin.getServer().getPluginManager().registerEvents(new BountyListener(manager, killstreaks), plugin);
-        plugin.getServer().getPluginManager().registerEvents(manager.getFactionTracker(), plugin);
+        // L'anti-abus entre ex-coéquipiers n'a de sens qu'avec les factions :
+        // sans RedFaction (Minage), inutile d'écouter toutes les commandes.
+        if (FactionHook.isEnabled()) {
+            plugin.getServer().getPluginManager().registerEvents(manager.getFactionTracker(), plugin);
+        }
     }
 
 }

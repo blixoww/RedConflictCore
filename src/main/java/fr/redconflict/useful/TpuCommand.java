@@ -2,6 +2,7 @@ package fr.redconflict.useful;
 
 import fr.redconflict.core.command.CoreCommand;
 import fr.redconflict.core.text.RC;
+import fr.redconflict.faction.FactionHook;
 import fr.redconflict.friend.FriendManager;
 import fr.redfaction.api.RedFactionAPI;
 import fr.redfaction.entity.Faction;
@@ -50,6 +51,9 @@ public class TpuCommand extends CoreCommand {
     }
 
     private static boolean sameFaction(Player a, Player b) {
+        if (!FactionHook.isEnabled()) {
+            return false;
+        }
         try {
             if (!RedFactionAPI.isAvailable()) {
                 return false;

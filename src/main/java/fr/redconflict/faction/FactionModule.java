@@ -5,8 +5,9 @@ import fr.redconflict.core.Module;
 
 /**
  * Module faction : données envoyées au client moddé — positions minimap
- * (toujours actives, filtrées anti-triche) et, si RedFaction est présent
- * (serveur Faction uniquement), tag/relation de faction et zone de claim.
+ * (toujours actives, filtrées anti-triche) et, si l'intégration RedFaction est
+ * active ({@link FactionHook} : plugin présent et {@code hooks.redfaction: true}),
+ * tag/relation de faction et zone de claim.
  */
 public class FactionModule implements Module {
 
@@ -31,9 +32,10 @@ public class FactionModule implements Module {
         new MinimapPositionSender(plugin).start();
 
         // Les `new` restent dans la branche conditionnelle pour que la JVM ne charge
-        // jamais les classes dépendant de RedFaction quand celui-ci est absent (Minage).
-        if (plugin.getServer().getPluginManager().getPlugin("RedFaction") == null) {
-            plugin.getLogger().info("[Faction] Plugin RedFaction absent — features faction (HUD tag, zone de claim) désactivées.");
+        // jamais les classes dépendant de RedFaction quand celui-ci est absent (Minage)
+        // ou quand l'intégration est coupée par config (hooks.redfaction: false).
+        if (!FactionHook.isEnabled()) {
+            plugin.getLogger().info("[Faction] Features faction (HUD tag, zone de claim) désactivées.");
             return;
         }
         // Tag + relation de faction envoyés périodiquement aux clients proches.

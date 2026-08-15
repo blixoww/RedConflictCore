@@ -105,6 +105,7 @@ public class KsListener implements Listener {
     }
 
     private String resolveFaction(UUID uuid, Player p) {
+        if (!fr.redconflict.faction.FactionHook.isEnabled()) return "";
         try {
             if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return "";
             fr.redfaction.entity.Faction fac = fr.redfaction.api.RedFactionAPI.get().getPlayerFaction(p);

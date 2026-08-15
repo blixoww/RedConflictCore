@@ -1,6 +1,7 @@
 package fr.redconflict.ping;
 
 import fr.redconflict.RedConflictCore;
+import fr.redconflict.faction.FactionHook;
 import fr.redconflict.friend.FriendManager;
 import fr.redconflict.packets.PacketBuilder;
 import fr.redconflict.packets.PacketReader;
@@ -73,7 +74,6 @@ public class PingServerHandler implements PluginMessageListener {
     private void broadcastPing(Player sender, double x, double y, double z) {
         FriendManager friendManager = FriendManager.getInstance();
         List<UUID> friends = friendManager != null ? friendManager.getFriends(sender.getUniqueId()) : null;
-        Faction senderFaction = getFaction(sender);
 
         for (Player target : Bukkit.getOnlinePlayers()) {
             if (target.getUniqueId().equals(sender.getUniqueId())
@@ -81,7 +81,7 @@ public class PingServerHandler implements PluginMessageListener {
                     || !isInRange(sender, target)) {
                 continue;
             }
-            int relation = resolveRelation(senderFaction, friends, target);
+            int relation = resolveRelation(sender, friends, target);
             if (relation == RELATION_NONE) {
                 continue;
             }
@@ -96,21 +96,43 @@ public class PingServerHandler implements PluginMessageListener {
         }
     }
 
-    private int resolveRelation(Faction senderFaction, List<UUID> friends, Player target) {
-        if (senderFaction != null) {
-            Faction targetFaction = getFaction(target);
-            if (targetFaction != null) {
-                if (targetFaction.getId().equals(senderFaction.getId())) {
-                    return RELATION_FACTION;
-                }
-                if (senderFaction.isAlly(targetFaction.getId())) {
-                    return RELATION_ALLY;
-                }
+    /**
+     * Relation expéditeur → destinataire (faction, allié, puis ami). La partie
+     * faction est isolée dans {@link #factionRelation} et n'est atteinte que si
+     * l'intégration RedFaction est active ({@link FactionHook}), afin de ne
+     * charger aucune classe faction sur un serveur sans RedFaction.
+     */
+    private int resolveRelation(Player sender, List<UUID> friends, Player target) {
+        if (FactionHook.isEnabled()) {
+            int relation = factionRelation(sender, target);
+            if (relation != RELATION_NONE) {
+                return relation;
             }
         }
         if (friends != null && friends.contains(target.getUniqueId())) {
             return RELATION_FRIEND;
         }
+        return RELATION_NONE;
+    }
+
+    /** Seule méthode à manipuler des objets RedFaction : jamais appelée hook coupé. */
+    private int factionRelation(Player sender, Player target) {
+        try {
+            Faction senderFaction = getFaction(sender);
+            if (senderFaction == null) {
+                return RELATION_NONE;
+            }
+            Faction targetFaction = getFaction(target);
+            if (targetFaction == null) {
+                return RELATION_NONE;
+            }
+            if (targetFaction.getId().equals(senderFaction.getId())) {
+                return RELATION_FACTION;
+            }
+            if (senderFaction.isAlly(targetFaction.getId())) {
+                return RELATION_ALLY;
+            }
+        } catch (Throwable ignored) {}
         return RELATION_NONE;
     }
 

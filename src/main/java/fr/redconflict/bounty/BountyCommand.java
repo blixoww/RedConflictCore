@@ -4,6 +4,7 @@ import fr.redconflict.core.command.CoreCommand;
 import fr.redconflict.core.economy.VaultEconomy;
 import fr.redconflict.core.text.RC;
 import fr.redconflict.core.text.Text;
+import fr.redconflict.faction.FactionHook;
 import fr.redconflict.friend.FriendManager;
 import fr.redfaction.api.RedFactionAPI;
 import fr.redfaction.entity.Faction;
@@ -227,6 +228,9 @@ public class BountyCommand extends CoreCommand {
         FriendManager friends = FriendManager.getInstance();
         if (friends != null && friends.areFriends(requester.getUniqueId(), target.getUniqueId())) {
             return true;
+        }
+        if (!FactionHook.isEnabled()) {
+            return false;
         }
         try {
             if (!RedFactionAPI.isAvailable()) {

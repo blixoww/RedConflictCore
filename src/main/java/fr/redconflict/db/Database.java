@@ -77,10 +77,13 @@ public class Database {
         // 1) Démarrage du serveur H2 TCP (un seul serveur de la grappe).
         if (serverEnabled) {
             try {
-                // Pas de -tcpAllowOthers : la base n'accepte que les connexions locales
-                // (tous les serveurs Minecraft sont sur la même machine). Sécurité.
+                // -tcpAllowOthers est indispensable dès que les serveurs tournent dans des
+                // conteneurs distincts (Pterodactyl) : pour H2, le Minage n'est alors plus
+                // "la même machine" que le Faction, et sans cette option ses connexions sont
+                // refusees. Sans conteneurs, elle n'etait pas necessaire.
                 tcpServer = Server.createTcpServer(
                         "-tcpPort", String.valueOf(port),
+                        "-tcpAllowOthers",
                         "-ifNotExists",
                         "-baseDir", baseDir.getAbsolutePath()
                 ).start();

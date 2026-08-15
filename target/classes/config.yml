@@ -243,6 +243,22 @@ features:
   guide: true
   poubelle: true
 
+# ── Intégrations avec les plugins externes ───────────────────────────────────
+hooks:
+  # Intégration RedFaction : tag/relation de faction dans le HUD et /profil,
+  # zone de claim, marqueurs faction/alliés de la minimap, ping faction/allié,
+  # exclusion des alliés dans /prime et /tpu, anti-bypass des primes.
+  #
+  # Mettre à false sur un serveur SANS factions (ex. le Minage) : le plugin
+  # n'appelle alors jamais l'API RedFaction, même si le plugin est installé.
+  # Les fonctionnalités concernées retombent proprement sur "sans faction"
+  # (les amis restent visibles sur la minimap, les pings amis fonctionnent).
+  #
+  # true = intégration active SI le plugin RedFaction est présent (détection
+  # automatique : absent = intégration coupée, aucune erreur).
+  # Modification prise en compte au redémarrage du serveur (pas à /red reload).
+  redfaction: true
+
 # ── Base de données centralisée H2 ───────────────────────────────────────────
 # MODES disponibles :
 #

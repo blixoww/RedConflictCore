@@ -69,17 +69,7 @@ public class PlayerDataServerHandler implements PluginMessageListener {
             String rank = RankResolver.resolve(player);
 
             // ── Faction — fraîche depuis RedFaction ───────────────────────────────
-            String faction = "";
-            try {
-                if (fr.redfaction.api.RedFactionAPI.isAvailable()) {
-                    fr.redfaction.entity.Faction fac =
-                        fr.redfaction.api.RedFactionAPI.get().getPlayerFaction(player);
-                    if (fac != null && fac.isNormal()) {
-                        String tag = fac.getTag();
-                        if (tag != null && !tag.isEmpty()) faction = tag;
-                    }
-                }
-            } catch (Exception ignored) {}
+            String faction = resolveFactionTag(player);
 
             // ── Streak & Bounty — managers in-memory ─────────────────────────────
             int streak = 0;
@@ -120,6 +110,27 @@ public class PlayerDataServerHandler implements PluginMessageListener {
                 player.sendPluginMessage(plugin, "CUSTOM:PDATA_S2C", data);
             });
         });
+    }
+
+    /**
+     * Tag de faction du joueur, ou {@code ""} si l'intégration RedFaction est
+     * coupée ({@link fr.redconflict.faction.FactionHook}) ou s'il n'a pas de faction.
+     * Les appels RedFaction restent isolés ici : sur un serveur sans RedFaction,
+     * cette méthode retourne avant d'avoir à charger la moindre classe faction.
+     */
+    private static String resolveFactionTag(Player player) {
+        if (!fr.redconflict.faction.FactionHook.isEnabled()) return "";
+        try {
+            if (fr.redfaction.api.RedFactionAPI.isAvailable()) {
+                fr.redfaction.entity.Faction fac =
+                    fr.redfaction.api.RedFactionAPI.get().getPlayerFaction(player);
+                if (fac != null && fac.isNormal()) {
+                    String tag = fac.getTag();
+                    if (tag != null && !tag.isEmpty()) return tag;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return "";
     }
 
     private static String truncate(String s, int max) {

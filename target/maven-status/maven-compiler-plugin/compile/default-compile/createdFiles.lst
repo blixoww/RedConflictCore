@@ -276,6 +276,7 @@ fr\redconflict\trade\TradeManager.class
 fr\redconflict\staff\commands\VanishCommand.class
 fr\redconflict\staff\StaffDatabase$TopLuckEntry.class
 fr\redconflict\lagswitch\LagSwitchListener.class
+fr\redconflict\faction\FactionHook.class
 fr\redconflict\essentials\command\player\XpCommand.class
 fr\redconflict\combatlog\CombatLogSender.class
 fr\redconflict\essentials\command\teleport\BackCommand.class

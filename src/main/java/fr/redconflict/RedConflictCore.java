@@ -25,6 +25,7 @@ import fr.redconflict.db.PlayerLockListener;
 import fr.redconflict.db.PlayerLockService;
 import fr.redconflict.death.DeathModule;
 import fr.redconflict.essentials.EssentialsModule;
+import fr.redconflict.faction.FactionHook;
 import fr.redconflict.faction.FactionModule;
 import fr.redconflict.friend.FriendModule;
 import fr.redconflict.giveall.GiveAllModule;
@@ -92,6 +93,7 @@ public class RedConflictCore extends JavaPlugin {
 
         hookWorldGuard();
         saveDefaultConfig();
+        FactionHook.init(this);
         this.features = new FeatureToggles(this);
         setupDatabase();
         installModules();

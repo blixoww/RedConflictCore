@@ -272,6 +272,7 @@ public class ProfilCommand extends CoreCommand {
      */
     private int resolveRequesterRelation(Player requester, String targetTag) {
         if (targetTag == null || targetTag.isEmpty()) return 4;
+        if (!fr.redconflict.faction.FactionHook.isEnabled()) return 4;
         try {
             if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return 4;
             fr.redfaction.api.RedFactionAPI api = fr.redfaction.api.RedFactionAPI.get();
@@ -322,6 +323,7 @@ public class ProfilCommand extends CoreCommand {
      * via l'API RedFaction. Retourne "" si sans faction / RedFaction absent.
      */
     private String getFactionTagByUUID(UUID uuid) {
+        if (!fr.redconflict.faction.FactionHook.isEnabled()) return "";
         try {
             if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return "";
             fr.redfaction.entity.Faction faction = fr.redfaction.api.RedFactionAPI.get().getPlayerFaction(uuid);

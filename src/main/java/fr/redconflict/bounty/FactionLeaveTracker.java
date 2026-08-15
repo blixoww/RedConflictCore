@@ -83,6 +83,7 @@ public class FactionLeaveTracker implements Listener {
     }
 
     public static String getFactionId(Player player) {
+        if (!fr.redconflict.faction.FactionHook.isEnabled()) return null;
         try {
             if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return null;
             fr.redfaction.entity.Faction fac =
