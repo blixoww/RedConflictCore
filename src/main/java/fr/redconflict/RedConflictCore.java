@@ -44,6 +44,7 @@ import fr.redconflict.ring.RingModule;
 import fr.redconflict.rtp.RtpModule;
 import fr.redconflict.server.ServerSwitchModule;
 import fr.redconflict.shop.ShopModule;
+import fr.redconflict.site.SiteSync;
 import fr.redconflict.staff.StaffModule;
 import fr.redconflict.trade.TradeModule;
 import fr.redconflict.useful.MessagingModule;
@@ -85,6 +86,7 @@ public class RedConflictCore extends JavaPlugin {
     private PlayerDataModule playerDataModule;
     private PBModule pbModule;
     private PBShopModule pbShopModule;
+    private SiteSync siteSync;
 
     @Override
     public void onEnable() {
@@ -115,6 +117,8 @@ public class RedConflictCore extends JavaPlugin {
         }
         getServer().getMessenger().unregisterIncomingPluginChannel(this);
         getServer().getMessenger().unregisterOutgoingPluginChannel(this);
+        // Avant la fermeture de H2 : le miroir lit dedans.
+        if (this.siteSync != null) this.siteSync.close();
         if (this.database != null) this.database.close();
     }
 
@@ -223,6 +227,12 @@ public class RedConflictCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new PlayerLockListener(this.playerLockService, this.playerDataSync,
                         this.database.getServerId(), this.database.isKickOnConflict()), this);
+
+        // Miroir des profils vers la base du site. Désactivé par défaut, et à
+        // n'activer que sur UN serveur de la grappe : Faction et Minage lisent
+        // la même base H2, les deux écriraient les mêmes lignes pour rien.
+        this.siteSync = new SiteSync(this, this.database);
+        this.siteSync.start();
     }
 
     /** Applique le message de permission standard à toutes les commandes du plugin.yml. */

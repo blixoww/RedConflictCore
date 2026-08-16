@@ -149,5 +149,16 @@
             <artifactId>HikariCP</artifactId>
             <version>4.0.3</version>
         </dependency>
+        <!-- Pilote MariaDB, pour le miroir des profils vers la base du site (SiteSync).
+             Branche 2.7.x : la 3.x abandonne des options de connexion utilisées par
+             les anciens serveurs et vise un socle plus récent que Java 8.
+             NON relocé : le ServicesResourceTransformer du shade réécrit déjà
+             META-INF/services/java.sql.Driver, et reloger un pilote JDBC casse le
+             chargement par nom de classe. -->
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <version>2.7.12</version>
+        </dependency>
     </dependencies>
 </project>

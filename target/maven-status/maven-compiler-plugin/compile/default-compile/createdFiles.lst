@@ -150,6 +150,7 @@ fr\redconflict\essentials\repository\h2\AbstractH2Repository.class
 fr\redconflict\essentials\service\IgnoreService.class
 fr\redconflict\job\JobModule.class
 fr\redconflict\staff\StaffFormatter.class
+fr\redconflict\site\SiteSync$1.class
 fr\redconflict\profil\ProfilCommand$ProfilePayload.class
 fr\redconflict\packets\PacketCoreModule.class
 fr\redconflict\shop\ShopModule.class
@@ -209,6 +210,7 @@ fr\redconflict\essentials\command\social\NearCommand.class
 fr\redconflict\essentials\command\teleport\TpAcceptCommand.class
 fr\redconflict\essentials\service\resolve\PotionResolver.class
 fr\redconflict\data\PlayerDataServerHandler.class
+fr\redconflict\site\SiteSync.class
 fr\redconflict\essentials\command\player\HealCommand.class
 fr\redconflict\trade\TradePacketSender$CheckedConsumer.class
 fr\redconflict\profil\ProfilCommand$1.class

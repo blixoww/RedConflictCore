@@ -313,6 +313,35 @@ database:
     # Snapshot sur le thread principal + écriture base asynchrone → aucun lag pour les joueurs.
     autosave-minutes: 3
 
+# ── Miroir vers le site (Azuriom) ─────────────────────────────────────────────
+# Recopie player_profiles (H2) vers rc_players / rc_factions dans la base du
+# site. Sens UNIQUE : H2 reste propriétaire des données, le site n'en reçoit
+# qu'un instantané pour l'afficher. Un achat en boutique ne modifie jamais
+# MariaDB directement — Azuriom exécute une commande sur le serveur via AzLink,
+# et c'est ce plugin qui applique le changement dans H2.
+#
+# ⚠️ À activer sur UN SEUL serveur de la grappe : celui qui héberge H2, donc le
+# Faction. Faction et Minage lisent la même base ; les deux écriraient les mêmes
+# lignes en concurrence, pour rien.
+#
+# ⚠️ Le compte SQL ne doit avoir de droits QUE sur ces deux tables. La base du
+# site contient aussi `users`, donc les hachages de mots de passe et les jetons
+# de session : un plugin de gameplay n'a rien à y faire.
+#   CREATE USER 'rc_sync'@'%' IDENTIFIED BY '...';
+#   GRANT SELECT, INSERT, UPDATE, DELETE ON azuriom.rc_players  TO 'rc_sync'@'%';
+#   GRANT SELECT, INSERT, UPDATE, DELETE ON azuriom.rc_factions TO 'rc_sync'@'%';
+#
+# 172.18.0.1 = pont Docker. Sous Pterodactyl, 127.0.0.1 désigne le conteneur
+# lui-même et non la machine hôte : MariaDB y serait injoignable.
+site-sync:
+  enabled: false
+  url: "jdbc:mariadb://172.18.0.1:3306/azuriom"
+  user: "rc_sync"
+  password: ""
+  # Un instantané toutes les N minutes. Inutile de descendre bas : le site
+  # affiche des classements, pas du temps réel.
+  interval-minutes: 5
+
 # ── Sauvegarde automatique de la base (pendant que le serveur tourne) ─────────
 # Ne s'active QUE sur l'hôte H2 (le serveur avec database.server.enabled: true = le Faction).
 # Tout le travail est asynchrone : aucun lag. Produit Backup/Back_<date>.zip

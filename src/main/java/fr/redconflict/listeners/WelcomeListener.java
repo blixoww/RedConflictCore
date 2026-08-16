@@ -15,11 +15,13 @@ import org.bukkit.event.player.PlayerQuitEvent;
  */
 public class WelcomeListener implements Listener {
 
+    private static final String DISCORD_URL = "N6s4CA84XK";
+
     private static final String[] WELCOME = {
             RC.SEP,
             "§c§l  Bienvenue sur RedConflict §8!",
             "§7  Serveur §f1.8.9 §7| PvP / Survie",
-            "§7  Discord §f: §bdiscord.gg/UMJUnfQq",
+            "§7  Discord §f: §bdiscord.gg/" + DISCORD_URL,
             "§7  Tapez §f/commands §7pour voir les commandes.",
             RC.SEP
     };
@@ -30,7 +32,7 @@ public class WelcomeListener implements Listener {
             "§7  Bienvenue §f%s §7sur §c§lRedConflict §7!",
             "§7  Serveur §f1.8.9 §7| PvP / Survie",
             "§7  Lis les règles avant de jouer.",
-            "§7  Discord §f: §bdiscord.gg/UMJUnfQq",
+            "§7  Discord §f: §bdiscord.gg/" + DISCORD_URL,
             RC.SEP
     };
 
