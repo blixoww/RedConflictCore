@@ -46,6 +46,15 @@ public class PBCommand extends CoreCommand {
 
         String sub = args[0].toLowerCase();
 
+        if (sub.equals("migrate-site")) {
+            if (!sender.hasPermission(PERM_ADMIN)) {
+                sender.sendMessage(PREFIX + ChatColor.RED + "Permission refusée.");
+                return;
+            }
+            migrateToSite(sender, args);
+            return;
+        }
+
         if (sub.equals("add") || sub.equals("remove") || sub.equals("set")) {
             if (!sender.hasPermission(PERM_ADMIN)) {
                 sender.sendMessage(PREFIX + ChatColor.RED + "Permission refusée.");
@@ -112,6 +121,56 @@ public class PBCommand extends CoreCommand {
     private void showBalance(CommandSender to, OfflinePlayer of) {
         to.sendMessage(PREFIX + ChatColor.GRAY + "Solde de " + ChatColor.WHITE + of.getName()
                 + ChatColor.GRAY + " : " + ChatColor.YELLOW + manager.get(of) + " PB");
+    }
+
+    /**
+     * {@code /pb migrate-site [confirm]} — transfère les PB de H2 vers la bourse
+     * d'Azuriom, une fois pour toutes.
+     *
+     * <p>Sans {@code confirm}, ne fait qu'annoncer ce qui serait transféré : une
+     * commande qui touche au solde de tout le monde ne s'exécute pas sur une
+     * faute de frappe. L'opération est de toute façon rejouable — chaque joueur
+     * migré est marqué dans {@code rc_pb_log}.
+     */
+    private void migrateToSite(CommandSender sender, String[] args) {
+        if (!(plugin instanceof fr.redconflict.RedConflictCore)) return;
+        final fr.redconflict.RedConflictCore core = (fr.redconflict.RedConflictCore) plugin;
+
+        if (core.getSiteDatabase() == null || !core.getSiteDatabase().isAvailable()) {
+            sender.sendMessage(PREFIX + ChatColor.RED
+                    + "Le pont vers le site est fermé (site.enabled ?). Rien n'a été fait.");
+            return;
+        }
+
+        final boolean confirm = args.length >= 2 && args[1].equalsIgnoreCase("confirm");
+        sender.sendMessage(PREFIX + ChatColor.GRAY
+                + (confirm ? "Transfert des PB vers la bourse du site…" : "Simulation en cours…"));
+
+        final fr.redconflict.site.PBMigration migration =
+                new fr.redconflict.site.PBMigration(core, core.getCoreDatabase(), core.getSiteDatabase());
+
+        org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+            @Override
+            public void run() {
+                String result;
+                try {
+                    result = migration.run(!confirm).toString();
+                } catch (RuntimeException e) {
+                    result = ChatColor.RED + "Interrompu : " + e.getMessage();
+                }
+                final String message = result;
+                org.bukkit.Bukkit.getScheduler().runTask(plugin, new Runnable() {
+                    @Override
+                    public void run() {
+                        sender.sendMessage(PREFIX + ChatColor.WHITE + message);
+                        if (!confirm) {
+                            sender.sendMessage(PREFIX + ChatColor.YELLOW
+                                    + "Rien n'a été écrit. Relance avec « /pb migrate-site confirm ».");
+                        }
+                    }
+                });
+            }
+        });
     }
 
     private void notifyTarget(OfflinePlayer of, String msgColored) {

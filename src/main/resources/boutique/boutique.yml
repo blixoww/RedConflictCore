@@ -2,16 +2,35 @@
 boutique:
   titre: "&c&lBoutique RedConflict"
 
+  # Chaque grade pose le groupe LuckPerms ET les permissions listees dans sa
+  # description : ce qui est annonce dans /boutique est exactement ce qui est
+  # donne, meme si le groupe n'est pas (encore) configure cote LuckPerms.
+  # Achat temporaire -> "commandes" (settemp %duree%), permanent -> "commandes_perm".
   grades:
     - id: "elite"
       nom: "&b&lGrade Elite"
       icone: DIAMOND
       description:
-        - "&7/back - /craft - /furnace - /vision"
-        - "&7/kit elite - 6 homes"
-        - "&7Grade superieur debloquant de nouvelles commandes"
-      commande: "lp user %player% permission settemp group.elite true %duree%"
-      commande_perm: "lp user %player% permission set group.elite true"
+        - "&7Commandes : &f/back &7/craft &7/furnace &7/vision"
+        - "&7Homes : &f6 &7(au lieu de 1)"
+        - "&7Kit : &f/kit elite"
+        - "&8Grade intermediaire du serveur"
+      commandes:
+        - "lp user %player% permission settemp group.elite true %duree%"
+        - "lp user %player% permission settemp redconflict.back true %duree%"
+        - "lp user %player% permission settemp redconflict.craft true %duree%"
+        - "lp user %player% permission settemp redconflict.furnace true %duree%"
+        - "lp user %player% permission settemp redconflict.nv true %duree%"
+        - "lp user %player% permission settemp redconflict.sethome.multiple.6 true %duree%"
+        - "lp user %player% permission settemp greatkits.kits.Elite true %duree%"
+      commandes_perm:
+        - "lp user %player% permission set group.elite true"
+        - "lp user %player% permission set redconflict.back true"
+        - "lp user %player% permission set redconflict.craft true"
+        - "lp user %player% permission set redconflict.furnace true"
+        - "lp user %player% permission set redconflict.nv true"
+        - "lp user %player% permission set redconflict.sethome.multiple.6 true"
+        - "lp user %player% permission set greatkits.kits.Elite true"
       prix_monnaie: 30000
       prix_pb: 50
       prix_monnaie_perm: 100000
@@ -21,25 +40,54 @@ boutique:
       nom: "&6&lGrade Immortel"
       icone: NETHER_STAR
       description:
-        - "&7/near - /ec - /repairall"
-        - "&7/kit immortel - 10 homes"
-        - "&7Grade premium - le plus eleve du serveur"
-      commande: "lp user %player% permission settemp group.immortel true %duree%"
-      commande_perm: "lp user %player% permission set group.immortel true"
+        - "&7Tout le grade Elite, et en plus :"
+        - "&7Commandes : &f/near &7/ec &7/repairall &7/feed"
+        - "&7Homes : &f10 &7- Kit : &f/kit immortel"
+        - "&8Grade premium - le plus eleve du serveur"
+      commandes:
+        - "lp user %player% permission settemp group.immortel true %duree%"
+        - "lp user %player% permission settemp redconflict.back true %duree%"
+        - "lp user %player% permission settemp redconflict.craft true %duree%"
+        - "lp user %player% permission settemp redconflict.furnace true %duree%"
+        - "lp user %player% permission settemp redconflict.nv true %duree%"
+        - "lp user %player% permission settemp redconflict.near true %duree%"
+        - "lp user %player% permission settemp redconflict.near.unlimited true %duree%"
+        - "lp user %player% permission settemp redconflict.ec true %duree%"
+        - "lp user %player% permission settemp redconflict.repair true %duree%"
+        - "lp user %player% permission settemp redconflict.feed true %duree%"
+        - "lp user %player% permission settemp redconflict.sethome.multiple.10 true %duree%"
+        - "lp user %player% permission settemp greatkits.kits.Immortel true %duree%"
+      commandes_perm:
+        - "lp user %player% permission set group.immortel true"
+        - "lp user %player% permission set redconflict.back true"
+        - "lp user %player% permission set redconflict.craft true"
+        - "lp user %player% permission set redconflict.furnace true"
+        - "lp user %player% permission set redconflict.nv true"
+        - "lp user %player% permission set redconflict.near true"
+        - "lp user %player% permission set redconflict.near.unlimited true"
+        - "lp user %player% permission set redconflict.ec true"
+        - "lp user %player% permission set redconflict.repair true"
+        - "lp user %player% permission set redconflict.feed true"
+        - "lp user %player% permission set redconflict.sethome.multiple.10 true"
+        - "lp user %player% permission set greatkits.kits.Immortel true"
       prix_monnaie: 75000
       prix_pb: 100
       prix_monnaie_perm: 250000
       prix_pb_perm: 250
       duree: 2592000
 
+  # Une entree = la permission reellement testee par la commande du Core
+  # (voir plugin.yml, section "commands"). Ne pas mettre de noeud essentials.* :
+  # le module Essentials est integre au Core et n'utilise que redconflict.*.
   commandes:
     - id: "ec"
       nom: "&5Commande /ec"
       icone: ENDER_CHEST
       description:
         - "&7Ouvrez votre EnderChest partout"
-      commande: "lp user %player% permission settemp essentials.enderchest true %duree%"
-      commande_perm: "lp user %player% permission set essentials.enderchest true"
+        - "&8Permission : redconflict.ec"
+      commande: "lp user %player% permission settemp redconflict.ec true %duree%"
+      commande_perm: "lp user %player% permission set redconflict.ec true"
       prix_monnaie: 5000
       prix_pb: 50
       prix_monnaie_perm: 25000
@@ -50,8 +98,9 @@ boutique:
       icone: crafting_table
       description:
         - "&7Table de craft virtuelle partout"
-      commande: "lp user %player% permission settemp essentials.workbench true %duree%"
-      commande_perm: "lp user %player% permission set essentials.workbench true"
+        - "&8Permission : redconflict.craft"
+      commande: "lp user %player% permission settemp redconflict.craft true %duree%"
+      commande_perm: "lp user %player% permission set redconflict.craft true"
       prix_monnaie: 3000
       prix_pb: 30
       prix_monnaie_perm: 15000
@@ -62,6 +111,7 @@ boutique:
       icone: FURNACE
       description:
         - "&7Cuit vos items sans four"
+        - "&8Permission : redconflict.furnace"
       commande: "lp user %player% permission settemp redconflict.furnace true %duree%"
       commande_perm: "lp user %player% permission set redconflict.furnace true"
       prix_monnaie: 2000
@@ -74,6 +124,7 @@ boutique:
       icone: ENDER_EYE
       description:
         - "&7Vision nocturne permanente"
+        - "&8Permission : redconflict.nv"
       commande: "lp user %player% permission settemp redconflict.nv true %duree%"
       commande_perm: "lp user %player% permission set redconflict.nv true"
       prix_monnaie: 2000
@@ -86,6 +137,7 @@ boutique:
       icone: ANVIL
       description:
         - "&7Repare tout votre stuff"
+        - "&8Permission : redconflict.repair"
       commande: "lp user %player% permission settemp redconflict.repair true %duree%"
       commande_perm: "lp user %player% permission set redconflict.repair true"
       prix_monnaie: 5000
@@ -98,8 +150,9 @@ boutique:
       icone: COMPASS
       description:
         - "&7Retour a la derniere position"
-      commande: "lp user %player% permission settemp essentials.back true %duree%"
-      commande_perm: "lp user %player% permission set essentials.back true"
+        - "&8Permission : redconflict.back"
+      commande: "lp user %player% permission settemp redconflict.back true %duree%"
+      commande_perm: "lp user %player% permission set redconflict.back true"
       prix_monnaie: 3000
       prix_pb: 30
       prix_monnaie_perm: 15000
@@ -110,8 +163,9 @@ boutique:
       icone: COOKED_BEEF
       description:
         - "&7Restaurez votre faim"
-      commande: "lp user %player% permission settemp essentials.feed true %duree%"
-      commande_perm: "lp user %player% permission set essentials.feed true"
+        - "&8Permission : redconflict.feed"
+      commande: "lp user %player% permission settemp redconflict.feed true %duree%"
+      commande_perm: "lp user %player% permission set redconflict.feed true"
       prix_monnaie: 2000
       prix_pb: 20
       prix_monnaie_perm: 10000
@@ -122,8 +176,14 @@ boutique:
       icone: COMPASS
       description:
         - "&7Affiche les joueurs proches"
-      commande: "lp user %player% permission settemp essentials.near true %duree%"
-      commande_perm: "lp user %player% permission set essentials.near true"
+        - "&7Sans limite de rayon"
+        - "&8Permissions : redconflict.near(.unlimited)"
+      commandes:
+        - "lp user %player% permission settemp redconflict.near true %duree%"
+        - "lp user %player% permission settemp redconflict.near.unlimited true %duree%"
+      commandes_perm:
+        - "lp user %player% permission set redconflict.near true"
+        - "lp user %player% permission set redconflict.near.unlimited true"
       prix_monnaie: 3000
       prix_pb: 30
       prix_monnaie_perm: 15000

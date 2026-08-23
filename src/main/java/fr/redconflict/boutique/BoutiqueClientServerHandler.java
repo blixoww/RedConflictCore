@@ -3,24 +3,23 @@ package fr.redconflict.boutique;
 import fr.redconflict.RedConflictCore;
 import fr.redconflict.core.economy.VaultEconomy;
 import fr.redconflict.pb.PBManager;
+import fr.redconflict.site.EntitlementService;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * Reçoit les requêtes Boutique du client : refresh + achat.
  * Canal : CUSTOM:BOUTIQUE_C2S
+ *
+ * <p>Ne décide plus de ce qu'un article donne — {@link RewardDispatcher} s'en
+ * charge, et la boutique du site l'appelle aussi. Ici il ne reste que la
+ * séquence d'un achat : vérifier qu'il a lieu d'être, encaisser, livrer,
+ * enregistrer.
  */
 public class BoutiqueClientServerHandler implements PluginMessageListener {
 
@@ -28,6 +27,9 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
 
     private static final int BOUTIQUE_REQUEST = 0xB0;
     private static final int BOUTIQUE_BUY     = 0xB1;
+
+    /** Catégories telles que le client les numérote dans le paquet d'achat. */
+    private static final String[] CATEGORIES = { "grade", "kit", "cmd", "spawner", null, "pack" };
 
     private final RedConflictCore plugin;
 
@@ -63,56 +65,61 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
     // ── Achat ─────────────────────────────────────────────────────────────────
 
     private void handleBuy(Player player, int cat, String id, boolean payPB, boolean temporary) {
-        switch (cat) {
-            case 0: buyConfig(player, "boutique.grades",    "grade",   id, payPB, temporary); break;
-            case 1: buyConfig(player, "boutique.kits",      "kit",     id, payPB, false);      break;
-            case 2: buyConfig(player, "boutique.commandes", "cmd",     id, payPB, temporary);  break;
-            case 3: buyConfig(player, "boutique.spawners",  "spawner", id, payPB, false);      break;
-            case 4: buyOffre(player, id, payPB); break;
-            case 5: buyPack(player, id, payPB);  break;
-            default:
-                BoutiquePacketSender.sendResult(player, false, "Categorie inconnue.");
+        // Les offres spéciales ont leur propre cycle de vie (stock, expiration) :
+        // elles ne passent pas par le catalogue.
+        if (cat == 4) { buyOffre(player, id, payPB); return; }
+
+        if (cat < 0 || cat >= CATEGORIES.length || CATEGORIES[cat] == null) {
+            BoutiquePacketSender.sendResult(player, false, "Categorie inconnue.");
+            return;
         }
+        buyItem(player, CATEGORIES[cat], id, payPB, temporary);
     }
 
-    @SuppressWarnings("unchecked")
-    private void buyConfig(Player player, String path, String kind, String id, boolean payPB, boolean temporary) {
-        List<?> entries = plugin.getBoutiqueConfig().getList(path);
-        if (entries == null) {
-            BoutiquePacketSender.sendResult(player, false, "Categorie vide.");
+    private void buyItem(Player player, String category, String id, boolean payPB, boolean temporary) {
+        BoutiqueItem item = plugin.getBoutiqueCatalog().find(category, id);
+        if (item == null) {
+            BoutiquePacketSender.sendResult(player, false, "Article introuvable.");
             return;
         }
-        for (Object o : entries) {
-            if (!(o instanceof Map)) continue;
-            Map<String, Object> m = (Map<String, Object>) o;
-            if (!id.equalsIgnoreCase(String.valueOf(m.get("id")))) continue;
 
-            // Choisir le bon prix selon permanent ou temporaire
-            int prixPB    = asInt(m.get("prix_pb"));
-            long prixM    = asLong(m.get("prix_monnaie"));
-            int prixPBPerm  = asInt(m.get("prix_pb_perm"));
-            long prixMPerm  = asLong(m.get("prix_monnaie_perm"));
+        // Un article sans mode temporaire est toujours acquis définitivement,
+        // quoi que demande le client : kits, spawners et packs sont dans ce cas.
+        boolean permanent = !temporary || !item.supportsTemporary();
 
-            boolean effectivePerm = !temporary && prixMPerm > 0; // achat permanent si flag + prix dispo
-            long usedPrixM  = effectivePerm ? prixMPerm  : prixM;
-            int  usedPrixPB = effectivePerm ? prixPBPerm : prixPB;
-
-            boolean effectivePB;
-            if (usedPrixM > 0 && usedPrixPB > 0) effectivePB = payPB;
-            else if (usedPrixPB > 0)              effectivePB = true;
-            else                                  effectivePB = false;
-            long price = effectivePB ? usedPrixPB : usedPrixM;
-            if (price <= 0) {
-                BoutiquePacketSender.sendResult(player, false, "Mode de paiement indisponible.");
+        // ── Le verrou : on ne revend pas ce que le joueur possède déjà ────────
+        EntitlementService entitlements = plugin.getEntitlementService();
+        if (entitlements != null) {
+            String denial = entitlements.denialReason(player, item, permanent);
+            if (denial != null) {
+                BoutiquePacketSender.sendResult(player, false, denial);
                 return;
             }
-            if (!charge(player, effectivePB, price, kind + ":" + id)) return;
-            executeRewards(player, m, kind, effectivePerm);
-            BoutiquePacketSender.sendResult(player, true, "Achat effectue : " + stripColor(String.valueOf(m.get("nom"))));
-            BoutiquePacketSender.sendData(player);
+        }
+
+        int pbPrice = item.pbPriceFor(permanent);
+        long moneyPrice = item.moneyPriceFor(permanent);
+
+        boolean usePB;
+        if (pbPrice > 0 && moneyPrice > 0) usePB = payPB;
+        else if (pbPrice > 0)              usePB = true;
+        else                               usePB = false;
+
+        long price = usePB ? pbPrice : moneyPrice;
+        if (price <= 0) {
+            BoutiquePacketSender.sendResult(player, false, "Mode de paiement indisponible.");
             return;
         }
-        BoutiquePacketSender.sendResult(player, false, "Article introuvable.");
+
+        if (!charge(player, usePB, price, item.category + ":" + item.id)) return;
+
+        plugin.getRewardDispatcher().execute(player.getName(), player.getUniqueId(), item, permanent);
+        if (entitlements != null) {
+            entitlements.grant(player, item, permanent, "game");
+        }
+
+        BoutiquePacketSender.sendResult(player, true, "Achat effectue : " + item.name);
+        BoutiquePacketSender.sendData(player);
     }
 
     private void buyOffre(Player player, String id, boolean payPB) {
@@ -148,55 +155,23 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
         BoutiquePacketSender.sendData(player);
     }
 
-    @SuppressWarnings("unchecked")
-    private void buyPack(Player player, String id, boolean payPB) {
-        List<?> entries = plugin.getBoutiqueConfig().getList("boutique.packs");
-        if (entries == null) {
-            BoutiquePacketSender.sendResult(player, false, "Aucun pack disponible.");
-            return;
-        }
-        for (Object o : entries) {
-            if (!(o instanceof Map)) continue;
-            Map<String, Object> m = (Map<String, Object>) o;
-            if (!id.equalsIgnoreCase(String.valueOf(m.get("id")))) continue;
-
-            int  prixPB = asInt(m.get("prix_pb"));
-            long prixM  = asLong(m.get("prix_monnaie"));
-
-            boolean effectivePB;
-            if (prixM > 0 && prixPB > 0) effectivePB = payPB;
-            else if (prixPB > 0)         effectivePB = true;
-            else                         effectivePB = false;
-            long price = effectivePB ? prixPB : prixM;
-            if (price <= 0) {
-                BoutiquePacketSender.sendResult(player, false, "Mode de paiement indisponible.");
-                return;
-            }
-            if (!charge(player, effectivePB, price, "pack:" + id)) return;
-
-            // Exécuter toutes les récompenses du pack
-            Object cmds = m.get("commandes");
-            if (cmds instanceof List) {
-                for (Object c : (List<Object>) cmds) dispatch(player, String.valueOf(c));
-            }
-            BoutiquePacketSender.sendResult(player, true, "Pack achete : " + stripColor(String.valueOf(m.get("nom"))));
-            BoutiquePacketSender.sendData(player);
-            return;
-        }
-        BoutiquePacketSender.sendResult(player, false, "Pack introuvable.");
-    }
-
     // ── Paiement ─────────────────────────────────────────────────────────────
 
     private boolean charge(Player p, boolean payPB, long amount, String reason) {
         if (payPB) {
             PBManager mgr = plugin.getPBManager();
-            if (mgr == null || !mgr.has(p, (int) amount)) {
-                BoutiquePacketSender.sendResult(p, false, "PB insuffisants.");
+            if (mgr == null) {
+                BoutiquePacketSender.sendResult(p, false, "Systeme PB indisponible.");
+                return false;
+            }
+            // Le solde PB vit dans la base du site : si elle est injoignable, on
+            // refuse plutôt que de livrer un article qui ne serait jamais payé.
+            if (!mgr.isAvailable()) {
+                BoutiquePacketSender.sendResult(p, false, "Boutique PB momentanement indisponible.");
                 return false;
             }
             if (!mgr.remove(p, (int) amount, reason)) {
-                BoutiquePacketSender.sendResult(p, false, "Erreur retrait PB.");
+                BoutiquePacketSender.sendResult(p, false, "PB insuffisants.");
                 return false;
             }
             return true;
@@ -223,138 +198,6 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
             VaultEconomy.get().depositPlayer(p, amount);
     }
 
-    // ── Récompenses ──────────────────────────────────────────────────────────
-
-    @SuppressWarnings("unchecked")
-    private void executeRewards(Player p, Map<String, Object> data, String kind, boolean permanent) {
-        // Grades : liste de commandes
-        Object cmds = data.get("commandes");
-        if (cmds instanceof List) {
-            for (Object c : (List<Object>) cmds) dispatch(p, String.valueOf(c));
-            return;
-        }
-        // Commandes : une seule commande, permanent ou temporaire
-        String cmd = permanent && data.get("commande_perm") != null
-                ? String.valueOf(data.get("commande_perm"))
-                : (data.get("commande") != null ? String.valueOf(data.get("commande")) : null);
-        if (cmd == null) return;
-        // Achat temporaire : injecter la durée LuckPerms depuis le champ "duree" (secondes)
-        if (!permanent) cmd = cmd.replace("%duree%", lpDuration(asLong(data.get("duree"))));
-        dispatch(p, cmd);
-    }
-
-    /** Convertit une duree en secondes vers un format accepte par LuckPerms (ex: 2592000 -> "2592000s"). */
-    private static String lpDuration(long seconds) {
-        if (seconds <= 0) seconds = 2592000L; // defaut : 30 jours
-        return seconds + "s";
-    }
-
-    private void dispatch(Player p, String raw) {
-        String resolved = raw
-                .replace("%player%", p.getName())
-                .replace("%uuid%",   p.getUniqueId().toString());
-        if (resolved.startsWith("/")) resolved = resolved.substring(1);
-        // Les "give" sont donnés via l'API Bukkit : elle connaît tous les Material
-        // custom (Material.matchMaterial), contrairement à la base d'items figée
-        // d'Essentials (items.csv) qu'il faudrait sinon maintenir à la main.
-        if (giveNatively(resolved)) return;
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), resolved);
-    }
-
-    /**
-     * Exécute nativement un "give <joueur> <ITEM[:data]> [quantité] [ench niveau ...]"
-     * (syntaxe Essentials). Retourne true si la commande était un give (gérée ou
-     * loggée en échec), false si ce n'est pas un give et qu'il faut le dispatcher.
-     */
-    private boolean giveNatively(String command) {
-        String[] t = command.trim().split("\\s+");
-        if (t.length < 3) return false;
-        String head = t[0].toLowerCase(Locale.ROOT);
-        int ns = head.indexOf(':');
-        if (ns >= 0) head = head.substring(ns + 1); // minecraft:give / essentials:give
-        if (!head.equals("give")) return false;
-
-        Player target = Bukkit.getPlayerExact(t[1]);
-        if (target == null) {
-            plugin.getLogger().warning("[Boutique] give : joueur introuvable '" + t[1] + "' (" + command + ")");
-            return true;
-        }
-
-        // Material, avec data optionnelle (ITEM:data)
-        String matToken = t[2];
-        short data = 0;
-        int colon = matToken.indexOf(':');
-        if (colon >= 0) {
-            try { data = Short.parseShort(matToken.substring(colon + 1)); } catch (NumberFormatException ignored) {}
-            matToken = matToken.substring(0, colon);
-        }
-        Material mat = Material.matchMaterial(matToken);
-        if (mat == null) {
-            plugin.getLogger().warning("[Boutique] give : item inconnu '" + t[2] + "' (" + command + ")");
-            return true;
-        }
-
-        int amount = 1;
-        if (t.length >= 4) { try { amount = Integer.parseInt(t[3]); } catch (NumberFormatException ignored) {} }
-
-        ItemStack item = new ItemStack(mat, amount, data);
-
-        // Enchantements : paires "nom niveau" à partir du 5e token
-        for (int i = 4; i + 1 < t.length; i += 2) {
-            int level;
-            try { level = Integer.parseInt(t[i + 1]); } catch (NumberFormatException e) { continue; }
-            Enchantment ench = resolveEnchant(t[i]);
-            if (ench != null) item.addUnsafeEnchantment(ench, level);
-            else plugin.getLogger().warning("[Boutique] give : enchant inconnu '" + t[i] + "' (" + command + ")");
-        }
-
-        // addItem gère le découpage en stacks ; le surplus est lâché au sol
-        for (ItemStack left : target.getInventory().addItem(item).values())
-            target.getWorld().dropItemNaturally(target.getLocation(), left);
-        target.updateInventory();
-        return true;
-    }
-
-    /** Résout un nom d'enchantement (alias Essentials ou nom Bukkit brut). */
-    private static Enchantment resolveEnchant(String name) {
-        Enchantment e = ENCHANTS.get(name.toLowerCase(Locale.ROOT).replace("_", ""));
-        return e != null ? e : Enchantment.getByName(name.toUpperCase(Locale.ROOT));
-    }
-
-    private static final Map<String, Enchantment> ENCHANTS = new HashMap<>();
-    static {
-        // Armure
-        ENCHANTS.put("protection",           Enchantment.PROTECTION_ENVIRONMENTAL);
-        ENCHANTS.put("fireprotection",       Enchantment.PROTECTION_FIRE);
-        ENCHANTS.put("featherfalling",       Enchantment.PROTECTION_FALL);
-        ENCHANTS.put("blastprotection",      Enchantment.PROTECTION_EXPLOSIONS);
-        ENCHANTS.put("projectileprotection", Enchantment.PROTECTION_PROJECTILE);
-        ENCHANTS.put("respiration",          Enchantment.OXYGEN);
-        ENCHANTS.put("aquaaffinity",         Enchantment.WATER_WORKER);
-        ENCHANTS.put("thorns",               Enchantment.THORNS);
-        ENCHANTS.put("depthstrider",         Enchantment.DEPTH_STRIDER);
-        // Épée
-        ENCHANTS.put("sharpness",            Enchantment.DAMAGE_ALL);
-        ENCHANTS.put("smite",                Enchantment.DAMAGE_UNDEAD);
-        ENCHANTS.put("baneofarthropods",     Enchantment.DAMAGE_ARTHROPODS);
-        ENCHANTS.put("knockback",            Enchantment.KNOCKBACK);
-        ENCHANTS.put("fireaspect",           Enchantment.FIRE_ASPECT);
-        ENCHANTS.put("looting",              Enchantment.LOOT_BONUS_MOBS);
-        // Outils
-        ENCHANTS.put("efficiency",           Enchantment.DIG_SPEED);
-        ENCHANTS.put("silktouch",            Enchantment.SILK_TOUCH);
-        ENCHANTS.put("unbreaking",           Enchantment.DURABILITY);
-        ENCHANTS.put("fortune",              Enchantment.LOOT_BONUS_BLOCKS);
-        // Arc
-        ENCHANTS.put("power",                Enchantment.ARROW_DAMAGE);
-        ENCHANTS.put("punch",                Enchantment.ARROW_KNOCKBACK);
-        ENCHANTS.put("flame",                Enchantment.ARROW_FIRE);
-        ENCHANTS.put("infinity",             Enchantment.ARROW_INFINITE);
-        // Canne à pêche
-        ENCHANTS.put("luckofthesea",         Enchantment.LUCK);
-        ENCHANTS.put("lure",                 Enchantment.LURE);
-    }
-
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static int readVarInt(DataInputStream in) throws IOException {
@@ -375,21 +218,5 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
         byte[] data = new byte[len];
         in.readFully(data);
         return new String(data, java.nio.charset.StandardCharsets.UTF_8);
-    }
-
-    private static int asInt(Object o) {
-        if (o instanceof Number) return ((Number) o).intValue();
-        if (o instanceof String) try { return Integer.parseInt((String) o); } catch (Exception ignored) {}
-        return 0;
-    }
-
-    private static long asLong(Object o) {
-        if (o instanceof Number) return ((Number) o).longValue();
-        if (o instanceof String) try { return Long.parseLong((String) o); } catch (Exception ignored) {}
-        return 0L;
-    }
-
-    private static String stripColor(String s) {
-        return s == null ? "" : s.replaceAll("(?i)[§&].", "");
     }
 }

@@ -3,11 +3,12 @@ package fr.redconflict.boutique;
 import fr.redconflict.RedConflictCore;
 import fr.redconflict.core.economy.VaultEconomy;
 import fr.redconflict.packets.PacketBuilder;
+import fr.redconflict.site.EntitlementService;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -63,7 +64,52 @@ public final class BoutiquePacketSender {
         // Packs — extension en fin de paquet (lue via try/catch côté client pour compat.)
         writeCategory(pb, plugin.getBoutiqueConfig().getList("boutique.packs"), "commandes");
 
+        // Possession — même principe : ajoutée APRÈS les packs, en toute fin de
+        // paquet. Un client d'avant cette version s'arrête simplement plus tôt et
+        // ne voit rien de cassé. Insérer ces champs dans chaque article aurait
+        // décalé tout le flux et rendu les deux versions incompatibles.
+        writeOwnership(pb, player);
+
         player.sendPluginMessage(plugin, CHANNEL_S2C, pb.build());
+    }
+
+    /**
+     * Ce que le joueur possède déjà, pour que le client grise ce qu'il ne peut
+     * plus acheter.
+     *
+     * <p>N'envoie que les articles concernés : un joueur neuf n'en a aucun, et le
+     * paquet ne grossit alors pas d'un octet.
+     *
+     * <p>Les deux verrous sont envoyés séparément parce qu'ils ne valent pas la
+     * même chose : un grade loué encore valide bloque la location mais laisse le
+     * passage à vie ouvert. Un booléen unique aurait soit interdit ce cas, soit
+     * laissé racheter une location par-dessus une autre.
+     */
+    private static void writeOwnership(PacketBuilder pb, Player player) {
+        RedConflictCore plugin = RedConflictCore.getInstance();
+        EntitlementService entitlements = plugin.getEntitlementService();
+        BoutiqueCatalog catalog = plugin.getBoutiqueCatalog();
+
+        if (entitlements == null || catalog == null) {
+            pb.writeVarInt(0);
+            return;
+        }
+
+        EntitlementService.Snapshot snapshot = entitlements.snapshot(player);
+
+        List<BoutiqueItem> owned = new ArrayList<BoutiqueItem>();
+        for (BoutiqueItem item : catalog.ownable()) {
+            if (snapshot.ownershipOf(item) != EntitlementService.Ownership.NONE) owned.add(item);
+        }
+
+        pb.writeVarInt(owned.size());
+        for (BoutiqueItem item : owned) {
+            pb.writeString(item.category);
+            pb.writeString(item.id);
+            pb.writeBoolean(snapshot.isLocked(item, false));
+            pb.writeBoolean(snapshot.isLocked(item, true));
+            pb.writeString(truncate(snapshot.label(item), 32));
+        }
     }
 
     public static void sendResult(Player player, boolean success, String message) {

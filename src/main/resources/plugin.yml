@@ -39,6 +39,10 @@ commands:
     description: Ouvre la boutique PB (grades, commandes, spawners, offres spéciales)
     usage: /pbshop [offre <id> enable|disable|reroll] | /pbshop reload
     aliases: [boutique, pbboutique]
+  rcdeliver:
+    description: Livre un achat fait sur le site (appelée par Azuriom via AzLink)
+    usage: /rcdeliver <pseudo> <grade|cmd|kit|spawner|pack> <article> <perm|temp> [n° commande]
+    permission: redconflict.site.deliver
   metier:
     description: Système de métiers (Mineur/Agriculteur/Artisan)
     usage: /metier [top [metier]|info|set|xp|reset]
@@ -261,6 +265,7 @@ commands:
   back:
     description: Retour à la position précédente (téléportation ou mort)
     usage: /back
+    permission: redconflict.back
   home:
     description: Se téléporter à un home
     usage: /home [nom]
@@ -380,6 +385,7 @@ commands:
   near:
     description: Joueurs proches, triés par distance
     usage: /near [rayon]
+    permission: redconflict.near
   seen:
     description: Dernière connexion d'un joueur
     usage: /seen <joueur>
@@ -398,9 +404,52 @@ commands:
     aliases: [meteo]
 
 permissions:
+  # Livraison des achats web. Accordée à la console d'office ; ne la donner à
+  # aucun grade joueur : elle permet de s'offrir n'importe quel article.
+  redconflict.site.deliver:
+    description: Livre un achat effectué sur le site (réservé à la console / AzLink)
+    default: op
   # Déclarée explicitement en default false : sans déclaration, Bukkit accorde
   # la permission aux OP par défaut et la téléportation devient instantanée
   # (aucun compte à rebours). À donner via LuckPerms si un grade doit bypass.
   redconflict.teleport.bypass:
     description: Saute le délai d'attente des téléportations (/spawn, /home, /warp, /back, tpa)
+    default: false
+
+  # ── Permissions vendues dans /boutique ───────────────────────────────────
+  # Un noeud par article de boutique/boutique.yml : ce que le GUI annonce est
+  # exactement ce que l'achat accorde. default: op = comportement historique
+  # (le staff les a d'office) ; les joueurs les reçoivent via LuckPerms.
+  redconflict.back:
+    description: /back — vendu à l'unité, inclus dans les grades Elite et Immortel
+    default: op
+  redconflict.craft:
+    description: /craft — vendu à l'unité, inclus dans les grades Elite et Immortel
+    default: op
+  redconflict.furnace:
+    description: /furnace — vendu à l'unité, inclus dans les grades Elite et Immortel
+    default: op
+  redconflict.nv:
+    description: /vision — vendu à l'unité, inclus dans les grades Elite et Immortel
+    default: op
+  redconflict.ec:
+    description: /ec — vendu à l'unité, inclus dans le grade Immortel
+    default: op
+  redconflict.repair:
+    description: /repairall — vendu à l'unité, inclus dans le grade Immortel
+    default: op
+  redconflict.feed:
+    description: /feed — vendu à l'unité, inclus dans le grade Immortel
+    default: op
+  redconflict.near:
+    description: /near — vendu à l'unité, inclus dans le grade Immortel
+    default: op
+  redconflict.near.unlimited:
+    description: /near sans borne de rayon — vendu avec /near
+    default: op
+  redconflict.sethome.multiple.6:
+    description: 6 homes — accordé par le grade Elite
+    default: false
+  redconflict.sethome.multiple.10:
+    description: 10 homes — accordé par le grade Immortel
     default: false

@@ -1,7 +1,5 @@
 package fr.redconflict.site;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import fr.redconflict.RedConflictCore;
 import fr.redconflict.db.Database;
 import org.bukkit.Bukkit;
@@ -17,16 +15,21 @@ import java.sql.Statement;
 /**
  * Miroir des données de jeu vers la base du site (Azuriom).
  *
- * <p><b>Sens unique.</b> H2 reste seul propriétaire des données de jeu ; MariaDB
- * n'en reçoit qu'un instantané, en lecture pour le site. Rien de ce que fait le
- * site n'est relu ici. Un achat en boutique ne modifie donc jamais MariaDB
- * directement : Azuriom exécute une commande sur le serveur via AzLink, et c'est
- * RedConflictCore qui applique le changement dans H2 — d'où il repartira au
- * prochain instantané.
+ * <p><b>Sens unique.</b> H2 reste seul propriétaire des données de jeu — stats,
+ * inventaires, factions ; MariaDB n'en reçoit qu'un instantané, en lecture pour
+ * le site. Rien de ce que fait le site n'est relu ici.
  *
  * <p>Ce choix évite le scénario qui casse toutes les intégrations de ce type :
- * deux systèmes qui écrivent le même solde, un joueur qui achète pendant que le
- * serveur est éteint, et un écart que plus personne ne sait réconcilier.
+ * deux systèmes qui écrivent la même donnée, et un écart que plus personne ne
+ * sait réconcilier.
+ *
+ * <p><b>Une exception, assumée : les Points Boutique.</b> Ils ne sont pas
+ * répliqués mais <i>déménagés</i> — leur unique exemplaire est {@code
+ * users.money}, la bourse d'Azuriom, écrite des deux côtés sous verrou de ligne
+ * (voir {@link fr.redconflict.pb.SitePBLedger}). C'est le seul moyen qu'un solde
+ * soit dépensable en jeu comme sur le site sans pouvoir l'être deux fois. La
+ * colonne {@code rc_players.pb} n'en est qu'un reflet de confort pour les
+ * classements, recopié depuis la bourse à chaque passage.
  *
  * <p><b>Un seul serveur doit activer ce module.</b> Faction et Minage partagent
  * la même base H2 : les deux le feraient tourner, ils écriraient les mêmes
@@ -43,65 +46,46 @@ public final class SiteSync {
 
     private final RedConflictCore plugin;
     private final Database h2;
+    private final SiteDatabase site;
 
-    private HikariDataSource site;
     private BukkitTask task;
     private long intervalMinutes;
 
-    public SiteSync(RedConflictCore plugin, Database h2) {
+    public SiteSync(RedConflictCore plugin, Database h2, SiteDatabase site) {
         this.plugin = plugin;
         this.h2 = h2;
+        this.site = site;
     }
 
     // ── Cycle de vie ───────────────────────────────────────────────────────────
 
     /**
-     * Ouvre le pool vers MariaDB et programme la synchronisation périodique.
+     * Programme la synchronisation périodique sur le pool déjà ouvert par
+     * {@link SiteBridgeModule}.
      *
-     * @return {@code true} si le module est actif ; {@code false} s'il est
-     *         désactivé en configuration ou si la base du site est injoignable.
-     *         Dans les deux cas le serveur démarre normalement — le site
-     *         affichera simplement des chiffres datés.
+     * @return {@code true} si le miroir est actif ; {@code false} s'il est
+     *         désactivé en configuration ou si l'une des deux bases manque. Dans
+     *         tous les cas le serveur démarre normalement — le site affichera
+     *         simplement des chiffres datés.
      */
     public boolean start() {
         FileConfiguration cfg = plugin.getConfig();
 
-        if (!cfg.getBoolean("site-sync.enabled", false)) return false;
+        if (!cfg.getBoolean("site.mirror-enabled", true)) {
+            plugin.getLogger().info("[SiteSync] Miroir des profils désactivé.");
+            return false;
+        }
 
         if (!h2.isAvailable()) {
             plugin.getLogger().warning("[SiteSync] Base H2 indisponible : synchronisation désactivée.");
             return false;
         }
-
-        String url = cfg.getString("site-sync.url", "jdbc:mariadb://172.18.0.1:3306/azuriom");
-        String user = cfg.getString("site-sync.user", "rc_sync");
-        String password = cfg.getString("site-sync.password", "");
-        this.intervalMinutes = Math.max(1L, cfg.getLong("site-sync.interval-minutes", 5L));
-
-        HikariConfig hc = new HikariConfig();
-        hc.setJdbcUrl(url);
-        hc.setUsername(user);
-        hc.setPassword(password);
-        // Deux connexions suffisent : un seul thread synchronise, à intervalle long.
-        hc.setMaximumPoolSize(2);
-        hc.setMinimumIdle(0);
-        hc.setPoolName("RedConflict-Site");
-        hc.setConnectionTimeout(8_000L);
-        // Plus court que le wait_timeout par défaut de MariaDB (8 h) : une
-        // connexion inactive coupée côté serveur ferait échouer la sync suivante.
-        hc.setMaxLifetime(600_000L);
-        hc.setConnectionTestQuery("SELECT 1");
-
-        try {
-            site = new HikariDataSource(hc);
-            try (Connection c = site.getConnection()) {
-                if (!c.isValid(5)) throw new SQLException("connexion invalide");
-            }
-        } catch (Exception e) {
-            plugin.getLogger().severe("[SiteSync] Base du site injoignable : " + e.getMessage());
-            closePool();
+        if (!site.isAvailable()) {
+            plugin.getLogger().warning("[SiteSync] Base du site indisponible : synchronisation désactivée.");
             return false;
         }
+
+        this.intervalMinutes = Math.max(1L, cfg.getLong("site.mirror-interval-minutes", 5L));
 
         ensureTables();
 
@@ -114,23 +98,16 @@ public final class SiteSync {
         }, delayTicks, periodTicks);
 
         plugin.getLogger().info("[SiteSync] Actif : instantané toutes les "
-                + intervalMinutes + " min vers " + url);
+                + intervalMinutes + " min vers " + site.getUrl());
         return true;
     }
 
+    /** Le pool appartient au pont : ici on ne coupe que la tâche périodique. */
     public void close() {
         if (task != null) {
             try { task.cancel(); } catch (Exception ignored) { }
             task = null;
         }
-        closePool();
-    }
-
-    private void closePool() {
-        if (site != null && !site.isClosed()) {
-            try { site.close(); } catch (Exception ignored) { }
-        }
-        site = null;
     }
 
     // ── Schéma ─────────────────────────────────────────────────────────────────
@@ -147,6 +124,14 @@ public final class SiteSync {
      * main plutôt que d'exiger un compte privilégié.
      */
     private void ensureTables() {
+        // Le schéma est normalement posé par sql/001-site-bridge.sql, avec un
+        // compte administrateur. Si les tables sont là, on ne tente rien : le
+        // compte du plugin n'a pas le droit CREATE, et MariaDB refuse un
+        // « CREATE TABLE IF NOT EXISTS » sur les privilèges avant même de
+        // regarder si la table existe — on récolterait un avertissement
+        // inquiétant à chaque démarrage, pour rien.
+        if (tablesExist()) return;
+
         String players =
                 "CREATE TABLE IF NOT EXISTS rc_players ("
               + "  uuid       CHAR(36)    NOT NULL PRIMARY KEY,"
@@ -195,6 +180,17 @@ public final class SiteSync {
         }
     }
 
+    /** Les deux tables du miroir sont-elles déjà présentes et lisibles ? */
+    private boolean tablesExist() {
+        try (Connection c = site.getConnection(); Statement st = c.createStatement()) {
+            st.executeQuery("SELECT 1 FROM rc_players LIMIT 1").close();
+            st.executeQuery("SELECT 1 FROM rc_factions LIMIT 1").close();
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
     // ── Synchronisation ────────────────────────────────────────────────────────
 
     /**
@@ -203,13 +199,16 @@ public final class SiteSync {
      * <p>À n'appeler que depuis un thread asynchrone.
      */
     public void syncNow() {
-        if (site == null || !h2.isAvailable()) return;
+        if (!site.isAvailable() || !h2.isAvailable()) return;
 
         long started = System.currentTimeMillis();
         int players;
         int factions;
         try {
             players = syncPlayers();
+            // Avant l'agrégation : le total PB par faction se calcule sur la
+            // colonne qu'on vient de réaligner, pas sur la précédente.
+            refreshPbFromLedger();
             factions = syncFactions();
         } catch (SQLException e) {
             // Journalisé sans propager : une panne du site ne doit jamais
@@ -221,6 +220,25 @@ public final class SiteSync {
         long ms = System.currentTimeMillis() - started;
         plugin.getLogger().info("[SiteSync] " + players + " profils, "
                 + factions + " factions en " + ms + " ms.");
+    }
+
+    /**
+     * Recopie le solde depuis {@code users.money} dans {@code rc_players.pb}.
+     *
+     * <p>La colonne du miroir n'est là que pour les classements : le solde
+     * lui-même est la bourse d'Azuriom, écrite par le jeu et par le site. Une
+     * jointure suffit, et il n'y a rien à réconcilier — la source est unique.
+     *
+     * <p>La jointure retire les tirets de l'UUID : {@code rc_players} suit le
+     * format de H2, {@code users.game_id} celui d'Azuriom.
+     */
+    private void refreshPbFromLedger() throws SQLException {
+        try (Connection c = site.getConnection();
+             Statement st = c.createStatement()) {
+            st.executeUpdate(
+                    "UPDATE rc_players p JOIN users u ON u.game_id = REPLACE(p.uuid, '-', '') "
+                  + "SET p.pb = FLOOR(u.money)");
+        }
     }
 
     /** Recopie {@code player_profiles} (H2) vers {@code rc_players} (MariaDB). */
@@ -237,7 +255,11 @@ public final class SiteSync {
               // qui rend la synchronisation rejouable sans effet de bord.
               + "ON DUPLICATE KEY UPDATE "
               + "  name=VALUES(name), kills=VALUES(kills), deaths=VALUES(deaths), "
-              + "  playtime_s=VALUES(playtime_s), balance=VALUES(balance), pb=VALUES(pb), "
+              + "  playtime_s=VALUES(playtime_s), balance=VALUES(balance), "
+              // pb absent volontairement : le solde n'appartient plus à H2, la
+              // colonne est réalimentée depuis rc_pb juste après (voir
+              // refreshPbFromLedger). L'écraser ici ressusciterait la vieille
+              // valeur figée dans player_profiles à chaque passage.
               + "  faction=VALUES(faction), rank_label=VALUES(rank_label), "
               + "  streak=VALUES(streak), bounty=VALUES(bounty), last_join=VALUES(last_join)";
 

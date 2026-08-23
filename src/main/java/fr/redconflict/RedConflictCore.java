@@ -44,7 +44,12 @@ import fr.redconflict.ring.RingModule;
 import fr.redconflict.rtp.RtpModule;
 import fr.redconflict.server.ServerSwitchModule;
 import fr.redconflict.shop.ShopModule;
-import fr.redconflict.site.SiteSync;
+import fr.redconflict.boutique.BoutiqueCatalog;
+import fr.redconflict.boutique.RewardDispatcher;
+import fr.redconflict.site.EntitlementService;
+import fr.redconflict.site.OrderService;
+import fr.redconflict.site.SiteBridgeModule;
+import fr.redconflict.site.SiteDatabase;
 import fr.redconflict.staff.StaffModule;
 import fr.redconflict.trade.TradeModule;
 import fr.redconflict.useful.MessagingModule;
@@ -86,7 +91,8 @@ public class RedConflictCore extends JavaPlugin {
     private PlayerDataModule playerDataModule;
     private PBModule pbModule;
     private PBShopModule pbShopModule;
-    private SiteSync siteSync;
+    private SiteDatabase siteDatabase;
+    private SiteBridgeModule siteBridgeModule;
 
     @Override
     public void onEnable() {
@@ -117,8 +123,8 @@ public class RedConflictCore extends JavaPlugin {
         }
         getServer().getMessenger().unregisterIncomingPluginChannel(this);
         getServer().getMessenger().unregisterOutgoingPluginChannel(this);
-        // Avant la fermeture de H2 : le miroir lit dedans.
-        if (this.siteSync != null) this.siteSync.close();
+        // Le pont vers le site est fermé par ModuleManager.disableAll() ;
+        // il lit dans H2, donc il passe avant la fermeture de celle-ci.
         if (this.database != null) this.database.close();
     }
 
@@ -165,10 +171,13 @@ public class RedConflictCore extends JavaPlugin {
         this.playerDataModule = new PlayerDataModule(this, database);
         modules.install(playerDataModule);
         modules.install(new XpBoostModule(this, playerDataModule.getPlayerDatabase(), jobModule.getJobManager()));
-        this.pbModule = new PBModule(this, playerDataModule.getPlayerDatabase());
+        this.pbModule = new PBModule(this, playerDataModule.getPlayerDatabase(), siteDatabase);
         modules.install(pbModule);
         this.pbShopModule = new PBShopModule(this);
         modules.install(pbShopModule);
+        // Après la boutique : le pont publie son catalogue et lit ses articles.
+        this.siteBridgeModule = new SiteBridgeModule(this, siteDatabase);
+        modules.install(siteBridgeModule);
 
         // Systèmes autonomes
         modules.install(new LagSwitchModule(this));
@@ -228,11 +237,13 @@ public class RedConflictCore extends JavaPlugin {
                 new PlayerLockListener(this.playerLockService, this.playerDataSync,
                         this.database.getServerId(), this.database.isKickOnConflict()), this);
 
-        // Miroir des profils vers la base du site. Désactivé par défaut, et à
-        // n'activer que sur UN serveur de la grappe : Faction et Minage lisent
-        // la même base H2, les deux écriraient les mêmes lignes pour rien.
-        this.siteSync = new SiteSync(this, this.database);
-        this.siteSync.start();
+        // Pont vers la base du site. Ouvert ici et non dans SiteBridgeModule :
+        // le ledger PB en a besoin dès l'installation de PBModule, qui vient
+        // avant. Désactivé par défaut, et à n'activer que sur UN serveur de la
+        // grappe : Faction et Minage lisent la même base H2, les deux
+        // écriraient les mêmes lignes pour rien.
+        this.siteDatabase = new SiteDatabase(this);
+        this.siteDatabase.start();
     }
 
     /** Applique le message de permission standard à toutes les commandes du plugin.yml. */
@@ -319,6 +330,35 @@ public class RedConflictCore extends JavaPlugin {
 
     public FileConfiguration getBoutiqueConfig() {
         return pbShopModule != null ? pbShopModule.getBoutiqueConfig() : null;
+    }
+
+    public BoutiqueCatalog getBoutiqueCatalog() {
+        return pbShopModule != null ? pbShopModule.getCatalog() : null;
+    }
+
+    public RewardDispatcher getRewardDispatcher() {
+        return pbShopModule != null ? pbShopModule.getRewards() : null;
+    }
+
+    public PBShopModule getPbShopModule() {
+        return pbShopModule;
+    }
+
+    public SiteDatabase getSiteDatabase() {
+        return siteDatabase;
+    }
+
+    public SiteBridgeModule getSiteBridge() {
+        return siteBridgeModule;
+    }
+
+    /** {@code null} tant que le pont vers le site n'est pas actif. */
+    public EntitlementService getEntitlementService() {
+        return siteBridgeModule != null ? siteBridgeModule.getEntitlements() : null;
+    }
+
+    public OrderService getOrderService() {
+        return siteBridgeModule != null ? siteBridgeModule.getOrders() : null;
     }
 
 }

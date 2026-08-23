@@ -408,15 +408,6 @@ public class HdvManager {
         }
     }
 
-    private void creditSellerPB(HdvListing listing, int amount) {
-        try {
-            java.util.UUID sellerUUID = java.util.UUID.fromString(listing.getSellerUuid());
-            plugin.getPlayerDatabase().addPB(sellerUUID, amount);
-        } catch (Exception e) {
-            LOG.warning("[HDV] Erreur credit PB vendeur: " + e.getMessage());
-        }
-    }
-
     private void sendSoldNotif(HdvListing listing, long price, boolean payPB, String buyerName) {
         Player seller = Bukkit.getPlayerExact(listing.getSellerName());
         if (seller != null && seller.isOnline()) {

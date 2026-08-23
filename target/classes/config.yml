@@ -215,6 +215,20 @@ pb:
   # aux membres du staff connectés (permission : staff.pb-alerts ou staff.staff).
   alert-threshold: 500
 
+  # Où vit le solde en Points Boutique.
+  #
+  #   site  (défaut) → table `rc_pb` de la base d'Azuriom. UN SEUL exemplaire,
+  #                    partagé avec la boutique web : le joueur dépense les mêmes
+  #                    PB en jeu et sur le site, et ne peut pas les dépenser deux
+  #                    fois (verrou de ligne au débit). Exige site.enabled: true.
+  #   h2             → `player_profiles.pb`, comportement d'avant la boutique
+  #                    web. Dans ce mode la boutique du site ne peut pas débiter :
+  #                    elle n'a aucun accès à H2. Repli en cas de problème.
+  #
+  # ⚠️ Tous les serveurs de la grappe doivent avoir la MÊME valeur. Deux serveurs
+  # qui ne s'accordent pas sur l'emplacement du solde, ce sont deux soldes.
+  ledger: site
+
 # ── Activation / désactivation des fonctionnalités par serveur ────────────────
 # Permet de couper une fonctionnalité (et sa commande) sur CE serveur sans toucher
 # au code. Mettre une clé à "false" désactive la commande correspondante : elle
@@ -313,34 +327,51 @@ database:
     # Snapshot sur le thread principal + écriture base asynchrone → aucun lag pour les joueurs.
     autosave-minutes: 3
 
-# ── Miroir vers le site (Azuriom) ─────────────────────────────────────────────
-# Recopie player_profiles (H2) vers rc_players / rc_factions dans la base du
-# site. Sens UNIQUE : H2 reste propriétaire des données, le site n'en reçoit
-# qu'un instantané pour l'afficher. Un achat en boutique ne modifie jamais
-# MariaDB directement — Azuriom exécute une commande sur le serveur via AzLink,
-# et c'est ce plugin qui applique le changement dans H2.
+# ── Pont vers le site (Azuriom) ───────────────────────────────────────────────
+# Une seule connexion partagée, qui sert à quatre choses :
+#
+#   1. le SOLDE PB (`rc_pb`) — déménagé ici, plus répliqué : c'est le même
+#      exemplaire que débite la boutique du site (voir pb.ledger plus haut) ;
+#   2. le CATALOGUE (`rc_shop_items`) — boutique/boutique.yml publié tel quel,
+#      pour que le site affiche exactement la même grille tarifaire ;
+#   3. les DROITS POSSÉDÉS (`rc_entitlements`) — ce qui permet de refuser un
+#      grade ou une commande que le joueur a déjà, des deux côtés ;
+#   4. le MIROIR des profils (`rc_players`, `rc_factions`) — classements du site.
+#
+# Le point 4 reste à sens unique : H2 est propriétaire des stats et des
+# inventaires, le site n'en reçoit qu'un instantané. Seuls les PB font
+# exception, et c'est délibéré : un solde dépensable des deux côtés ne peut pas
+# être répliqué sans finir par diverger.
 #
 # ⚠️ À activer sur UN SEUL serveur de la grappe : celui qui héberge H2, donc le
 # Faction. Faction et Minage lisent la même base ; les deux écriraient les mêmes
 # lignes en concurrence, pour rien.
 #
-# ⚠️ Le compte SQL ne doit avoir de droits QUE sur ces deux tables. La base du
+# ⚠️ Le compte SQL ne doit avoir de droits QUE sur les tables rc_*. La base du
 # site contient aussi `users`, donc les hachages de mots de passe et les jetons
-# de session : un plugin de gameplay n'a rien à y faire.
-#   CREATE USER 'rc_sync'@'%' IDENTIFIED BY '...';
-#   GRANT SELECT, INSERT, UPDATE, DELETE ON azuriom.rc_players  TO 'rc_sync'@'%';
-#   GRANT SELECT, INSERT, UPDATE, DELETE ON azuriom.rc_factions TO 'rc_sync'@'%';
+# de session : un plugin de gameplay n'a rien à y faire. Les GRANT exacts sont
+# dans RedConflictSite/sql/001-site-bridge.sql.
 #
 # 172.18.0.1 = pont Docker. Sous Pterodactyl, 127.0.0.1 désigne le conteneur
 # lui-même et non la machine hôte : MariaDB y serait injoignable.
-site-sync:
+site:
   enabled: false
   url: "jdbc:mariadb://172.18.0.1:3306/azuriom"
   user: "rc_sync"
   password: ""
+  # Le ledger PB est sur le chemin critique d'un achat : quelques connexions de
+  # marge, contrairement aux deux que suffisaient au seul miroir.
+  pool-size: 6
+  # Relecture du solde PB des joueurs connectés, en secondes. Sert à afficher
+  # tout de suite un achat ou un paiement fait sur le site. Une seule requête
+  # pour tout le monde, et aucun paquet envoyé si rien n'a bougé.
+  refresh-seconds: 20
+
+  # Miroir des profils vers rc_players / rc_factions.
+  mirror-enabled: true
   # Un instantané toutes les N minutes. Inutile de descendre bas : le site
   # affiche des classements, pas du temps réel.
-  interval-minutes: 5
+  mirror-interval-minutes: 5
 
 # ── Sauvegarde automatique de la base (pendant que le serveur tourne) ─────────
 # Ne s'active QUE sur l'hôte H2 (le serveur avec database.server.enabled: true = le Faction).

@@ -20,7 +20,7 @@ public class AnonymeCommand extends CoreCommand {
     protected void execute(CommandSender sender, String label, String[] args) {
         Player player = (Player) sender;
         if (anonymeManager.toggleAnonymity(player)) {
-            player.sendMessage(RC.PRE + "§aVous êtes maintenant anonyme. Votre pseudo et votre faction sont cachés.");
+            player.sendMessage(RC.PRE + "§aVous êtes maintenant annonyme. Votre pseudo et votre faction sont cachés.");
         } else {
             player.sendMessage(RC.PRE + "§cVous n'êtes plus anonyme. Votre pseudo et votre faction sont visibles.");
         }

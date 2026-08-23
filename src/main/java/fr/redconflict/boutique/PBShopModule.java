@@ -22,6 +22,8 @@ public class PBShopModule implements Module {
 
     private FileConfiguration boutiqueConfig;
     private OffresManager offresManager;
+    private BoutiqueCatalog catalog;
+    private RewardDispatcher rewards;
 
     public PBShopModule(RedConflictCore plugin) {
         this.plugin = plugin;
@@ -35,6 +37,13 @@ public class PBShopModule implements Module {
     @Override
     public void enable() {
         loadBoutiqueConfig();
+
+        // Le catalogue et le distributeur de récompenses vivent ici, pas dans le
+        // pont vers le site : la boutique en jeu doit continuer de marcher même
+        // quand le site est éteint.
+        this.catalog = new BoutiqueCatalog(plugin);
+        this.catalog.reload();
+        this.rewards = new RewardDispatcher(plugin);
 
         this.offresManager = new OffresManager(plugin);
         offresManager.start();
@@ -74,6 +83,24 @@ public class PBShopModule implements Module {
 
     public FileConfiguration getBoutiqueConfig() {
         return boutiqueConfig;
+    }
+
+    public BoutiqueCatalog getCatalog() {
+        return catalog;
+    }
+
+    public RewardDispatcher getRewards() {
+        return rewards;
+    }
+
+    /**
+     * Relit {@code boutique.yml} et le catalogue. Appelée par {@code /pbshop
+     * reload} ; la republication vers le site est déclenchée par le pont, qui
+     * observe ce rechargement.
+     */
+    public void reloadCatalog() {
+        loadBoutiqueConfig();
+        if (catalog != null) catalog.reload();
     }
 
     public OffresManager getOffresManager() {
