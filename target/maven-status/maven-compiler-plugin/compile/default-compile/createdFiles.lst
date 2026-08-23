@@ -23,6 +23,7 @@ fr\redconflict\bounty\KillstreakManager.class
 fr\redconflict\boutique\BoutiqueClientServerHandler.class
 fr\redconflict\ring\RingEffectListener.class
 fr\redconflict\hdv\HdvManager.class
+fr\redconflict\site\EntitlementService$1.class
 fr\redconflict\db\PotionEffectCodec.class
 fr\redconflict\repair\RepairItems.class
 fr\redconflict\essentials\service\EconomyService.class

@@ -57,6 +57,8 @@ public final class SiteDatabase {
 
         HikariConfig hc = new HikariConfig();
         hc.setJdbcUrl(url);
+        // Pilote MariaDB embarqué dans le jar du plugin (non relocé).
+        hc.setDriverClassName(org.mariadb.jdbc.Driver.class.getName());
         hc.setUsername(user);
         hc.setPassword(password);
         // Le ledger PB est sur le chemin critique d'un achat : il lui faut de la
