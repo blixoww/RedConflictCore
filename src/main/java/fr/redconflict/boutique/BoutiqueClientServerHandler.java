@@ -118,6 +118,8 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
             entitlements.grant(player, item, permanent, "game");
         }
 
+        BoutiqueAnnonce.annoncer(plugin, player.getName(), item.name, permanent);
+
         BoutiquePacketSender.sendResult(player, true, "Achat effectue : " + item.name);
         BoutiquePacketSender.sendData(player);
     }
@@ -151,6 +153,8 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
         }
         player.getInventory().addItem(cur.buildPurchasable());
         mgr.consumeStock();
+        // Les offres sont en édition limitée : l'annonce fait tout leur intérêt.
+        BoutiqueAnnonce.annoncer(plugin, player.getName(), BoutiqueItem.stripColor(cur.nom), true);
         BoutiquePacketSender.sendResult(player, true, "Offre spéciale acquise !");
         BoutiquePacketSender.sendData(player);
     }

@@ -152,7 +152,7 @@ public final class SiteSync {
               + "  KEY idx_rc_players_kills   (kills),"
               + "  KEY idx_rc_players_balance (balance),"
               + "  KEY idx_rc_players_faction (faction)"
-              + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+              + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
 
         String factions =
                 "CREATE TABLE IF NOT EXISTS rc_factions ("
@@ -165,7 +165,7 @@ public final class SiteSync {
               + "  updated_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP"
               + "             ON UPDATE CURRENT_TIMESTAMP,"
               + "  KEY idx_rc_factions_kills (kills)"
-              + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+              + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
 
         try (Connection c = site.getConnection(); Statement st = c.createStatement()) {
             st.executeUpdate(players);

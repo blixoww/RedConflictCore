@@ -2,6 +2,19 @@
 boutique:
   titre: "&c&lBoutique RedConflict"
 
+  # ── Annonce des achats ──────────────────────────────────────────────────────
+  # Diffusée à tout le serveur, quel que soit le chemin de l'achat : comptoir en
+  # jeu, offre spéciale, ou boutique du site. Taire les achats web aurait donné
+  # l'impression d'une boutique deux fois moins vivante qu'elle ne l'est.
+  #
+  # Vide = aucune annonce. C'est le réglage à choisir si la boutique tourne
+  # beaucoup : un chat noyé sous les annonces finit par être coupé.
+  #
+  # %player% %article% %duree%
+  annonce: "&7[&c✦&7] &f%player% &7vient d'acheter &c%article% &7%duree% !"
+  annonce_a_vie: "&8(à vie)"
+  annonce_temporaire: "&8(30 jours)"
+
   # Chaque grade pose le groupe LuckPerms ET les permissions listees dans sa
   # description : ce qui est annonce dans /boutique est exactement ce qui est
   # donne, meme si le groupe n'est pas (encore) configure cote LuckPerms.

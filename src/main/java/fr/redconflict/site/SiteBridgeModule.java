@@ -46,6 +46,7 @@ public final class SiteBridgeModule implements Module, Listener {
     private CatalogExporter catalogExporter;
     private OrderService orders;
     private SiteSync sync;
+    private OrderRetry retry;
 
     private BukkitTask maintenanceTask;
     private BukkitTask refreshTask;
@@ -93,6 +94,15 @@ public final class SiteBridgeModule implements Module, Listener {
         startMaintenance();
         startBalanceRefresh();
 
+        // Filet sous AzLink : une commande dont le dépôt a échoué ne serait
+        // jamais reprise autrement. N'a lieu d'être que sur le serveur qui porte
+        // aussi le miroir — sinon un spawner pourrait être livré sur le Minage
+        // alors que le joueur l'attend sur le Faction.
+        if (plugin.getConfig().getBoolean("site.mirror-enabled", true)) {
+            this.retry = new OrderRetry(plugin, database, orders, entitlements);
+            retry.start();
+        }
+
         plugin.getLogger().info("[Site] Pont actif : catalogue, droits, commandes web et solde PB partagés.");
     }
 
@@ -100,6 +110,7 @@ public final class SiteBridgeModule implements Module, Listener {
     public void disable() {
         if (maintenanceTask != null) { try { maintenanceTask.cancel(); } catch (Exception ignored) { } }
         if (refreshTask != null)     { try { refreshTask.cancel();     } catch (Exception ignored) { } }
+        if (retry != null) retry.stop();
         if (sync != null) sync.close();
         if (database != null) database.close();
     }

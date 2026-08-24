@@ -203,4 +203,25 @@ public class PlayerDataServerHandler implements PluginMessageListener {
         byte[] data = PacketBuilder.create(0x53).writeVarInt(pb).build();
         player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
     }
+
+    /**
+     * Envoie l'état du vote (packet PLAYER_VOTE_STATUS = 0x54).
+     *
+     * <p>On envoie une <b>durée restante</b>, pas une date : le client n'a alors
+     * aucune horloge à accorder avec la nôtre, il décompte à partir de la
+     * réception. Passé ce délai, il fait apparaître l'encart tout seul — sans
+     * qu'on ait à le relancer.
+     *
+     * @param disponibles nombre de sites votables tout de suite (0 = aucun)
+     * @param secondes    secondes avant la prochaine ouverture ; 0 = aucune
+     *                    échéance connue, l'encart ne s'affichera pas de lui-même
+     */
+    public static void sendVoteStatus(Player player, int disponibles, int secondes) {
+        RedConflictCore plugin = RedConflictCore.getInstance();
+        byte[] data = PacketBuilder.create(0x54)
+                .writeVarInt(Math.max(0, disponibles))
+                .writeVarInt(Math.max(0, secondes))
+                .build();
+        player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
+    }
 }

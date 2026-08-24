@@ -2,6 +2,7 @@ fr\redconflict\staff\commands\LockChatCommand.class
 fr\redconflict\essentials\command\teleport\SetHomeCommand.class
 fr\redconflict\shop\ShopServerHandler.class
 fr\redconflict\ring\RingEffectListener$1.class
+fr\redconflict\site\OrderRetry.class
 fr\redconflict\staff\StaffFormatter$1.class
 fr\redconflict\essentials\model\TeleportRequest$Type.class
 fr\redconflict\staff\commands\TopLuckCommand$2.class
@@ -29,6 +30,7 @@ fr\redconflict\repair\RepairItems.class
 fr\redconflict\essentials\service\EconomyService.class
 fr\redconflict\ring\RingServerHandler.class
 fr\redconflict\shop\ShopCommand.class
+fr\redconflict\vote\VoteStatusMirror$Statut.class
 fr\redconflict\listeners\DisabledCommands.class
 fr\redconflict\job\JobDatabase$TopEntry.class
 fr\redconflict\packets\PacketReader.class
@@ -69,6 +71,7 @@ fr\redconflict\staff\commands\SanctionsCommand.class
 fr\redconflict\essentials\repository\WarpRepository.class
 fr\redconflict\combatlog\CombatLogListener.class
 fr\redconflict\bottlexp\BottleXpCommand.class
+fr\redconflict\site\OrderRetry$EnAttente.class
 fr\redconflict\essentials\Messages.class
 fr\redconflict\core\command\RedCommand.class
 fr\redconflict\staff\StaffDatabase$SanctionType.class
@@ -94,11 +97,13 @@ fr\redconflict\essentials\repository\h2\H2WarpRepository.class
 fr\redconflict\useful\BaltopCommand.class
 fr\redconflict\useful\PlayerListManager.class
 fr\redconflict\trade\TradeModule.class
+fr\redconflict\vote\VoteModule.class
 fr\redconflict\essentials\service\HomeService.class
 fr\redconflict\job\JobLoginListener.class
 fr\redconflict\faction\FactionDataSender.class
 fr\redconflict\hdv\HdvCommand.class
 fr\redconflict\staff\commands\TopLuckCommand$1$1.class
+fr\redconflict\vote\VoteModule$4$1.class
 fr\redconflict\job\JobConfig$Src.class
 fr\redconflict\essentials\repository\h2\H2AccountRepository.class
 fr\redconflict\essentials\service\TeleportRequestPolicy.class
@@ -111,6 +116,7 @@ fr\redconflict\essentials\command\social\NearCommand.class
 fr\redconflict\data\PlayerDataServerHandler.class
 fr\redconflict\site\SiteSync.class
 fr\redconflict\essentials\command\player\HealCommand.class
+fr\redconflict\site\OrderRetry$1.class
 fr\redconflict\trade\TradePacketSender$CheckedConsumer.class
 fr\redconflict\hdv\EnchantUtils.class
 fr\redconflict\trade\TradeCommand.class
@@ -121,6 +127,8 @@ fr\redconflict\death\DeathMessages.class
 fr\redconflict\core\Reloadable.class
 fr\redconflict\staff\commands\TopLuckCommand$4.class
 fr\redconflict\listeners\VoidListener.class
+fr\redconflict\site\OrderRetry$2.class
+fr\redconflict\boutique\BoutiqueAnnonce.class
 fr\redconflict\staff\StaffListener$2.class
 fr\redconflict\job\JobDatabase$1.class
 fr\redconflict\essentials\listener\BackDeathListener.class
@@ -130,16 +138,19 @@ fr\redconflict\combatlog\CombatLogModule.class
 fr\redconflict\shop\ShopDatabase$MarketStatEntry.class
 fr\redconflict\essentials\service\WeatherService.class
 fr\redconflict\loto\LotoManager$4.class
+fr\redconflict\vote\VoteModule$1.class
 fr\redconflict\announce\AnnounceModule.class
 fr\redconflict\essentials\command\item\InvseeCommand.class
 fr\redconflict\essentials\command\economy\MoneyCommand.class
 fr\redconflict\faction\FactionZoneSender$1.class
+fr\redconflict\vote\VoteLot.class
 fr\redconflict\faction\FactionZoneSender.class
 fr\redconflict\essentials\command\social\SeenCommand.class
 fr\redconflict\pb\PBLogger.class
 fr\redconflict\trade\TradeManager.class
 fr\redconflict\pb\PBCommand$1$1.class
 fr\redconflict\lagswitch\LagSwitchListener.class
+fr\redconflict\vote\VoteModule$4.class
 fr\redconflict\pb\SitePBLedger.class
 fr\redconflict\core\FeatureToggles.class
 fr\redconflict\job\JobPacketSender.class
@@ -181,11 +192,14 @@ fr\redconflict\essentials\command\player\FlyCommand.class
 fr\redconflict\data\PlayerDatabase.class
 fr\redconflict\ring\RingManager.class
 fr\redconflict\ring\RingEffects.class
+fr\redconflict\vote\VoteModule$3.class
 fr\redconflict\loto\LotoManager$3.class
 fr\redconflict\faction\FactionDataSender$1.class
 fr\redconflict\death\EnchantName.class
 fr\redconflict\essentials\repository\h2\H2IgnoreRepository.class
 fr\redconflict\job\JobArtisanListener.class
+fr\redconflict\vote\VoteRewards.class
+fr\redconflict\vote\VoteStorage.class
 fr\redconflict\bounty\KillstreakManager$ThresholdListener.class
 fr\redconflict\essentials\model\SeenRecord.class
 fr\redconflict\essentials\command\item\MoreCommand.class
@@ -198,6 +212,7 @@ fr\redconflict\essentials\command\item\HatCommand.class
 fr\redconflict\pb\H2PBLedger.class
 fr\redconflict\repair\RepairModule.class
 fr\redconflict\bounty\BountyManager.class
+fr\redconflict\vote\VoteModule$2.class
 fr\redconflict\staff\StaffListener$4$1.class
 fr\redconflict\site\EntitlementService$Ownership.class
 fr\redconflict\server\ServerSwitchCommand.class
@@ -275,6 +290,7 @@ fr\redconflict\staff\StaffDatabase$Sanction.class
 fr\redconflict\hdv\HdvManager$EconomyProvider.class
 fr\redconflict\staff\StaffManager.class
 fr\redconflict\essentials\service\WarpService.class
+fr\redconflict\vote\VoteStatusMirror.class
 fr\redconflict\site\SiteDatabase.class
 fr\redconflict\hdv\HdvDatabase.class
 fr\redconflict\staff\commands\BanCommand.class
@@ -348,6 +364,7 @@ fr\redconflict\faction\FactionHook.class
 fr\redconflict\essentials\command\player\XpCommand.class
 fr\redconflict\combatlog\CombatLogSender.class
 fr\redconflict\essentials\command\teleport\BackCommand.class
+fr\redconflict\vote\VoteCommand.class
 fr\redconflict\essentials\service\HomeService$SetResult.class
 fr\redconflict\essentials\command\world\WeatherCommand.class
 fr\redconflict\xpboost\XpBoostModule.class

@@ -114,6 +114,8 @@ public class SiteDeliverCommand extends CoreCommand {
                     + " mais son statut avait déjà changé — à vérifier.");
         }
 
+        fr.redconflict.boutique.BoutiqueAnnonce.annoncer(core, playerName, item.name, permanent);
+
         if (online != null) {
             online.sendMessage(ChatColor.GREEN + "[Boutique] " + ChatColor.WHITE + item.name
                     + ChatColor.GRAY + " acheté sur le site vient de t'être remis.");

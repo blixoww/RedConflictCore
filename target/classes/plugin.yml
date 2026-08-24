@@ -39,6 +39,10 @@ commands:
     description: Ouvre la boutique PB (grades, commandes, spawners, offres spéciales)
     usage: /pbshop [offre <id> enable|disable|reroll] | /pbshop reload
     aliases: [boutique, pbboutique]
+  rcvote:
+    description: Récompense un vote (appelée par Azuriom via AzLink)
+    usage: /rcvote <pseudo> | reload | info | compte <pseudo> | reset <pseudo>
+    permission: redconflict.site.deliver
   rcdeliver:
     description: Livre un achat fait sur le site (appelée par Azuriom via AzLink)
     usage: /rcdeliver <pseudo> <grade|cmd|kit|spawner|pack> <article> <perm|temp> [n° commande]

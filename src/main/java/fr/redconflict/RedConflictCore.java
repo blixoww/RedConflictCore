@@ -93,6 +93,7 @@ public class RedConflictCore extends JavaPlugin {
     private PBShopModule pbShopModule;
     private SiteDatabase siteDatabase;
     private SiteBridgeModule siteBridgeModule;
+    private fr.redconflict.vote.VoteModule voteModule;
 
     @Override
     public void onEnable() {
@@ -178,6 +179,9 @@ public class RedConflictCore extends JavaPlugin {
         // Après la boutique : le pont publie son catalogue et lit ses articles.
         this.siteBridgeModule = new SiteBridgeModule(this, siteDatabase);
         modules.install(siteBridgeModule);
+        // Après la boutique : le vote remet ses lots avec le même distributeur.
+        this.voteModule = new fr.redconflict.vote.VoteModule(this);
+        modules.install(voteModule);
 
         // Systèmes autonomes
         modules.install(new LagSwitchModule(this));
@@ -350,6 +354,10 @@ public class RedConflictCore extends JavaPlugin {
 
     public SiteBridgeModule getSiteBridge() {
         return siteBridgeModule;
+    }
+
+    public fr.redconflict.vote.VoteModule getVoteModule() {
+        return voteModule;
     }
 
     /** {@code null} tant que le pont vers le site n'est pas actif. */

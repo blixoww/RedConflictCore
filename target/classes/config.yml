@@ -367,11 +367,41 @@ site:
   # pour tout le monde, et aucun paquet envoyé si rien n'a bougé.
   refresh-seconds: 20
 
+  # Reprise des commandes web qu'AzLink n'a pas livrées. La livraison normale
+  # passe par lui ; si le DÉPÔT de la commande échoue — aucun serveur déclaré
+  # dans l'administration, par exemple — rien ne réessaie et le joueur reste
+  # débité sans rien recevoir. Cette passe regarde rc_orders directement.
+  # Ne s'active que sur le serveur qui porte aussi le miroir.
+  retry-orders: true
+  # Âge à partir duquel une commande est reprise. Assez long pour laisser AzLink
+  # faire son travail (il relève toutes les minutes), assez court pour que le
+  # joueur ne s'impatiente pas.
+  retry-after-minutes: 3
+
   # Miroir des profils vers rc_players / rc_factions.
   mirror-enabled: true
   # Un instantané toutes les N minutes. Inutile de descendre bas : le site
   # affiche des classements, pas du temps réel.
   mirror-interval-minutes: 5
+
+# ── Vote ─────────────────────────────────────────────────────────────────────
+# Les récompenses vivent dans vote/recompenses.yml. Ici, seulement l'encart de
+# vote du HUD client.
+#
+# L'encart n'apparaît que lorsqu'un vote est réellement ouvert. Le serveur de jeu
+# ne sait pas le calculer — il ignore les sites déclarés et leurs délais : c'est
+# le site qui dépose la réponse dans `rc_vote_status` (voir sql/003-vote-status.sql
+# côté RedConflictSite), et le pont la relit ici.
+#
+# Sans le pont site (site.enabled: false) ou sans cette table, l'encart reste
+# simplement masqué : rien d'autre n'en dépend.
+vote:
+  # Relecture de rc_vote_status pour les joueurs connectés, en secondes (min. 15).
+  # Pas besoin de descendre : ce qu'on transmet au client est une date limite,
+  # qu'il compare lui-même à l'heure courante — l'encart apparaît tout seul le
+  # moment venu. Ce passage ne sert qu'à rattraper un vote enregistré ailleurs ;
+  # celui qui vient d'être validé par `rcvote` est poussé immédiatement.
+  status-refresh-seconds: 60
 
 # ── Sauvegarde automatique de la base (pendant que le serveur tourne) ─────────
 # Ne s'active QUE sur l'hôte H2 (le serveur avec database.server.enabled: true = le Faction).
