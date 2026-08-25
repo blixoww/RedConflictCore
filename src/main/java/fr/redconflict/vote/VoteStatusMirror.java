@@ -34,12 +34,26 @@ public final class VoteStatusMirror {
 
     /** Code d'erreur MariaDB pour « table inconnue » (script 003 non passé). */
     private static final int ER_NO_SUCH_TABLE = 1146;
+    /** Code d'erreur MariaDB pour « SELECT command denied » (GRANT manquant). */
+    private static final int ER_TABLEACCESS_DENIED = 1142;
+
+    /** Pause après une erreur qui demande une intervention sur la base. */
+    private static final long PAUSE_STRUCTURELLE_MS = 10L * 60L * 1000L;
+    /** Pause après une erreur passagère — le temps qu'une coupure réseau se résorbe. */
+    private static final long PAUSE_PASSAGERE_MS = 60L * 1000L;
 
     private final RedConflictCore plugin;
     private final SiteDatabase site;
 
-    /** Passe à vrai quand la table n'existe pas : inutile de réessayer toutes les minutes. */
-    private volatile boolean absent;
+    /**
+     * Instant avant lequel on ne retente rien.
+     *
+     * <p>Une table absente ou un droit manquant ne se règlent pas dans la seconde, et la
+     * relecture a lieu à chaque connexion et après chaque vote : sans cette pause, une
+     * cause unique remplit la console de lignes identiques. On se tait, puis on retente —
+     * un {@code GRANT} passé entre-temps reprend effet sans redémarrage.
+     */
+    private volatile long silenceJusqua;
 
     public VoteStatusMirror(RedConflictCore plugin, SiteDatabase site) {
         this.plugin = plugin;
@@ -73,7 +87,7 @@ public final class VoteStatusMirror {
     }
 
     public boolean isAvailable() {
-        return !absent && site != null && site.isAvailable();
+        return System.currentTimeMillis() >= silenceJusqua && site != null && site.isAvailable();
     }
 
     /**
@@ -108,15 +122,43 @@ public final class VoteStatusMirror {
                 }
             }
         } catch (SQLException e) {
-            if (e.getErrorCode() == ER_NO_SUCH_TABLE) {
-                absent = true;
-                plugin.getLogger().warning("[Vote] Table rc_vote_status absente :"
-                        + " passe sql/003-vote-status.sql sur la base du site."
-                        + " L'encart de vote restera masqué en jeu.");
-            } else {
-                plugin.getLogger().warning("[Vote] Lecture du statut de vote : " + e.getMessage());
-            }
+            signaler(e);
         }
         return resultat;
+    }
+
+    /**
+     * Journalise une fois, puis se tait le temps de la pause.
+     *
+     * <p>L'encart de vote est un confort : aucune de ces erreurs ne mérite d'occuper la
+     * console, et aucune n'empêche quoi que ce soit d'autre de fonctionner.
+     */
+    private void signaler(SQLException e) {
+        String cause;
+        long pause;
+
+        switch (e.getErrorCode()) {
+            case ER_NO_SUCH_TABLE:
+                cause = "table rc_vote_status absente — passe sql/003-vote-status.sql"
+                      + " sur la base du site";
+                pause = PAUSE_STRUCTURELLE_MS;
+                break;
+            case ER_TABLEACCESS_DENIED:
+                // Le cas typique : la table a été créée à la main, sans la fin du script.
+                cause = "lecture de rc_vote_status refusée — il manque le droit :"
+                      + " GRANT SELECT ON azuriom.rc_vote_status TO 'rc_sync'@'172.18.0.%';"
+                      + " (dernière ligne de sql/003-vote-status.sql)";
+                pause = PAUSE_STRUCTURELLE_MS;
+                break;
+            default:
+                cause = "lecture du statut de vote : " + e.getMessage();
+                pause = PAUSE_PASSAGERE_MS;
+                break;
+        }
+
+        // Posé avant le message : les relectures déjà en vol se taisent tout de suite.
+        silenceJusqua = System.currentTimeMillis() + pause;
+        plugin.getLogger().warning("[Vote] " + cause + ". L'encart de vote reste masqué ;"
+                + " nouvelle tentative dans " + (pause / 60000L) + " min.");
     }
 }

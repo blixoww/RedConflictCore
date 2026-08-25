@@ -274,6 +274,7 @@ fr\redconflict\loto\LotoManager$9.class
 fr\redconflict\backup\BackupManager.class
 fr\redconflict\announce\AnnounceService.class
 fr\redconflict\rtp\RtpService.class
+fr\redconflict\site\SiteSync$2.class
 fr\redconflict\job\JobServerHandler.class
 fr\redconflict\automsg\AutoMessageManager$1.class
 fr\redconflict\essentials\repository\h2\H2PlayerStateRepository.class

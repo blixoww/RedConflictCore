@@ -45,10 +45,21 @@ public class EcoCommand extends EssCommand {
 
         String action = args[0].toLowerCase(Locale.ROOT);
         UUID targetId = seen.resolveUuid(args[1]);
-        if (targetId == null) {
-            sender.sendMessage(Text.error("Joueur inconnu : §f" + args[1]));
-            return false;
+
+        // Personne de ce nom n'est jamais passé sur le serveur. En offline mode ce n'est pas
+        // rédhibitoire : l'UUID se déduit du pseudo, exactement comme le font le vote et la
+        // boutique quand ils livrent un joueur déconnecté. Refuser ici ferait disparaître en
+        // silence l'argent d'un vote tombé avant la première connexion — le solde vit en base,
+        // il n'a pas besoin du joueur.
+        boolean jamaisVu = targetId == null;
+        if (jamaisVu) {
+            if (Bukkit.getOnlineMode()) {
+                sender.sendMessage(Text.error("Joueur inconnu : §f" + args[1]));
+                return false;
+            }
+            targetId = offlineUuid(args[1]);
         }
+
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
         String name = target.getName() != null ? target.getName() : args[1];
 
@@ -80,9 +91,27 @@ public class EcoCommand extends EssCommand {
             sender.sendMessage(Text.error("Opération refusée (solde insuffisant ?)."));
             return false;
         }
+        if (jamaisVu) {
+            // Dit, et non tu : un pseudo mal orthographié crédite un compte fantôme, et
+            // l'opération a l'air d'avoir réussi.
+            sender.sendMessage(Text.info("Aucun passage enregistré pour §f" + name
+                    + "§7 : crédité sur son UUID hors-ligne."));
+        }
         sender.sendMessage(Text.success("Solde de §f" + name + " §a: §f"
                 + economy.format(economy.getBalance(target)) + "§a."));
         return true;
+    }
+
+    /**
+     * UUID hors-ligne dérivé du pseudo.
+     *
+     * <p>Le réseau tourne en offline mode : c'est la même dérivation que celle du site
+     * ({@code AZURIOM_GAME=mc-offline}) et celle que {@code VoteRewards} utilise déjà pour
+     * désigner sa cible. La cible est donc la bonne, même sans passage enregistré.
+     */
+    @SuppressWarnings("deprecation")
+    private static UUID offlineUuid(String name) {
+        return Bukkit.getOfflinePlayer(name).getUniqueId();
     }
 
     @Override
