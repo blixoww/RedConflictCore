@@ -117,6 +117,17 @@ public final class SiteBridgeModule implements Module, Listener {
 
     // ── Accès pour le reste du plugin ──────────────────────────────────────────
 
+    /**
+     * Force un passage du miroir, tout de suite et sur le thread appelant.
+     *
+     * <p>Sert à l'extinction : la tâche périodique ne tournera plus, et le temps de jeu
+     * vient tout juste d'être écrit. Sans ce passage, la dernière session de chaque joueur
+     * n'atteindrait le site qu'au prochain démarrage du serveur.
+     */
+    public void syncNow() {
+        if (sync != null) sync.syncNow();
+    }
+
     public SiteDatabase getDatabase()          { return database; }
     public EntitlementService getEntitlements() { return entitlements; }
     public OrderService getOrders()            { return orders; }

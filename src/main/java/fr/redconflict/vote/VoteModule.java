@@ -94,6 +94,11 @@ public final class VoteModule implements Module, Listener {
         return rewards;
     }
 
+    /** Le compteur de votes. {@code null} tant que le module n'est pas actif. */
+    public VoteStorage getStorage() {
+        return storage;
+    }
+
     /**
      * Remet ce qui attendait le joueur.
      *

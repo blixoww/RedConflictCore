@@ -73,7 +73,11 @@ public class PBShopModule implements Module {
             plugin.saveResource("boutique/boutique.yml", false);
         }
         YamlConfiguration loaded = YamlConfiguration.loadConfiguration(file);
-        InputStream defaults = plugin.getResource("boutique.yml");
+        // Le chemin de la ressource est celui du jar, dossier compris. Avec un
+        // simple "boutique.yml" la recherche echouait sans bruit : les serveurs
+        // dont le fichier datait d'avant une nouvelle cle la lisaient absente,
+        // et la fonctionnalite restait muette (cas de boutique.annonce).
+        InputStream defaults = plugin.getResource("boutique/boutique.yml");
         if (defaults != null) {
             loaded.setDefaults(YamlConfiguration.loadConfiguration(
                     new InputStreamReader(defaults, StandardCharsets.UTF_8)));

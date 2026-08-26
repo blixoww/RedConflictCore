@@ -114,6 +114,12 @@ public class RedConflictCore extends JavaPlugin {
     public void onDisable() {
         getServer().getConsoleSender().sendMessage("§6[RedConflict] §cRedConflict est désactivé !");
 
+        // Dernier instantané vers le site, pendant que les deux bases sont encore
+        // ouvertes. Le temps de jeu ne s'écrit qu'à cet instant, et la tâche périodique du
+        // miroir ne tournera plus : sans ce passage, la dernière session de chaque joueur
+        // resterait invisible sur le site jusqu'au prochain démarrage.
+        flushFinalSnapshot();
+
         if (this.modules != null) this.modules.disableAll();
 
         if (this.playerDataSync != null) this.playerDataSync.saveAll(Bukkit.getOnlinePlayers());
@@ -129,6 +135,22 @@ public class RedConflictCore extends JavaPlugin {
         if (this.database != null) this.database.close();
     }
 
+
+    /**
+     * Reporte le temps de jeu des joueurs connectés, puis pousse un dernier instantané.
+     *
+     * <p>Jamais bloquant pour l'arrêt : toute erreur est journalisée et l'extinction
+     * continue. Un classement en retard de cinq minutes ne vaut pas un serveur qui refuse
+     * de s'éteindre.
+     */
+    private void flushFinalSnapshot() {
+        try {
+            if (this.playerDataModule != null) this.playerDataModule.flushPlaytime();
+            if (this.siteBridgeModule != null) this.siteBridgeModule.syncNow();
+        } catch (Throwable t) {
+            getLogger().warning("[SiteSync] Dernier instantané impossible : " + t);
+        }
+    }
 
     /**
      * Installe les modules dans l'ordre des dépendances : socle d'abord

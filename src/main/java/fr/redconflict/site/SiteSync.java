@@ -469,6 +469,9 @@ public final class SiteSync {
      */
     private Map<String, Integer> factionPoints() {
         if (!fr.redconflict.faction.FactionHook.isEnabled()) return Collections.emptyMap();
+        // Passage d'extinction : on est déjà sur le thread principal, et l'ordonnanceur
+        // n'accepte plus rien. Lire directement est ici la seule façon de lire.
+        if (Bukkit.isPrimaryThread()) return readRanking();
         try {
             Future<Map<String, Integer>> snapshot = Bukkit.getScheduler().callSyncMethod(plugin,
                     new Callable<Map<String, Integer>>() {

@@ -20,6 +20,19 @@ import org.bukkit.configuration.file.FileConfiguration;
  */
 public final class BoutiqueAnnonce {
 
+    /**
+     * Modele de repli, identique a celui du {@code boutique.yml} embarque.
+     *
+     * <p>Il sert quand la cle est <b>absente</b> — un fichier de configuration
+     * plus ancien que la fonctionnalite. Une cle presente mais vide reste, elle,
+     * une extinction volontaire : c'est la difference entre « pas encore
+     * configure » et « je n'en veux pas ».
+     */
+    private static final String MODELE_DEFAUT =
+            "&7[&c✦&7] &f%player% &7vient d'acheter &c%article% &7%duree% !";
+    private static final String DUREE_DEFAUT_PERMANENT = "&8(a vie)";
+    private static final String DUREE_DEFAUT_TEMPORAIRE = "&8(30 jours)";
+
     private BoutiqueAnnonce() { }
 
     /**
@@ -32,12 +45,12 @@ public final class BoutiqueAnnonce {
         FileConfiguration cfg = plugin.getBoutiqueConfig();
         if (cfg == null) return;
 
-        String modele = cfg.getString("boutique.annonce", "");
+        String modele = cfg.getString("boutique.annonce", MODELE_DEFAUT);
         if (modele == null || modele.trim().isEmpty()) return;
 
         String duree = permanent
-                ? cfg.getString("boutique.annonce_a_vie", "à vie")
-                : cfg.getString("boutique.annonce_temporaire", "pour 30 jours");
+                ? cfg.getString("boutique.annonce_a_vie", DUREE_DEFAUT_PERMANENT)
+                : cfg.getString("boutique.annonce_temporaire", DUREE_DEFAUT_TEMPORAIRE);
 
         String message = modele
                 .replace("%player%", pseudo)

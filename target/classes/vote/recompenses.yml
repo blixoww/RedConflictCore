@@ -37,10 +37,26 @@
 # Argent — echelle du shop : un diamant s'achete 10 000$ et se revend 7 500$,
 # une emeraude 6 000$. Les montants ci-dessous se lisent donc en fractions de
 # diamant, pas en euros.
-#     esperance ~ 1 200$/vote, soit ~10 000$/jour au maximum : un diamant.
+#     argent-modeste 14,0 % x  1 200$ =  168$/vote
+#     argent-gros     6,5 % x  6 000$ =  390$/vote
+#     jackpot         0,5 % x 20 000$ =  100$/vote
+#     ---------------------------------------------------------------
+#     esperance ~ 660$/vote en numeraire, soit ~5 300$/jour au maximum.
 #
 # Items — rien qui concurrence la boutique : pas d'epee Cobalt, pas d'armure,
 # des enchantements de bas niveau. Le vote depanne, il n'equipe pas.
+#
+#     Attention : un item se revend. Au prix du shop, le poste le plus lourd du
+#     tableau n'est pas l'argent mais le ravitaillement — une pomme doree se
+#     revend 10 000$, donc 8 pommes valent 80 000$ a elles seules. C'est pour ca
+#     que son poids a ete ramene de 20,0 % a 13,0 %. A relire si la table est
+#     retouchee : un poids anodin sur un item cher coute plus que le jackpot.
+#
+#     Reperes de revente pour les lots en objets :
+#       8 minerais aleatoires  ~ 69 000$  (ruby 8 000$ / cobalt 12 000$ / emeraude 6 000$)
+#       8 pommes dorees        ~ 80 000$
+#       3 tartes vertes        ~  9 000$
+#       2 stacks d'obsidienne  ~256 000$  -- herite de la table d'origine, non touche
 
 vote:
   # Accordés à chaque vote, quoi qu'il arrive. Volontairement à 0 : voir le budget
@@ -75,47 +91,69 @@ vote:
 
   lots:
     - id: "argent-modeste"
-      poids: 17             # 20,0 %
+      poids: 140            # 14,0 %
       nom: "&a1 200$"
       commandes:
         - "eco give %player% 1200"
 
     - id: "ravitaillement"
-      poids: 200            # 20,0 %
+      poids: 130            # 13,0 %
       nom: "&e8 pommes dorées &7"
       commandes:
         - "give %player% GOLDEN_APPLE 8"
 
     - id: "cle-acier"
-      poids: 120            # 10,0 %
+      poids: 110            # 11,0 %
       nom: "&fUne clé en Acier"
       commandes:
         - "give %player% STEEL_KEY 1"
 
     - id: "materiaux"
-      poids: 110            # 10,0 %
+      poids: 95             # 9,5 %
       nom: "&52 stack d'obsidiennes &7"
       commandes:
         - "give %player% OBSIDIAN 128"
 
     - id: "kit-potions"
-      poids: 100            # 10,0 %
+      poids: 90             # 9,0 %
       nom: "&dKit potions"
       commandes:
-        - "kit %player% potion"
+        - "kit Potions %player%"
 
     - id: "kit-bonus"
-      poids: 100            # 10,0 %
+      poids: 90             # 9,0 %
       nom: "&dKit Bonus"
       commandes:
-        - "kit %player% Bonus"
+        - "kit Bonus %player%"
+
+    - id: "tartes-vertes"
+      poids: 80             # 8,0 %
+      nom: "&a3 tartes à la citrouille verte"
+      commandes:
+        - "give %player% GREEN_PUMPKIN_PIE 3"
+
+    # Le seul lot utilitaire de la table : il ne se revend pas, il rend service.
+    # C'est ce qui lui vaut un poids eleve malgre son interet reel.
+    - id: "enderchest"
+      poids: 60             # 6,0 %
+      nom: "&5Un coffre de l'Ender"
+      commandes:
+        - "give %player% ENDER_CHEST 1"
 
     # ── Le palier « bonne pioche » ────────────────────────────────────────────
     - id: "argent-gros"
-      poids: 70             # 7,0 %
+      poids: 65             # 6,5 %
       nom: "&a&l6 000$"
       commandes:
         - "eco give %player% 6000"
+
+    # Aucune valeur marchande, donc aucun impact sur le budget : ce lot ne
+    # donne que du temps de jeu double sur les metiers.
+    - id: "boost-xp"
+      poids: 45             # 4,5 %
+      nom: "&aUne fiole de Boost d'XP &7(métiers x2 pendant 2 h)"
+      commandes:
+        - "give %player% XP_BOOSTER 1"
 
     - id: "cle-emeraude"
       poids: 40             # 4,0 %
@@ -132,19 +170,28 @@ vote:
 
     # ── Le rare ───────────────────────────────────────────────────────────────
     - id: "epee-ruby"
-      poids: 2              # 3,0 %
+      poids: 12             # 1,2 %
       nom: "&cUne épée Ruby &7(Tranchant II)"
       commandes:
         - "give %player% RUBY_SWORD 1 sharpness 2"
 
     - id: "cle-ruby"
-      poids: 10             # 2,0 %
+      poids: 10             # 1,0 %
       nom: "&cUne clé en Ruby"
       commandes:
         - "give %player% RUBY_KEY 1"
 
+    # Le lot le plus cher de la table une fois revendu (~69 000$), d'ou une
+    # rarete sous le pourcent — plus rare encore que le jackpot en valeur.
+    # Chaque minerai casse donne un ruby, un lingot de cobalt ou une emeraude.
+    - id: "minerai-aleatoire"
+      poids: 8              # 0,8 %
+      nom: "&b8 minerais aléatoires"
+      commandes:
+        - "give %player% RANDOM_ORE 8"
+
     - id: "jackpot"
-      poids: 5              # 2,0 %
+      poids: 5              # 0,5 %
       nom: "&6&lJACKPOT &7— 20 000$, une clé Cobalt et 20 PB"
       # Plafond assumé : 20 PB, soit 2 € de valeur boutique.
       pb: 20

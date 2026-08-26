@@ -40,6 +40,13 @@ public class KsListener implements Listener {
     /** Retourne le timestamp de connexion d'un joueur (pour la session en cours). */
     public static Long getJoinTime(UUID uuid) { return JOIN_TIMES.get(uuid); }
 
+    /**
+     * Retire et retourne l'heure de connexion : la session qu'elle représente ne peut être
+     * comptée qu'une fois. Un second appel rend {@code null}, ce qui rend le report du
+     * temps de jeu rejouable sans double comptage.
+     */
+    public static Long takeJoinTime(UUID uuid) { return JOIN_TIMES.remove(uuid); }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();

@@ -50,14 +50,30 @@ public class PlayerDataModule implements Module {
     @Override
     public void disable() {
         if (playerDatabase == null) return;
+        flushPlaytime();
+        playerDatabase.close();
+    }
+
+    /**
+     * Ajoute au temps de jeu la session en cours de chaque joueur connecté.
+     *
+     * <p>C'est le seul moment où {@code playtime_s} avance pour un joueur qui ne s'est pas
+     * déconnecté : à l'arrêt du serveur, personne ne passera par {@code PlayerQuitEvent},
+     * les écouteurs étant déjà retirés.
+     *
+     * <p>Rejouable : l'heure de connexion est <em>retirée</em> au passage, donc un second
+     * appel ne recompte rien. C'est ce qui permet d'appeler la méthode avant le dernier
+     * instantané vers le site, puis de laisser {@link #disable()} la rappeler sans risque.
+     */
+    public void flushPlaytime() {
+        if (playerDatabase == null) return;
         for (Player player : Bukkit.getOnlinePlayers()) {
-            Long joinTime = KsListener.getJoinTime(player.getUniqueId());
+            Long joinTime = KsListener.takeJoinTime(player.getUniqueId());
             if (joinTime != null) {
                 long seconds = (System.currentTimeMillis() - joinTime) / 1000;
                 playerDatabase.addPlaytime(player.getUniqueId(), seconds);
             }
         }
-        playerDatabase.close();
     }
 
     /** Requis par les modules XpBoost, PB et les handlers de packets. */

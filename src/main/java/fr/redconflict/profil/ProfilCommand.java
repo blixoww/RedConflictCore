@@ -174,8 +174,19 @@ public class ProfilCommand extends CoreCommand {
             }
         } catch (Exception ignored) {}
 
+        // ── Votes — compteur cumule, jamais remis a zero ────────────────────
+        // Requete H2 : buildPayload tourne deja hors du thread principal, et le
+        // resultat est mis en cache 3 s comme le reste de la fiche.
+        int votes = 0;
+        try {
+            fr.redconflict.vote.VoteModule vm = plugin.getVoteModule();
+            if (vm != null && vm.getStorage() != null && vm.getStorage().isAvailable()) {
+                votes = vm.getStorage().total(uuid);
+            }
+        } catch (Exception ignored) {}
+
         return new ProfilePayload(name, faction, rank, kills, deaths, ptMin, balance, streak, bounty, pb,
-                minerLevel, farmerLevel, artisanLevel);
+                minerLevel, farmerLevel, artisanLevel, votes);
     }
 
     /**
@@ -262,6 +273,7 @@ public class ProfilCommand extends CoreCommand {
                 .writeVarInt(p.minerLevel)
                 .writeVarInt(p.farmerLevel)
                 .writeVarInt(p.artisanLevel)
+                .writeVarInt(p.votes)
                 .build();
         recipient.sendPluginMessage(plugin, CHANNEL, data);
     }
@@ -359,11 +371,13 @@ public class ProfilCommand extends CoreCommand {
         final long balance, bounty;
         // Données métiers (tous toujours actifs)
         final int minerLevel, farmerLevel, artisanLevel;
+        // Nombre total de votes, cumul de fidélité (jamais remis à zéro)
+        final int votes;
 
         ProfilePayload(String name, String faction, String rank,
                        int kills, int deaths, int ptMin,
                        long balance, int streak, long bounty, int pb,
-                       int minerLevel, int farmerLevel, int artisanLevel) {
+                       int minerLevel, int farmerLevel, int artisanLevel, int votes) {
             this.name = name;
             this.faction = faction;
             this.rank = rank;
@@ -377,6 +391,7 @@ public class ProfilCommand extends CoreCommand {
             this.minerLevel   = minerLevel;
             this.farmerLevel  = farmerLevel;
             this.artisanLevel = artisanLevel;
+            this.votes        = votes;
         }
     }
 }

@@ -144,10 +144,9 @@ public final class VoteStatusMirror {
                 pause = PAUSE_STRUCTURELLE_MS;
                 break;
             case ER_TABLEACCESS_DENIED:
-                // Le cas typique : la table a été créée à la main, sans la fin du script.
-                cause = "lecture de rc_vote_status refusée — il manque le droit :"
-                      + " GRANT SELECT ON azuriom.rc_vote_status TO 'rc_sync'@'172.18.0.%';"
-                      + " (dernière ligne de sql/003-vote-status.sql)";
+                cause = "rc_vote_status inaccessible — table absente ou droit manquant :"
+                      + " passe sql/003-vote-status.sql sur la base du site, il crée la table"
+                      + " ET pose le GRANT";
                 pause = PAUSE_STRUCTURELLE_MS;
                 break;
             default:
