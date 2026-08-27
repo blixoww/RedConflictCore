@@ -39,6 +39,7 @@ public class Database {
     private Server tcpServer;       // non-null uniquement si ce serveur héberge H2
     private String serverId;        // identifiant de CE serveur (faction|minage|hub)
     private boolean kickOnConflict;
+    private long lockWaitMillis;
 
     public Database(RedConflictCore plugin) {
         this.plugin = plugin;
@@ -65,6 +66,7 @@ public class Database {
         int maxSize = cfg.getInt("database.pool.maximum-size", 10);
         this.serverId = cfg.getString("database.server-id", "default");
         this.kickOnConflict = cfg.getBoolean("database.lock.kick-on-conflict", false);
+        this.lockWaitMillis = cfg.getLong("database.lock.wait-ms", 4000L);
 
         // baseDir du serveur H2 = dossier du plugin ; l'URL "./data/<name>" résout donc
         // vers <dataFolder>/data/<name>.mv.db.
@@ -110,9 +112,27 @@ public class Database {
             String dbFilePath = dataDir.getAbsolutePath().replace('\\', '/') + "/" + name;
             jdbcUrl = "jdbc:h2:file:" + dbFilePath + ";MODE=PostgreSQL;AUTO_SERVER=FALSE";
             plugin.getLogger().info("[H2] Mode embarqué (fichier) : " + jdbcUrl);
+            // Ce mode est correct pour un serveur seul, et catastrophique en grappe :
+            // le Minage se retrouve avec sa propre base, donc son propre inventaire.
+            // Le symptôme est exactement « deux inventaires indépendants », et rien
+            // dans les logs ne le signalait jusqu'ici.
+            if (plugin.getConfig().getBoolean("database.sync.enabled", true)) {
+                plugin.getLogger().warning("[H2] ================================================================");
+                plugin.getLogger().warning("[H2] La synchro d'inventaire est ACTIVÉE alors que la base est un");
+                plugin.getLogger().warning("[H2] FICHIER LOCAL ISOLÉ (server.enabled: false + host: localhost).");
+                plugin.getLogger().warning("[H2] Ce serveur (" + this.serverId + ") ne partage RIEN avec les autres :");
+                plugin.getLogger().warning("[H2] inventaire, enderchest, homes, HDV, métiers… tout est en double.");
+                plugin.getLogger().warning("[H2] Corriger : database.server.enabled: true sur l'hôte H2 (Faction),");
+                plugin.getLogger().warning("[H2] et sur les autres database.host: 172.18.0.1 sous Pterodactyl");
+                plugin.getLogger().warning("[H2] (127.0.0.1 y désigne le conteneur lui-même), 127.0.0.1 sinon.");
+                plugin.getLogger().warning("[H2] ================================================================");
+            }
         } else {
             // Mode TCP : connexion vers un serveur H2 existant (local ou distant).
             jdbcUrl = "jdbc:h2:tcp://" + host + ":" + port + "/./data/" + name + ";MODE=PostgreSQL";
+            // Tracé explicitement : c'est la ligne qui prouve, en console, que ce
+            // serveur parle bien à la base des autres et pas à un fichier à lui.
+            plugin.getLogger().info("[H2] Mode " + (serverEnabled ? "hôte" : "client") + " TCP : " + jdbcUrl);
         }
 
         HikariConfig hc = new HikariConfig();
@@ -212,5 +232,13 @@ public class Database {
      */
     public boolean isKickOnConflict() {
         return kickOnConflict;
+    }
+
+    /**
+     * Temps d'attente maximal, en millisecondes, accordé au serveur précédent
+     * pour sauvegarder et relâcher le verrou avant que le joueur n'apparaisse.
+     */
+    public long getLockWaitMillis() {
+        return lockWaitMillis;
     }
 }

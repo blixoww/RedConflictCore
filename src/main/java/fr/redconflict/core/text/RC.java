@@ -36,6 +36,7 @@ public final class RC {
     public static final String RTP_SUCCESS     = PRE + "§aTéléporté avec succès !";
     public static final String RTP_COOLDOWN    = PRE + "§cVous devez attendre §f%s §cavant de vous retéléporter.";
     public static final String RTP_CANCELLED   = PRE + "§cTéléportation annulée : vous avez bougé.";
+    public static final String RTP_NO_SPOT     = PRE + "§cAucun endroit sûr trouvé§7. §cRéessayez dans un instant.";
 
     // Repair
     public static final String REPAIR_DONE     = PRE + "§aTous vos items ont été réparés.";

@@ -295,6 +295,15 @@ boutique:
       prix_pb_perm: 300
       commandes:
         - "lp user %player% permission set group.elite true"
+        # Le grade ne se resume pas au groupe LuckPerms : sans ces noeuds, le
+        # pack annonce « Grade Elite » et ne livre qu'un prefixe. Meme liste que
+        # commandes_perm du grade elite — a garder synchronisee avec lui.
+        - "lp user %player% permission set redconflict.back true"
+        - "lp user %player% permission set redconflict.craft true"
+        - "lp user %player% permission set redconflict.furnace true"
+        - "lp user %player% permission set redconflict.nv true"
+        - "lp user %player% permission set redconflict.sethome.multiple.6 true"
+        - "lp user %player% permission set greatkits.kits.Elite true"
         - "mspa %player% add ZOMBIE 2"
         - "mspa %player% add SKELETON 2"
         - "give %player% EMERALD_HELMET 1 protection 3"
@@ -305,7 +314,7 @@ boutique:
         - "give %player% RUBY_PICKAXE 1 efficiency 4 unbreaking 3"
         - "give %player% OBSIDIAN 256"
         - "lp user %player% permission set greatkits.kits.Starter true"
-        - "givekey %player% steel_key 3"
+        - "give %player% STEEL_KEY 3"
     - id: "avance"
       nom: "&6&lPack Avance"
       icone: diamond_chestplate
@@ -323,6 +332,15 @@ boutique:
       prix_pb_perm: 400
       commandes:
         - "lp user %player% permission set group.elite true"
+        # Le grade ne se resume pas au groupe LuckPerms : sans ces noeuds, le
+        # pack annonce « Grade Elite » et ne livre qu'un prefixe. Meme liste que
+        # commandes_perm du grade elite — a garder synchronisee avec lui.
+        - "lp user %player% permission set redconflict.back true"
+        - "lp user %player% permission set redconflict.craft true"
+        - "lp user %player% permission set redconflict.furnace true"
+        - "lp user %player% permission set redconflict.nv true"
+        - "lp user %player% permission set redconflict.sethome.multiple.6 true"
+        - "lp user %player% permission set greatkits.kits.Elite true"
         - "mspa %player% add ZOMBIE 2"
         - "mspa %player% add PIG_ZOMBIE 2"
         - "mspa %player% add SKELETON 2"
@@ -334,7 +352,7 @@ boutique:
         - "give %player% COBALT_PICKAXE 1 efficiency 4 unbreaking 3"
         - "give %player% OBSIDIAN 384"
         - "lp user %player% permission set greatkits.kits.Bonus true"
-        - "givekey %player% ruby_key 3"
+        - "give %player% RUBY_KEY 3"
     - id: "mega"
       nom: "&c&l&nMEGA PACK"
       icone: nether_star
@@ -352,6 +370,20 @@ boutique:
       prix_pb_perm: 500
       commandes:
         - "lp user %player% permission set group.immortel true"
+        # Idem : « Grade Immortel » annonce /near /ec /repairall /feed et 10
+        # homes. Sans ces noeuds, seul le prefixe change. Meme liste que
+        # commandes_perm du grade immortel — a garder synchronisee avec lui.
+        - "lp user %player% permission set redconflict.back true"
+        - "lp user %player% permission set redconflict.craft true"
+        - "lp user %player% permission set redconflict.furnace true"
+        - "lp user %player% permission set redconflict.nv true"
+        - "lp user %player% permission set redconflict.near true"
+        - "lp user %player% permission set redconflict.near.unlimited true"
+        - "lp user %player% permission set redconflict.ec true"
+        - "lp user %player% permission set redconflict.repair true"
+        - "lp user %player% permission set redconflict.feed true"
+        - "lp user %player% permission set redconflict.sethome.multiple.10 true"
+        - "lp user %player% permission set greatkits.kits.Immortel true"
         - "mspa %player% add ZOMBIE 2"
         - "mspa %player% add PIG_ZOMBIE 4"
         - "mspa %player% add SKELETON 2"
@@ -362,8 +394,8 @@ boutique:
         - "give %player% COBALT_SWORD 1 sharpness 5"
         - "give %player% COBALT_PICKAXE 1 efficiency 5 unbreaking 3"
         - "give %player% OBSIDIAN 640"
-        - "lp user %player% permission set greatkits.kits.Potion true"
-        - "givekey %player% cobalt_key 3"
+        - "lp user %player% permission set greatkits.kits.Potions true"
+        - "give %player% COBALT_KEY 3"
 
 # ── Offres speciales (edition limitee) ────────────────────────────────────────
 offres_speciales:

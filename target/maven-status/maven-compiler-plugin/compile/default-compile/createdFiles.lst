@@ -24,7 +24,6 @@ fr\redconflict\bounty\KillstreakManager.class
 fr\redconflict\boutique\BoutiqueClientServerHandler.class
 fr\redconflict\ring\RingEffectListener.class
 fr\redconflict\hdv\HdvManager.class
-fr\redconflict\site\EntitlementService$1.class
 fr\redconflict\db\PotionEffectCodec.class
 fr\redconflict\repair\RepairItems.class
 fr\redconflict\essentials\service\EconomyService.class
@@ -34,6 +33,7 @@ fr\redconflict\vote\VoteStatusMirror$Statut.class
 fr\redconflict\listeners\DisabledCommands.class
 fr\redconflict\job\JobDatabase$TopEntry.class
 fr\redconflict\packets\PacketReader.class
+fr\redconflict\rtp\RtpService$1.class
 fr\redconflict\bounty\FactionLeaveTracker.class
 fr\redconflict\annonyme\AnonymeListener.class
 fr\redconflict\ring\RingLoginListener.class
@@ -230,6 +230,7 @@ fr\redconflict\job\JobConfig$LevelReward.class
 fr\redconflict\essentials\command\economy\PayCommand.class
 fr\redconflict\staff\StaffDatabase.class
 fr\redconflict\essentials\command\player\KillCommand.class
+fr\redconflict\rtp\RtpService$Preparation.class
 fr\redconflict\essentials\command\item\GiveCommand.class
 fr\redconflict\useful\CommandsCommand.class
 fr\redconflict\automsg\AutoMessageManager.class

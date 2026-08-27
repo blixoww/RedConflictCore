@@ -96,6 +96,28 @@ public class PlayerLockService {
     }
 
     /**
+     * Prend le verrou de force, conflit ou pas.
+     *
+     * <p>Dernier recours quand l'attente d'acquisition a expiré et que le joueur
+     * entre malgré tout : le verrou doit décrire où le joueur <i>est</i>. Le
+     * laisser au nom d'un serveur qu'il a quitté ferait attendre pour rien sa
+     * prochaine connexion ailleurs, jusqu'au redémarrage de ce serveur.
+     */
+    public void takeOver(UUID uuid, String serverId) {
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                 "MERGE INTO player_locks (uuid, server_id, locked_at, online) " +
+                 "KEY(uuid) VALUES (?, ?, ?, TRUE)")) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, serverId);
+            ps.setLong(3, System.currentTimeMillis());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOG.severe("[Lock] takeOver(" + uuid + "): " + e.getMessage());
+        }
+    }
+
+    /**
      * Remet à zéro (online=false) tous les verrous appartenant à ce serveur.
      * À appeler AU DÉMARRAGE : ce serveur étant vide à ce moment, tout verrou à son nom est
      * un fantôme laissé par un crash précédent.

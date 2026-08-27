@@ -261,7 +261,8 @@ public class RedConflictCore extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(
                 new PlayerLockListener(this.playerLockService, this.playerDataSync,
-                        this.database.getServerId(), this.database.isKickOnConflict()), this);
+                        this.database.getServerId(), this.database.isKickOnConflict(),
+                        this.database.getLockWaitMillis()), this);
 
         // Pont vers la base du site. Ouvert ici et non dans SiteBridgeModule :
         // le ledger PB en a besoin dès l'installation de PBModule, qui vient

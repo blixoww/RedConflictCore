@@ -1,6 +1,20 @@
 rtp:
   max: 9000
   min: 1000
+  # Préavis avant la téléportation, en secondes. Le joueur doit rester sur son
+  # bloc : tourner la vue (souris) n'annule plus rien, seul un déplacement
+  # annule — la même règle que /spawn. Les OP n'ont pas de préavis.
+  warmup-seconds: 3
+  # Nombre de colonnes tirées au sort avant d'abandonner. Une colonne est
+  # rejetée si elle tombe en mer, dans la lave ou sur la cime d'un arbre.
+  max-attempts: 12
+  # Budget total de la préparation, en secondes. Le terrain d'arrivée est généré
+  # et chargé PENDANT le préavis, un chunk par tick (le chunk d'arrivée et ses
+  # huit voisins). Sur un monde neuf cela peut dépasser le préavis, et c'est
+  # voulu : mieux vaut faire patienter que déposer le joueur dans un chunk que
+  # son client n'a pas encore reçu — c'est ce qui le faisait apparaître
+  # « dans le sol ».
+  max-prepare-seconds: 20
 
 # ── Système Anti Lag-Switch ───────────────────────────────────────────────────
 lagswitch:
@@ -276,31 +290,43 @@ hooks:
 # ── Base de données centralisée H2 ───────────────────────────────────────────
 # MODES disponibles :
 #
-# 1) Mode EMBARQUÉ (défaut, serveur standalone) :
+# 1) Mode EMBARQUÉ (serveur standalone) :
 #    server.enabled: false  +  host: localhost
 #    → La base est un simple fichier local (plugins/RedConflictCore/data/central.mv.db).
-#      Aucun port réseau requis. Idéal si vous n'avez qu'UN seul serveur Minecraft.
+#      Aucun port réseau requis. Correct si vous n'avez qu'UN seul serveur Minecraft.
 #
 # 2) Mode SERVEUR TCP (multi-serveur, un seul serveur héberge H2) :
-#    server.enabled: true  sur LE serveur qui héberge la base : c'est le FACTION
+#    server.enabled: true sur LE serveur qui héberge la base : c'est le FACTION
 #    (le HUB est un lobby verrouillé SANS RedConflictCore, il n'héberge pas H2).
-#    server.enabled: false + host: 127.0.0.1 sur les AUTRES serveurs (ex. le Minage).
-#    ⚠️ NE PAS mettre host: localhost sur un client : "enabled:false + localhost"
-#       bascule en mode FICHIER ISOLÉ (mode 1) → la base n'est PAS partagée,
-#       inventaire / PB / HDV ne se synchronisent pas. Utilisez TOUJOURS 127.0.0.1.
-#    Tous les serveurs partagent UNE base H2 via TCP (même machine).
+#    server.enabled: false + host: <adresse du Faction> sur les AUTRES (le Minage).
 #
 # 3) Mode CLIENT TCP pur :
 #    server.enabled: false + host: <ip_ou_hostname_distant>
-#    → Se connecte à un serveur H2 TCP existant sur un autre hôte.
+#
+# ⚠️ LE PIÈGE, ET IL A DÉJÀ COÛTÉ UN INCIDENT :
+#    "server.enabled: false + host: localhost" n'est PAS un client qui se
+#    rabat sur la machine locale — c'est le mode 1, une base FICHIER ISOLÉE.
+#    Un serveur de la grappe configuré ainsi ne partage RIEN : inventaire,
+#    enderchest, homes, HDV, métiers, sanctions, tout est en double et diverge
+#    en silence. Depuis le lot RTP/verrous, le plugin l'affiche en WARNING au
+#    démarrage quand database.sync.enabled est vrai : lisez la console.
+#
+# ⚠️ QUELLE ADRESSE METTRE SUR LE CLIENT (Minage) ?
+#    SOUS PTERODACTYL : 172.18.0.1, le pont Docker — la même adresse que
+#    site.url plus bas. PAS 127.0.0.1 : dans un conteneur, 127.0.0.1 désigne le
+#    conteneur LUI-MÊME, donc le Minage se chercherait tout seul. Il faut en
+#    plus déclarer une allocation 172.18.0.1:9092 sur le serveur FACTION dans
+#    le panel, sinon le port du conteneur n'est pas publié sur l'hôte et la
+#    connexion est refusée.
+#    HORS CONTENEURS (les deux serveurs sur la même machine) : 127.0.0.1.
 database:
   server:
     # true = ce serveur héberge H2 et démarre le serveur TCP (un seul par grappe).
-    # false + host=localhost = mode embarqué (fichier local, aucun TCP).
+    # false + host=localhost = mode embarqué (fichier local isolé, aucun TCP).
     # false + host distant   = client TCP pur.
     enabled: false
-  # Hôte/port du serveur H2 TCP. Sur un serveur CLIENT (ex. Minage), mettez 127.0.0.1
-  # et JAMAIS localhost (localhost + enabled:false = base fichier isolée, pas de synchro).
+  # Hôte/port du serveur H2 TCP. Sur un serveur CLIENT (ex. Minage), voir
+  # l'encadré « quelle adresse » ci-dessus — et JAMAIS localhost.
   host: localhost
   port: 9092
   # Nom de la base → jdbc:h2:tcp://<host>:<port>/./data/<name>;MODE=PostgreSQL
@@ -314,8 +340,19 @@ database:
   # Utilisé par le verrou de présence cross-serveur.
   server-id: faction
   lock:
-    # Si true, un joueur encore verrouillé sur un autre serveur est kické à la
-    # connexion (le temps que ses données y soient sauvegardées). false = simple log.
+    # Temps accordé au serveur précédent, en millisecondes, pour sauvegarder et
+    # relâcher le verrou avant que le joueur n'apparaisse ici.
+    #
+    # Velocity ouvre la connexion au serveur d'arrivée AVANT de fermer celle du
+    # serveur de départ : sans cette attente, l'arrivée charge l'inventaire
+    # d'avant le transfert et les deux serveurs se mettent à diverger. L'attente
+    # a lieu pendant le pré-login, hors du thread principal (le joueur patiente
+    # sur « Connexion… », le serveur ne rame pas) et s'arrête dès que l'autre a
+    # fini — en pratique quelques dizaines de millisecondes.
+    wait-ms: 4000
+    # Si true, un joueur encore verrouillé APRÈS cette attente est kické (le
+    # temps que ses données soient sauvegardées ailleurs). false = il entre
+    # quand même, avec un avertissement en console.
     kick-on-conflict: false
   sync:
     # Synchronisation cross-serveur de l'inventaire complet + enderchest.
