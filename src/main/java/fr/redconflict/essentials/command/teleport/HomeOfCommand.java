@@ -74,12 +74,26 @@ public class HomeOfCommand extends EssCommand {
         }
 
         String name = args[1];
-        Location destination = homes.find(target, name);
-        if (destination == null) {
+        StoredLocation stored = all.get(HomeService.normalize(name));
+        if (stored == null) {
             staff.sendMessage(Text.error("Home §f" + HomeService.normalize(name)
                     + " §cintrouvable chez §f" + args[0] + "§c."));
             return false;
         }
+
+        Location destination = homes.find(target, name);
+        if (destination == null) {
+            // Le home existe, mais son monde n'est pas sur CE serveur. Depuis que
+            // les deux serveurs partagent la même base H2, la liste montre aussi
+            // les homes posés ailleurs : dire « introuvable » serait faux et
+            // enverrait le staff chercher un home qui est bien là.
+            staff.sendMessage(Text.error("Le home §f" + HomeService.normalize(name)
+                    + " §cde §f" + args[0] + " §cest dans le monde §f" + stored.getWorldName()
+                    + "§c, absent de ce serveur."));
+            staff.sendMessage(Text.info("Rejoins le serveur qui porte ce monde, puis refais la commande."));
+            return false;
+        }
+
         teleports.teleportNow(staff, destination);
         staff.sendMessage(Text.info("Téléporté au home §f" + HomeService.normalize(name)
                 + " §7de §f" + args[0] + "§7. §8(/back pour revenir)"));
