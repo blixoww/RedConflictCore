@@ -16,6 +16,12 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
 public class HdvManager {
+
+    /**
+     * Plafond des prix. Sans lui, un prix proche de {@code Long.MAX_VALUE}
+     * déborde aux additions du côté acheteur et des gains en attente.
+     */
+    private static final long MAX_PRICE = 1_000_000_000_000L;
     private static final Logger LOG = Logger.getLogger("HDV");
 
     private static HdvManager instance;
@@ -432,81 +438,87 @@ public class HdvManager {
         return item.getType().name();
     }
 
-    public void handlePostOffer(Player player, ItemStack item, long totalPrice, int quantity, boolean payPB) {
-        handlePostOffer(player, item, totalPrice, quantity, payPB, 0L);
-    }
-
-    public void handlePostOffer(Player player, ItemStack item, long totalPrice, int quantity, boolean payPB, long pricePB) {
+    /**
+     * Met en vente l'objet d'un SLOT de l'inventaire du vendeur.
+     *
+     * <p><b>Cette méthode recevait auparavant un {@code ItemStack} envoyé par le
+     * client, NBT compris, et c'est lui qui était mis en vente.</b> Elle ne
+     * vérifiait la possession que sur {@code (id NMS, durabilité)} : ni les
+     * enchantements, ni le nom, ni le NBT. Un client modifié pouvait donc tenir
+     * une épée en diamant ordinaire, annoncer une épée Sharpness 32767 avec le
+     * NBT de son choix, et le serveur la mettait en vente à sa place — puis la
+     * lui revendait, blanchie par l'hôtel des ventes. C'était la même forge
+     * d'objets que dans le jet d'objet custom, avec en prime un canal de
+     * distribution vers les autres joueurs.
+     *
+     * <p>Le protocole ne transporte donc plus d'objet, seulement un numéro de
+     * slot. Ce qui est mis en vente est ce que le serveur lit dans SON
+     * inventaire, à cet emplacement.
+     *
+     * <p>Second correctif au passage : {@code quantity} n'était pas borné.
+     * Une quantité NÉGATIVE passait le test « en avez-vous assez ? » (car
+     * {@code avail < -64} est faux), puis {@code removeItemsNms} exécutait
+     * {@code setAmount(amount - left)} avec {@code left} négatif — ce qui
+     * AJOUTAIT des objets à la pile. Une simple quantité de -64 dupliquait.
+     */
+    public void handlePostOffer(Player player, int slot, long totalPrice, int quantity,
+                                boolean payPB, long pricePB) {
         if (!payPB && this.economy == null) {
-            player.sendMessage("\u00a7cHDV (monnaie) indisponible.");
+            player.sendMessage("§cHDV (monnaie) indisponible.");
             return;
         }
-        // Vérifier via NMS ID (support items moddés dont getType()==AIR côté Bukkit)
-        if (item == null || CustomPacketServerHandler.getNmsItemId(item) == 0) {
-            player.sendMessage("\u00a7cVous ne pouvez pas vendre de l'air !");
+        if (slot < 0 || slot > 35) {
+            HdvServerHandler.sendActionResult(player, false, "Emplacement invalide.");
             return;
         }
-        if (totalPrice <= 0L) {
-            player.sendMessage("\u00a7cLe prix total doit etre superieur a 0.");
+        if (totalPrice <= 0L || totalPrice > MAX_PRICE) {
+            player.sendMessage("§cLe prix total doit etre superieur a 0.");
             return;
         }
-        int avail = countItemsNms(player, item);
-        if (avail < quantity) {
+        if (pricePB < 0L || pricePB > MAX_PRICE) {
+            HdvServerHandler.sendActionResult(player, false, "Prix en PB invalide.");
+            return;
+        }
+        ItemStack inSlot = player.getInventory().getItem(slot);
+        if (inSlot == null || CustomPacketServerHandler.getNmsItemId(inSlot) == 0
+                || inSlot.getAmount() <= 0) {
+            player.sendMessage("§cVous ne pouvez pas vendre de l'air !");
+            return;
+        }
+        if (quantity < 1 || quantity > inSlot.getAmount()) {
             HdvServerHandler.sendActionResult(player, false, "Vous n'avez pas assez d'items.");
             return;
         }
-        removeItemsNms(player, item, quantity);
-        item = item.clone();
-        item.setAmount(quantity);
-        // Si c'est un livre enchanté, appliquer le nom français + lore des enchantements
-        if (EnchantUtils.isEnchantedBook(item)) {
-            EnchantUtils.applyFrenchMeta(item);
+
+        // L'objet vendu est une copie de CELUI du slot, jamais d'une description reçue.
+        ItemStack listed = inSlot.clone();
+        listed.setAmount(quantity);
+        if (EnchantUtils.isEnchantedBook(listed)) {
+            EnchantUtils.applyFrenchMeta(listed);
         }
-        int id = this.database.createListing(player.getUniqueId().toString(), player.getName(), item, totalPrice, quantity, payPB, pricePB);
+
+        // Retrait avant création de l'annonce : si la base échoue, on rend.
+        if (inSlot.getAmount() <= quantity) {
+            player.getInventory().setItem(slot, null);
+        } else {
+            inSlot.setAmount(inSlot.getAmount() - quantity);
+            player.getInventory().setItem(slot, inSlot);
+        }
+        player.updateInventory();
+
+        int id = this.database.createListing(player.getUniqueId().toString(), player.getName(),
+                listed, totalPrice, quantity, payPB, pricePB);
         if (id > 0) {
             HdvServerHandler.sendActionResult(player, true, "Mise en vente reussie !");
             sendListings(player, 0, "");
         } else {
-            giveItem(player, item, quantity);
+            giveItem(player, listed, quantity);
             if (id == -2) {
                 HdvServerHandler.sendActionResult(player, false, "Limite d'annonces atteinte.");
             } else {
                 HdvServerHandler.sendActionResult(player, false, "Erreur interne.");
             }
         }
-    }
-
-    private int countItemsNms(Player player, ItemStack prototype) {
-        int refId = CustomPacketServerHandler.getNmsItemId(prototype);
-        short refDmg = prototype.getDurability();
-        int count = 0;
-        for (ItemStack s : player.getInventory().getContents()) {
-            if (s != null && CustomPacketServerHandler.getNmsItemId(s) == refId && s.getDurability() == refDmg)
-                count += s.getAmount();
-        }
-        return count;
-    }
-
-    private void removeItemsNms(Player player, ItemStack prototype, int amount) {
-        int refId = CustomPacketServerHandler.getNmsItemId(prototype);
-        short refDmg = prototype.getDurability();
-        int left = amount;
-        ItemStack[] contents = player.getInventory().getContents();
-        for (int i = 0; i < contents.length; i++) {
-            ItemStack s = contents[i];
-            if (s != null && CustomPacketServerHandler.getNmsItemId(s) == refId && s.getDurability() == refDmg) {
-                if (s.getAmount() <= left) {
-                    left -= s.getAmount();
-                    player.getInventory().setItem(i, null);
-                } else {
-                    s.setAmount(s.getAmount() - left);
-                    left = 0;
-                }
-                if (left == 0)
-                    break;
-            }
-        }
-        player.updateInventory();
     }
 
     private void giveItem(Player player, ItemStack item, int qty) {

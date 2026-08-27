@@ -30,7 +30,7 @@ public class RingModule implements Module {
         RingPacketSender sender = new RingPacketSender(plugin, manager);
 
         plugin.getServer().getMessenger().registerIncomingPluginChannel(
-                plugin, RingServerHandler.CHANNEL_C2S, new RingServerHandler(manager, sender));
+                plugin, RingServerHandler.CHANNEL_C2S, plugin.getChannelGuard().wrap(new RingServerHandler(manager, sender)));
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, RingPacketSender.CHANNEL_S2C);
 
         plugin.getServer().getPluginManager().registerEvents(new RingLoginListener(manager, sender), plugin);

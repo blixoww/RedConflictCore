@@ -35,6 +35,7 @@ import fr.redconflict.job.JobModule;
 import fr.redconflict.lagswitch.LagSwitchModule;
 import fr.redconflict.listeners.GameplayRulesModule;
 import fr.redconflict.loto.LotoModule;
+import fr.redconflict.anticheat.AntiCheatModule;
 import fr.redconflict.packets.PacketCoreModule;
 import fr.redconflict.pb.PBManager;
 import fr.redconflict.pb.PBModule;
@@ -77,6 +78,7 @@ public class RedConflictCore extends JavaPlugin {
     private static RedConflictCore instance;
 
     private Database database;
+    private AntiCheatModule antiCheatModule;
     private PlayerLockService playerLockService;
     private PlayerDataSyncService playerDataSync;
     private WorldGuardPlugin worldGuard;
@@ -160,6 +162,12 @@ public class RedConflictCore extends JavaPlugin {
     private void installModules() {
         this.modules = new ModuleManager(this);
 
+        // Anti-triche EN PREMIER : son garde de canaux doit exister avant tout
+        // module qui enregistre un canal entrant, et il n'a lui-même aucune
+        // dépendance. Un canal enregistré avant lui serait un canal non gardé.
+        this.antiCheatModule = new AntiCheatModule(this);
+        modules.install(antiCheatModule);
+
         this.essentialsModule = new EssentialsModule(this, database);
         modules.install(essentialsModule);
         modules.install(new BackupModule(this));
@@ -181,7 +189,7 @@ public class RedConflictCore extends JavaPlugin {
         modules.install(new AnnounceModule(this));
 
         // Client moddé (canaux packet et features dédiées)
-        modules.install(new PacketCoreModule(this));
+        modules.install(new PacketCoreModule(this, antiCheatModule.getGuard()));
         modules.install(new TradeModule(this));
         modules.install(new RingModule(this));
         this.jobModule = new JobModule(this, database);
@@ -288,6 +296,22 @@ public class RedConflictCore extends JavaPlugin {
         return instance;
     }
 
+
+    /**
+     * Garde des canaux entrants du client moddé.
+     *
+     * <p>Toute poignée enregistrée par {@code registerIncomingPluginChannel}
+     * doit passer par {@code getChannelGuard().wrap(...)} : c'est ce qui applique
+     * le plafond de taille et de débit avant qu'un octet reçu ne soit lu.
+     */
+    /** Le module anti-triche, pour les poignées qui doivent le consulter. */
+    public AntiCheatModule getAntiCheat() {
+        return antiCheatModule;
+    }
+
+    public fr.redconflict.anticheat.ChannelGuard getChannelGuard() {
+        return antiCheatModule == null ? null : antiCheatModule.getGuard();
+    }
     /** Provider central de connexions H2 (pool HikariCP). */
     public Database getCoreDatabase() {
         return this.database;

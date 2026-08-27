@@ -35,7 +35,7 @@ public class AnnounceService implements PluginMessageListener {
 
     /** Enregistre la réception (le canal sortant BungeeCord est déjà enregistré par loadPackets). */
     public void register() {
-        plugin.getServer().getMessenger().registerIncomingPluginChannel(plugin, BUNGEE, this);
+        plugin.getServer().getMessenger().registerIncomingPluginChannel(plugin, BUNGEE, plugin.getChannelGuard().wrap(this));
         // Filet : s'assure que le canal sortant existe (idempotent si déjà enregistré ailleurs).
         if (!plugin.getServer().getMessenger().isOutgoingChannelRegistered(plugin, BUNGEE)) {
             plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, BUNGEE);

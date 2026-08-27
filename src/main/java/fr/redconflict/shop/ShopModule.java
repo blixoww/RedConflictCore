@@ -58,7 +58,7 @@ public class ShopModule implements Module {
         }, plugin);
 
         plugin.getServer().getMessenger().registerIncomingPluginChannel(
-                plugin, "CUSTOM:SHOP_C2S", new ShopServerHandler(plugin));
+                plugin, "CUSTOM:SHOP_C2S", plugin.getChannelGuard().wrap(new ShopServerHandler(plugin)));
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, "CUSTOM:SHOP_S2C");
     }
 

@@ -32,7 +32,7 @@ public class HdvModule implements Module {
         new CommandRegistrar(plugin).register("hdv", new HdvCommand(plugin, manager));
         plugin.getServer().getPluginManager().registerEvents(new HdvLoginListener(plugin), plugin);
         plugin.getServer().getMessenger().registerIncomingPluginChannel(
-                plugin, "CUSTOM:HDV_C2S", new HdvServerHandler(plugin));
+                plugin, "CUSTOM:HDV_C2S", plugin.getChannelGuard().wrap(new HdvServerHandler(plugin)));
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, "CUSTOM:HDV_S2C");
     }
 

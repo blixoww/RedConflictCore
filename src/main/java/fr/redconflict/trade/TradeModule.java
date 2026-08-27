@@ -28,7 +28,7 @@ public class TradeModule implements Module {
         plugin.getServer().getPluginManager().registerEvents(new TradeListener(manager), plugin);
 
         plugin.getServer().getMessenger().registerIncomingPluginChannel(
-                plugin, TradeC2SHandler.CHANNEL_C2S, new TradeC2SHandler(plugin, manager));
+                plugin, TradeC2SHandler.CHANNEL_C2S, plugin.getChannelGuard().wrap(new TradeC2SHandler(plugin, manager)));
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, TradePacketSender.CHANNEL_S2C);
     }
 }

@@ -16,6 +16,198 @@ rtp:
   # « dans le sol ».
   max-prepare-seconds: 20
 
+
+# ── Anti-triche ───────────────────────────────────────────────────────────────
+# Tous les contrôles ci-dessous s'exécutent sur le SERVEUR et jugent des faits
+# que le serveur mesure lui-même : une distance, une cadence, une proportion.
+# Aucun client, si modifié soit-il, ne peut les désactiver — il peut seulement
+# rester sous les seuils, et rester sous les seuils c'est jouer normalement.
+#
+# C'est la seule catégorie de défense qui tienne. Ce qui vit dans le client
+# (détection d'agent Java, vérification du jar) tourne sur la machine du joueur,
+# qui possède le processus : c'est un ralentisseur contre les injecteurs tout
+# faits, jamais une barrière.
+#
+# ⚠️ Les seuils par défaut sont LARGES et l'action par défaut est l'alerte.
+# Un anti-triche qui expulse des joueurs honnêtes fait plus de dégâts que le
+# tricheur qu'il attrape. Observe les alertes quelques jours sur TON serveur,
+# avec TA latence, puis resserre.
+anticheat:
+  enabled: true
+  # Action par défaut au franchissement d'un seuil. Surchargeable par contrôle.
+  #   alert   → message au staff (permission staff.anticheat) + console
+  #   kick    → expulsion
+  #   command → exécute anticheat.<contrôle>.command avec %player%
+  action: alert
+  # Un point de violation retiré toutes les N secondes. C'est ce qui distingue
+  # le faux positif isolé (qui s'efface) de la triche (qui se répète).
+  decay-seconds: 20
+  # Journalise chaque violation avec son niveau, même sous le seuil. À n'activer
+  # que pour régler les seuils : c'est très bavard.
+  debug: false
+
+  # Garde des canaux du client moddé. Reste actif même si enabled: false.
+  channels:
+    enabled: true
+    max-bytes: 32768
+    max-per-second: 60
+
+  # Cadence de paquets de position. LE contrôle qui attrape le speedhack de
+  # 1.8 : un client accéléré envoie 40 ou 60 positions par seconde au lieu de
+  # 20, chacune parfaitement légale prise isolément.
+  timer:
+    enabled: true
+    max-packets-per-second: 32.0
+    threshold: 10
+
+  # Vitesse horizontale soutenue. Le plafond suit la potion de vitesse.
+  speed:
+    enabled: true
+    max-blocks-per-second: 11.0
+    threshold: 12
+
+  # Suspension en l'air sans perte d'altitude.
+  fly:
+    enabled: true
+    max-airborne-ms: 4000
+    threshold: 6
+
+  # Le client annonce toucher le sol alors qu'il n'y a rien sous lui : c'est ce
+  # mensonge qui annule les dégâts de chute.
+  nofall:
+    enabled: true
+    threshold: 8
+
+  # Allonge au combat. 3 blocs dans le jeu ; la marge couvre la latence.
+  reach:
+    enabled: true
+    max-blocks: 4.2
+    threshold: 8
+
+  # Coups PORTÉS par seconde (pas les clics : seuls les coups qui touchent).
+  autoclick:
+    enabled: true
+    max-hits-per-second: 16
+    threshold: 10
+
+  # Coup à travers un bloc plein. Le tracé s'arrête un bloc avant la cible pour
+  # ne pas compter les combats d'angle.
+  through-wall:
+    enabled: true
+    threshold: 10
+
+  # Minage : cadence et distance.
+  nuker:
+    enabled: true
+    max-blocks-per-second: 20
+    max-distance: 6.5
+    threshold: 8
+
+  # X-ray : détection STATISTIQUE, pas prévention.
+  #
+  # ⚠️ Ceci ne CACHE pas les minerais — ils partent toujours dans les paquets de
+  # chunk et un client qui les affiche continuera de les voir. Cacher demande de
+  # réécrire les chunks avant envoi, ce qu'un plugin Bukkit ne peut pas faire.
+  # La vraie réponse est PaperSpigot 1.8.8, qui a l'anti-xray dans le moteur.
+  # Ce contrôle mesure le RÉSULTAT : la proportion de minerais rares dans ce
+  # qu'un joueur casse. Il ouvre une enquête, il ne la conclut pas — d'où
+  # l'alerte et jamais le bannissement automatique.
+  xray:
+    enabled: true
+    # Seuls les blocs cassés sous cette hauteur comptent : les carrières de
+    # surface et le défrichage fausseraient la statistique.
+    max-y: 60
+    # Nombre de blocs cassés avant d'évaluer. Grand exprès : un coup de chance
+    # sur 100 blocs n'apprend rien, sur 750 si.
+    sample-size: 750
+    # Proportion de diamant + émeraude au-delà de laquelle on alerte.
+    # En génération 1.8 sous Y=60, un mineur honnête tourne autour de 1 %.
+    max-rare-ratio: 0.045
+    threshold: 1
+
+
+  # ── Masquage anti-ESP ──────────────────────────────────────────────────────
+  # Le serveur cesse d'envoyer les joueurs que le spectateur ne peut pas voir.
+  #
+  # C'est la SEULE famille de défense qui ait un plafond : un cheat ne peut
+  # afficher que ce que le client a reçu. Détecter un ESP est un jeu qu'on finit
+  # par perdre ; ne pas envoyer la position met fin à la partie, et aucune
+  # modification du client n'y change rien — il n'y a rien à modifier.
+  #
+  # Asymétrie volontaire : on masque LENTEMENT, on révèle INSTANTANÉMENT. Un
+  # joueur qui sort d'un angle est visible dès la passe suivante ; un joueur
+  # qu'on ne voit plus reste affiché pendant hide-delay-ms. Un joueur honnête ne
+  # perd donc jamais une cible qu'il regarde.
+  #
+  # ⚠️ Désactivé par défaut : c'est le seul réglage de ce fichier qui change ce
+  # que les joueurs VOIENT. Active-le sur un serveur de test d'abord, regarde le
+  # rendu en combat, puis passe en production.
+  #
+  # Note : Spigot cesse déjà d'envoyer les joueurs au-delà de
+  # entity-tracking-range.players (48 par défaut, dans spigot.yml). Baisser
+  # cette valeur est gratuit et complémentaire.
+  visibility:
+    enabled: false
+    # Intervalle entre deux passes, en ticks. 4 = 200 ms.
+    interval-ticks: 4
+    # En deçà, toujours visible : un adversaire au corps à corps doit
+    # apparaître, mur ou pas.
+    always-visible-radius: 6.0
+    # Au-delà, on ne trace pas la ligne de vue (Spigot s'en charge déjà).
+    los-radius: 40.0
+    # Temps sans ligne de vue avant de masquer.
+    hide-delay-ms: 1500
+    # Plafond de tracés par passe. Au-delà, le reste attend la passe suivante :
+    # le masquage prend un peu plus de temps, le serveur ne rame jamais.
+    max-traces-per-pass: 2000
+
+  # ── Défi d'intégrité du client ─────────────────────────────────────────────
+  # Le serveur envoie un aléa, le client répond par un HMAC dont la clé est
+  # l'empreinte SHA-256 de son propre jar. Un jar modifié, ou des classes
+  # chargées depuis un autre jar, donnent une réponse fausse.
+  #
+  # ⚠️ LE SILENCE EST LA DÉFENSE PRINCIPALE, PAS LA CRYPTO. Le serveur ne coupe
+  # pas, n'affiche rien, ne change aucun comportement observable : il alerte le
+  # staff. Un contrôle qui expulse dirait au tricheur quoi corriger et lui
+  # offrirait une boucle d'essai-erreur de quelques secondes. Ne mets JAMAIS
+  # attestation.action sur kick.
+  #
+  # Ce n'est pas une preuve : la clé est calculée chez le joueur, qui peut en
+  # théorie la remplacer par la valeur d'origine. On achète du temps de
+  # rétro-ingénierie — d'autant plus que l'obfuscateur renomme tout à chaque
+  # build, donc l'enquête est à refaire à chaque mise à jour du client.
+  attestation:
+    enabled: false
+    # Empreintes SHA-256 acceptées du jar client. Ce sont exactement celles du
+    # manifeste signé (manifest.txt, ligne du MCP-...jar) que le launcher
+    # vérifie déjà. Liste : garde l'ancienne le temps que tout le monde migre.
+    # Vide = aucune vérification (rien n'est signalé).
+    accepted-jar-sha256: []
+    # Délai avant l'envoi du défi : laisse le client finir son initialisation.
+    delay-seconds: 8
+    # Au-delà, la réponse est considérée absente.
+    timeout-seconds: 15
+    # Signaler aussi l'ABSENCE de réponse. Signal plus faible : une déconnexion
+    # ou un client lancé depuis un dossier de classes produisent le même
+    # silence.
+    flag-silence: true
+    # Rejouer le défi à intervalle ALÉATOIRE pendant la partie. Un défi unique à
+    # la connexion se contourne une fois pour toutes : il suffit de répondre
+    # juste pendant les premières secondes. En le rejouant à des moments
+    # imprévisibles, le calcul doit rester intact en permanence — et un
+    # intervalle FIXE se repérerait en quelques parties, d'où l'aléa.
+    recheck: true
+    recheck-min-seconds: 180
+    recheck-max-seconds: 900
+    threshold: 2
+    action: alert
+  # Rapport d'environnement envoyé par le client (agent Java, débogueur,
+  # démarrage hors launcher). Indicatif : un client modifié n'envoie rien.
+  # À laisser en alerte, jamais en kick — le silence ne prouve rien et la
+  # présence d'un motif mérite un regard humain.
+  client-report:
+    enabled: true
+    threshold: 1
 # ── Système Anti Lag-Switch ───────────────────────────────────────────────────
 lagswitch:
 

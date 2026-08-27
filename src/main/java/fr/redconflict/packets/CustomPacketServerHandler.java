@@ -1,101 +1,124 @@
 package fr.redconflict.packets;
 
 import fr.redconflict.RedConflictCore;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.Locale;
-import java.util.Random;
+import fr.redconflict.anticheat.ChannelGuard;
+import fr.redconflict.anticheat.Check;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
+import org.bukkit.util.Vector;
 
+import java.util.Locale;
+
+/**
+ * Canal générique du client moddé (CUSTOM:C2S).
+ *
+ * <p><b>Règle du canal : le client ne décrit jamais un objet, il désigne un
+ * emplacement.</b> Ce qui sort d'ici est reconstruit depuis l'inventaire tenu
+ * par le serveur, jamais depuis les octets reçus. Voir {@link #handleCustomDrop}
+ * pour le pourquoi.
+ */
 public class CustomPacketServerHandler implements PluginMessageListener {
-    private final RedConflictCore plugin;
 
-    public CustomPacketServerHandler(RedConflictCore plugin) {
+    /** Jet d'objet custom (ids 432-470) : le client 1.8.9 ne sait pas les lâcher. */
+    private static final int PACKET_CUSTOM_ITEM_DROP = 96;
+
+    /** Rapport d'environnement du client, envoyé une fois à la connexion. */
+    private static final int PACKET_CLIENT_REPORT = 97;
+
+    /** Réponse au défi d'intégrité (voir AttestationService). */
+    private static final int PACKET_ATTEST_ANSWER = 0x63;
+
+    private final RedConflictCore plugin;
+    private final ChannelGuard guard;
+
+    public CustomPacketServerHandler(RedConflictCore plugin, ChannelGuard guard) {
         this.plugin = plugin;
+        this.guard = guard;
     }
 
+    @Override
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+        if (!guard.accept(player, channel, message)) {
+            return;
+        }
         try {
             PacketReader reader = new PacketReader(message);
             int packetId = reader.readVarInt();
-            switch (packetId) {
-                case 96:
-                    handleCustomDrop(player, reader);
-                    break;
+            if (packetId == PACKET_CUSTOM_ITEM_DROP) {
+                handleCustomDrop(player, reader);
+            } else if (packetId == PACKET_CLIENT_REPORT) {
+                handleClientReport(player, reader);
+            } else if (packetId == PACKET_ATTEST_ANSWER) {
+                handleAttestation(player, reader);
             }
-        } catch (Exception exception) {}
+        } catch (Exception ignored) {
+            // Paquet malformé : déjà compté par le garde, rien de plus à faire.
+        }
     }
 
-    private void handleCustomDrop(Player player, PacketReader reader) throws IOException {
-        ItemStack item = reader.readItemStackNms();
-        int dropItemId = getNmsItemId(item);
-        if (item == null || dropItemId <= 0 || item.getAmount() <= 0) {
-            this.plugin.getServer().getScheduler().runTask(this.plugin, player::updateInventory);
+    /**
+     * Lâche un objet custom tenu en main.
+     *
+     * <p><b>Cette poignée acceptait auparavant un {@code ItemStack} sérialisé
+     * par le client, NBT compris, et le faisait tomber au sol.</b> Elle ne
+     * vérifiait que la présence de {@code (id, durabilité)} dans l'inventaire —
+     * ni les enchantements, ni le nom, ni le NBT. Un client modifié pouvait donc
+     * tenir une épée en diamant ordinaire, annoncer une épée en diamant
+     * Sharpness 32767 portant le NBT de son choix, et le serveur la lui
+     * fabriquait. C'était une forge d'objets arbitraires, ouverte à quiconque
+     * savait écrire sur le canal.
+     *
+     * <p>Le protocole ne transporte donc plus d'objet : seulement le slot visé
+     * et la quantité. Le serveur lit l'objet dans SON inventaire, vérifie que
+     * c'est bien un objet custom, et lâche celui-là. Plus rien de ce que le
+     * client envoie ne décrit ce qui apparaît dans le monde.
+     */
+    private void handleCustomDrop(Player player, PacketReader reader) throws Exception {
+        final int slot = reader.readVarInt();
+        final int requested = reader.readVarInt();
+
+        if (slot < 0 || slot > 8 || requested < 1 || requested > 64) {
+            plugin.getServer().getScheduler().runTask(plugin, player::updateInventory);
             return;
         }
 
-        int dropAmount = item.getAmount();
-        this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
             try {
-                int found = 0;
-                ItemStack[] contents = player.getInventory().getContents();
-                for (ItemStack s : contents) {
-                    if (s == null) continue;
-                    int sid = getNmsItemId(s);
-                    if (sid == dropItemId && s.getDurability() == item.getDurability()) {
-                        found += s.getAmount();
-                    }
+                // Le slot doit être celui que le serveur croit tenu : un client
+                // ne choisit pas dans quel emplacement il puise.
+                if (slot != player.getInventory().getHeldItemSlot()) {
+                    player.updateInventory();
+                    return;
                 }
-
-                if (found < dropAmount) {
+                ItemStack held = player.getInventory().getItem(slot);
+                if (held == null || held.getType() == Material.AIR || held.getAmount() <= 0) {
+                    player.updateInventory();
+                    return;
+                }
+                // Les objets vanilla passent par le jet vanilla : ce canal n'existe
+                // que pour ceux que le client 1.8.9 ne sait pas lâcher seul.
+                if (!isCustomItem(held)) {
                     player.updateInventory();
                     return;
                 }
 
-                removeItemsNms(player, dropItemId, item.getDurability(), dropAmount);
+                int amount = Math.min(requested, held.getAmount());
+                ItemStack dropped = held.clone();
+                dropped.setAmount(amount);
 
-                try {
-                    Location loc = player.getLocation();
-                    ItemStack bukkitStack = item.clone();
-                    Class<?> craftPlayerClass = Class.forName("org.bukkit.craftbukkit." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ".entity.CraftPlayer");
-                    Object entityHuman = craftPlayerClass.getMethod("getHandle", new Class[0]).invoke(player, new Object[0]);
-                    Class<?> entityHumanClass = entityHuman.getClass();
-                    Class<?> worldClass = Class.forName("net.minecraft.server." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ".World");
-                    Class<?> itemStackNmsClass = Class.forName("net.minecraft.server." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ".ItemStack");
-                    Class<?> entityItemClass = Class.forName("net.minecraft.server." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ".EntityItem");
-                    Class<?> mathHelperClass = Class.forName("net.minecraft.server." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ".MathHelper");
-                    Class<?> craftItemStackClass = Class.forName("org.bukkit.craftbukkit." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ".inventory.CraftItemStack");
-                    Object nmsStack = craftItemStackClass.getMethod("asNMSCopy", new Class[] { ItemStack.class }).invoke(null, new Object[] { bukkitStack });
-                    double d0 = loc.getY() - 0.3D + ((Float) entityHumanClass.getMethod("getHeadHeight", new Class[0]).invoke(entityHuman, new Object[0])).floatValue();
-                    Object entityItem = entityItemClass.getConstructor(new Class[] { worldClass, double.class, double.class, double.class, itemStackNmsClass }).newInstance(new Object[] { entityHumanClass.getMethod("getWorld", new Class[0]).invoke(entityHuman, new Object[0]), loc.getX(), d0, loc.getZ(), nmsStack });
-                    float yaw = ((Float) entityHumanClass.getField("yaw").get(entityHuman)).floatValue();
-                    float pitch = ((Float) entityHumanClass.getField("pitch").get(entityHuman)).floatValue();
-                    Random rand = new Random();
-                    float f = 0.3F;
-                    double motX = (-((Float) mathHelperClass.getMethod("sin", new Class[] { float.class }).invoke(null, new Object[] { yaw / 180.0F * 3.1415927F })).floatValue() * ((Float) mathHelperClass.getMethod("cos", new Class[] { float.class }).invoke(null, new Object[] { pitch / 180.0F * 3.1415927F })).floatValue() * f);
-                    double motZ = (((Float) mathHelperClass.getMethod("cos", new Class[] { float.class }).invoke(null, new Object[] { yaw / 180.0F * 3.1415927F })).floatValue() * ((Float) mathHelperClass.getMethod("cos", new Class[] { float.class }).invoke(null, new Object[] { pitch / 180.0F * 3.1415927F })).floatValue() * f);
-                    double motY = (-((Float) mathHelperClass.getMethod("sin", new Class[] { float.class }).invoke(null, new Object[] { pitch / 180.0F * 3.1415927F })).floatValue() * f + 0.1F);
-                    float f1 = rand.nextFloat() * 3.1415927F * 2.0F;
-                    float f2 = 0.02F * rand.nextFloat();
-                    motX += Math.cos(f1) * f2;
-                    motY += (rand.nextFloat() - rand.nextFloat()) * 0.1F;
-                    motZ += Math.sin(f1) * f2;
-                    entityItemClass.getField("motX").set(entityItem, motX);
-                    entityItemClass.getField("motY").set(entityItem, motY);
-                    entityItemClass.getField("motZ").set(entityItem, motZ);
-                    entityItemClass.getMethod("a", new Class[] { int.class }).invoke(entityItem, new Object[] { 40 });
-                    entityItemClass.getMethod("c", new Class[] { String.class }).invoke(entityItem, new Object[] { player.getName() });
-                    worldClass.getMethod("addEntity", new Class[] { Class.forName("net.minecraft.server." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ".Entity") }).invoke(entityHumanClass.getMethod("getWorld", new Class[0]).invoke(entityHuman, new Object[0]), new Object[] { entityItem });
-                } catch (Exception e) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                if (held.getAmount() <= amount) {
+                    player.getInventory().setItem(slot, null);
+                } else {
+                    held.setAmount(held.getAmount() - amount);
+                    player.getInventory().setItem(slot, held);
                 }
+
+                spawnAtEye(player, dropped);
                 player.updateInventory();
             } catch (Exception e) {
                 player.updateInventory();
@@ -103,13 +126,21 @@ public class CustomPacketServerHandler implements PluginMessageListener {
         });
     }
 
+    /**
+     * Identifiant numérique NMS d'un objet, y compris pour les objets custom que
+     * {@code Material} ne connaît pas.
+     *
+     * <p>Utilitaire en lecture seule, partagé avec le HDV et l'XP-boost : il ne
+     * sert qu'à comparer deux objets déjà présents côté serveur, jamais à en
+     * fabriquer un depuis des octets reçus.
+     */
     public static int getNmsItemId(ItemStack item) {
         if (item == null) return 0;
 
         int typeId = item.getTypeId();
         if (typeId > 0) return typeId;
 
-        // Fallback reflection NMS: asNMSCopy -> getItem -> Item.getId(item)
+        // Repli par réflexion NMS : asNMSCopy -> getItem -> Item.getId(item)
         try {
             String v = Bukkit.getServer().getClass().getPackage().getName().replace(".", ",").split(",")[3];
             Class<?> craftItemClass = Class.forName("org.bukkit.craftbukkit." + v + ".inventory.CraftItemStack");
@@ -146,22 +177,77 @@ public class CustomPacketServerHandler implements PluginMessageListener {
         return item.getType() != null ? item.getType().getId() : 0;
     }
 
-    private void removeItemsNms(Player player, int nmsId, short damage, int amount) {
-        ItemStack[] contents = player.getInventory().getContents();
-        int remaining = amount;
-        for (int i = 0; i < contents.length && remaining > 0; i++) {
-            ItemStack s = contents[i];
-            if (s != null) {
-                int sId = getNmsItemId(s);
-                if (sId == nmsId && s.getDurability() == damage)
-                    if (s.getAmount() <= remaining) {
-                        remaining -= s.getAmount();
-                        player.getInventory().setItem(i, null);
-                    } else {
-                        s.setAmount(s.getAmount() - remaining);
-                        remaining = 0;
-                    }
-            }
+
+    /**
+     * Rapport d'environnement du client : agent Java, débogueur, démarrage hors
+     * launcher.
+     *
+     * <p><b>Signal indicatif, jamais une preuve.</b> Il vient de la machine du
+     * joueur : un client modifié se contente de ne rien envoyer, ou d'envoyer
+     * une liste vide. Le silence ne prouve donc rien, seule la présence d'un
+     * motif apprend quelque chose — et ce qu'elle apprend, c'est qu'on a affaire
+     * à un tricheur qui n'a pas pris la peine de masquer son outil, ce qui est
+     * le cas le plus fréquent.
+     *
+     * <p>C'est pour cette raison que le contrôle correspondant est en alerte et
+     * pas en expulsion : il ouvre une enquête, il ne la conclut pas.
+     */
+    private void handleClientReport(Player player, PacketReader reader) throws Exception {
+        int count = reader.readVarInt();
+        if (count <= 0 || count > 16) {
+            return;
         }
+        StringBuilder findings = new StringBuilder();
+        for (int i = 0; i < count && reader.isReadable(); i++) {
+            String finding = reader.readString(64);
+            if (finding == null || finding.isEmpty()) {
+                continue;
+            }
+            if (findings.length() > 0) {
+                findings.append(", ");
+            }
+            findings.append(finding);
+        }
+        if (findings.length() > 0) {
+            guard.violations().flag(player, Check.CLIENT_TAMPER, findings.toString());
+        }
+    }
+    /**
+     * Réponse au défi d'intégrité.
+     *
+     * <p>Aucun retour n'est envoyé, quel que soit le résultat : c'est le point
+     * central du dispositif. Voir {@code AttestationService}.
+     */
+    private void handleAttestation(Player player, PacketReader reader) throws Exception {
+        int length = reader.readVarInt();
+        if (length <= 0 || length > 64) {
+            return;
+        }
+        byte[] answer = reader.readBytes(length);
+        plugin.getAntiCheat().getAttestation().verify(player, answer);
+    }
+
+    /** Les objets custom du serveur occupent la plage d'ids 432-470. */
+    private static boolean isCustomItem(ItemStack item) {
+        int id = item.getTypeId();
+        return id >= 432 && id <= 470;
+    }
+
+    /**
+     * Fait apparaître l'objet devant le joueur, avec le délai de ramassage
+     * habituel.
+     *
+     * <p>Un {@code dropItem} à hauteur des yeux plus une vélocité. La version
+     * précédente refaisait à la main, par réflexion NMS, ce que l'API Bukkit
+     * fait déjà : une trentaine d'appels réflexifs qui cassaient au moindre
+     * changement de version et noyaient la logique.
+     */
+    private static void spawnAtEye(Player player, ItemStack stack) {
+        Location eye = player.getEyeLocation().subtract(0, 0.3, 0);
+        Item entity = player.getWorld().dropItem(eye, stack);
+        Vector direction = eye.getDirection().multiply(0.3);
+        direction.setY(direction.getY() + 0.1);
+        entity.setVelocity(direction);
+        entity.setPickupDelay(40);
     }
 }

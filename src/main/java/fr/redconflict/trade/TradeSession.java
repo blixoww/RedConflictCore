@@ -58,6 +58,30 @@ public class TradeSession {
      * @param button 0 = clic gauche, 1 = clic droit
      * @param shift  shift maintenu → quick-move (transfert rapide de stack)
      */
+    /**
+     * Toute modification de l'échange périme les confirmations — celle de son
+     * auteur ET celle de l'autre.
+     *
+     * <p><b>Le code ne réinitialisait que celle de l'auteur</b>
+     * ({@code if (isA && state == CONFIRMED_A)}), ce qui laissait une arnaque
+     * grande ouverte : B confirme en voyant une bonne offre, A remplace alors
+     * ses objets par du gravier — l'état reste {@code CONFIRMED_B} puisque A
+     * n'était pas confirmé — puis A confirme et l'échange part avec l'accord de
+     * B sur une offre qu'il n'a jamais vue.
+     *
+     * <p>C'est bien la confirmation de l'AUTRE qu'une modification invalide :
+     * la sienne, on vient de la retirer en agissant. Les deux joueurs sont
+     * prévenus, sans quoi B verrait sa confirmation disparaître sans raison.
+     */
+    private void invalidateConfirmations() {
+        if (state != State.CONFIRMED_A && state != State.CONFIRMED_B) {
+            return;
+        }
+        state = State.WAITING;
+        playerA.sendMessage(RC.PRE + "§eL'offre a changé §7— §econfirmation annulée.");
+        playerB.sendMessage(RC.PRE + "§eL'offre a changé §7— §econfirmation annulée.");
+    }
+
     public void handleClick(Player player, int region, int slot, int button, boolean shift) {
         if (executing || state == State.DONE || state == State.CANCELLED) return;
         boolean isA = playerA.equals(player);
@@ -76,8 +100,7 @@ public class TradeSession {
         if (!changed) return;
 
         // Toute modification réinitialise la confirmation du joueur concerné.
-        if (isA && state == State.CONFIRMED_A) state = State.WAITING;
-        if (isB && state == State.CONFIRMED_B) state = State.WAITING;
+        invalidateConfirmations();
 
         player.updateInventory();
         sendUpdate();
@@ -335,8 +358,7 @@ public class TradeSession {
         long current = isA ? moneyA : moneyB;
         if (current == capped) return; // no change
 
-        if (isA && state == State.CONFIRMED_A) state = State.WAITING;
-        if (isB && state == State.CONFIRMED_B) state = State.WAITING;
+        invalidateConfirmations();
 
         if (isA) moneyA = capped; else moneyB = capped;
         sendUpdate();
@@ -363,8 +385,7 @@ public class TradeSession {
         int current = isA ? pbA : pbB;
         if (current == capped) return;
 
-        if (isA && state == State.CONFIRMED_A) state = State.WAITING;
-        if (isB && state == State.CONFIRMED_B) state = State.WAITING;
+        invalidateConfirmations();
 
         if (isA) pbA = capped; else pbB = capped;
         sendUpdate();
@@ -379,8 +400,7 @@ public class TradeSession {
         ItemStack[] myOffer = isA ? offerA : offerB;
         if (index < 0 || index >= MAX_OFFER || myOffer[index] == null) return;
 
-        if (isA && state == State.CONFIRMED_A) state = State.WAITING;
-        if (isB && state == State.CONFIRMED_B) state = State.WAITING;
+        invalidateConfirmations();
 
         ItemStack item = myOffer[index];
         myOffer[index] = null;

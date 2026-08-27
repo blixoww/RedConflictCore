@@ -46,7 +46,7 @@ public class JobModule implements Module {
         jobTopManager.init();
 
         plugin.getServer().getMessenger().registerIncomingPluginChannel(
-                plugin, JobServerHandler.CHANNEL_C2S, new JobServerHandler(plugin, jobManager, jobSender));
+                plugin, JobServerHandler.CHANNEL_C2S, plugin.getChannelGuard().wrap(new JobServerHandler(plugin, jobManager, jobSender)));
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, JobPacketSender.CHANNEL_S2C);
 
         plugin.getServer().getPluginManager().registerEvents(new JobLoginListener(plugin, jobManager, jobSender), plugin);

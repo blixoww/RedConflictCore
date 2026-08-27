@@ -4,7 +4,6 @@ import fr.redconflict.RedConflictCore;
 import fr.redconflict.packets.PacketBuilder;
 import fr.redconflict.packets.PacketReader;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 public class HdvServerHandler implements PluginMessageListener {
@@ -17,7 +16,6 @@ public class HdvServerHandler implements PluginMessageListener {
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
         try {
             int page;
-            ItemStack item;
             final int[] listingId = new int[1];
             String filter;
             long totalPrice;
@@ -42,21 +40,25 @@ public class HdvServerHandler implements PluginMessageListener {
                     final boolean bpc = buyerPBChoice;
                     this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.handleBuy(player, listingId[0], bpc));
                     break;
-                case 18:
-                    item = reader.readItemStackNms();
+                case 18: {
+                    // Le client désigne un SLOT, il ne décrit plus l'objet :
+                    // accepter un ItemStack sérialisé revenait à laisser le
+                    // client dicter ce qui serait mis en vente (NBT compris).
+                    int sellSlot = reader.readVarInt();
                     totalPrice = reader.readLong();
                     quantity = reader.readVarInt();
                     boolean payPB = reader.readBoolean();
                     long pricePBValue = 0L;
                     try { pricePBValue = reader.readLong(); } catch (Exception ignored) {}
-                    if (item == null) {
-                        sendActionResult(player, false, "Item invalide recu.");
-                        return;
-                    }
                     final boolean payPBf = payPB;
                     final long pricePBf = pricePBValue;
-                    this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.handlePostOffer(player, item, totalPrice, quantity, payPBf, pricePBf));
+                    final int slotF = sellSlot;
+                    final long priceF = totalPrice;
+                    final int qtyF = quantity;
+                    this.plugin.getServer().getScheduler().runTask(this.plugin,
+                            () -> manager.handlePostOffer(player, slotF, priceF, qtyF, payPBf, pricePBf));
                     break;
+                }
                 case 19:
                     listingId[0] = reader.readVarInt();
                     this.plugin.getServer().getScheduler().runTask(this.plugin, () -> manager.handleCancelOffer(player, listingId[0]));

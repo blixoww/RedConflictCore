@@ -51,7 +51,7 @@ public class PBShopModule implements Module {
         new CommandRegistrar(plugin).register("pbshop", new BoutiqueCommand(plugin));
 
         plugin.getServer().getMessenger().registerIncomingPluginChannel(plugin,
-                BoutiqueClientServerHandler.CHANNEL_C2S, new BoutiqueClientServerHandler(plugin));
+                BoutiqueClientServerHandler.CHANNEL_C2S, plugin.getChannelGuard().wrap(new BoutiqueClientServerHandler(plugin)));
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, BoutiquePacketSender.CHANNEL_S2C);
 
         plugin.getLogger().info("[PBShop] Boutique PB (client-side) initialisée ("
