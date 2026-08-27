@@ -18,7 +18,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -50,11 +49,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class RtpService {
 
-    /** Chunk central d'abord : une colonne mauvaise est écartée sans charger les voisins. */
-    private static final int[][] CHUNK_OFFSETS = {
-            {0, 0}, {-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}
-    };
-
     /** Blocs sur lesquels on refuse de déposer un joueur, même quand ils sont pleins. */
     private static final Set<Material> UNSAFE_GROUND = EnumSet.of(
             Material.LAVA, Material.STATIONARY_LAVA,
@@ -69,11 +63,20 @@ public class RtpService {
     private static final double SETTLE_RADIUS_SQ = 64.0;
 
     private final JavaPlugin plugin;
-    private final Random random = new Random();
+    private final RtpLocationPool pool;
     private final Map<UUID, Preparation> pending = new HashMap<UUID, Preparation>();
 
-    public RtpService(JavaPlugin plugin) {
+    public RtpService(JavaPlugin plugin, RtpLocationPool pool) {
         this.plugin = plugin;
+        this.pool = pool;
+    }
+
+    /**
+     * Le serveur Minage laisse /rtp sans cooldown (déplacement libre dans la mine).
+     */
+    private boolean isFreeServer() {
+        Database db = RedConflictCore.getInstance().getCoreDatabase();
+        return db != null && "minage".equalsIgnoreCase(db.getServerId());
     }
 
     /** Point d'entrée de /rtp : vérifie le cooldown puis lance préavis et préparation. */
@@ -122,79 +125,43 @@ public class RtpService {
         return true;
     }
 
-    /** Colonne aléatoire du monde principal, à distance min..max de l'origine sur chaque axe. */
-    private Location randomColumn() {
-        World world = Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
-        if (world == null) {
-            return null;
-        }
-        int min = plugin.getConfig().getInt("rtp.min");
-        int max = Math.max(plugin.getConfig().getInt("rtp.max"), min + 1);
-        return new Location(world, randomCoordinate(min, max), 0, randomCoordinate(min, max));
-    }
-
-    private int randomCoordinate(int min, int max) {
-        int value = min + random.nextInt(max - min + 1);
-        return random.nextBoolean() ? -value : value;
-    }
-
-    /** Le serveur Minage laisse /rtp sans cooldown (déplacement libre dans la mine). */
-    private boolean isFreeServer() {
-        Database db = RedConflictCore.getInstance().getCoreDatabase();
-        return db != null && "minage".equalsIgnoreCase(db.getServerId());
-    }
-
-    // ── Choix du point d'arrivée ───────────────────────────────────────────────
-
-    /**
-     * Descend depuis le ciel jusqu'au premier bloc plein de la colonne et renvoie
-     * le point où poser le joueur, ou {@code null} si la colonne ne convient pas.
-     *
-     * <p>Partir du ciel est ce qui garantit une arrivée en surface : le premier
-     * bloc plein rencontré est le toit du monde à cet endroit, jamais le plafond
-     * d'une grotte. Si ce bloc est de l'eau, de la lave ou du feuillage, ou s'il
-     * n'y a pas deux blocs libres au-dessus, la colonne est rejetée telle quelle —
-     * on en tire une autre plutôt que de chercher plus bas.
-     */
-    private Location safeLanding(Location column) {
-        World world = column.getWorld();
-        int x = column.getBlockX();
-        int z = column.getBlockZ();
-
-        int top = Math.min(world.getHighestBlockYAt(x, z), world.getMaxHeight() - 3);
-        for (int y = top; y > 1; y--) {
-            Material ground = world.getBlockAt(x, y, z).getType();
-            if (isPassable(ground)) {
-                continue; // herbe, fleurs, couche de neige… on n'est pas encore au sol
-            }
-            if (!isStandable(ground)) {
-                return null;
-            }
-            if (!isPassable(world.getBlockAt(x, y + 1, z).getType())
-                    || !isPassable(world.getBlockAt(x, y + 2, z).getType())) {
-                return null;
-            }
-            return new Location(world, x + 0.5, y + 1, z + 0.5);
-        }
-        return null;
-    }
-
     /** Bloc que le joueur peut traverser sans dégât (air et décor non plein). */
-    private static boolean isPassable(Material material) {
+    static boolean isPassable(Material material) {
         return material == Material.AIR
                 || (!material.isSolid() && !UNSAFE_GROUND.contains(material));
     }
 
     /** Bloc sur lequel on peut déposer un joueur. */
-    private static boolean isStandable(Material material) {
+    static boolean isStandable(Material material) {
         return material.isSolid() && !UNSAFE_GROUND.contains(material);
     }
 
-    // ── Préavis + préparation du terrain ───────────────────────────────────────
+    /**
+     * Le point est-il toujours praticable ? Un point préparé il y a une minute a
+     * pu être bâti dessus, miné ou noyé entre-temps.
+     */
+    boolean stillSafe(Location target) {
+        World world = target.getWorld();
+        if (world == null) {
+            return false;
+        }
+        int x = target.getBlockX();
+        int y = target.getBlockY();
+        int z = target.getBlockZ();
+        return isStandable(world.getBlockAt(x, y - 1, z).getType())
+                && isPassable(world.getBlockAt(x, y, z).getType())
+                && isPassable(world.getBlockAt(x, y + 1, z).getType());
+    }
+
+    // ── Préavis ────────────────────────────────────────────────────────────────
 
     /**
-     * Tâche unique qui porte le préavis et la préparation : elle tire les colonnes,
-     * charge les chunks un par tick, et ne téléporte que lorsque les deux sont finis.
+     * Préavis d'immobilité, puis arrivée sur un point pris dans la réserve.
+     *
+     * <p>Aucune génération de terrain ici : elle a lieu en arrière-plan dans
+     * {@link RtpLocationPool}. C'est ce qui a fait disparaître les blocages du
+     * serveur — et les expulsions « Too many packets » qu'ils provoquaient chez
+     * le joueur qui venait de taper la commande.
      */
     private final class Preparation extends BukkitRunnable {
 
@@ -202,21 +169,15 @@ public class RtpService {
         private final Location start;
         private final long warmupTicks;
         private final long deadlineTicks;
-        private final int maxAttempts;
 
         private long ticks;
-        private int attempts;
-        private int chunkStep = -1;   // -1 = aucune colonne en cours d'examen
-        private Location column;
-        private Location landing;     // point validé de la colonne en cours
-        private Location destination; // point validé ET chunks voisins chargés
 
         private Preparation(Player player, long warmupTicks) {
             this.player = player;
             this.start = player.getLocation();
             this.warmupTicks = warmupTicks;
-            this.maxAttempts = Math.max(1, plugin.getConfig().getInt("rtp.max-attempts", 12));
-            this.deadlineTicks = 20L * Math.max(1, plugin.getConfig().getInt("rtp.max-prepare-seconds", 20));
+            this.deadlineTicks = warmupTicks
+                    + 20L * Math.max(1, plugin.getConfig().getInt("rtp.max-wait-seconds", 10));
         }
 
         /** Retire cette préparation du registre et arrête la tâche. */
@@ -242,56 +203,22 @@ public class RtpService {
                 finish();
                 return;
             }
-            if (destination == null) {
-                prepareStep();
-            }
-            if (destination != null && ticks >= warmupTicks) {
-                arrive();
+            if (ticks < warmupTicks) {
                 return;
             }
-            // Abandon : plus de colonnes a tirer (et aucune en cours de validation),
-            // ou budget de preparation epuise. Le test sur `landing` compte : la
-            // derniere tentative peut avoir trouve son sol et etre encore en train
-            // de charger ses chunks voisins.
-            if ((landing == null && attempts >= maxAttempts) || ticks >= deadlineTicks) {
+            Location destination = pool.poll(RtpService.this);
+            if (destination != null) {
+                arrive(destination);
+                return;
+            }
+            // Réserve vide : elle se remplit en fond, on laisse un peu de temps.
+            if (ticks >= deadlineTicks) {
                 finish();
                 player.sendMessage(RC.RTP_NO_SPOT);
             }
         }
 
-        /** Un chunk chargé par tick : la génération de terrain ne doit pas figer le serveur. */
-        private void prepareStep() {
-            if (chunkStep < 0) {
-                column = randomColumn();
-                if (column == null) {
-                    finish();
-                    player.sendMessage(RC.ERR_INTERNAL);
-                    return;
-                }
-                chunkStep = 0;
-            }
-
-            World world = column.getWorld();
-            int[] offset = CHUNK_OFFSETS[chunkStep];
-            world.loadChunk((column.getBlockX() >> 4) + offset[0],
-                            (column.getBlockZ() >> 4) + offset[1], true);
-
-            if (chunkStep == 0) {
-                // Le chunk central est en mémoire : on sait maintenant si la colonne vaut la peine.
-                landing = safeLanding(column);
-                attempts++;
-                if (landing == null) {
-                    chunkStep = -1; // colonne suivante
-                    return;
-                }
-            }
-            chunkStep++;
-            if (chunkStep >= CHUNK_OFFSETS.length) {
-                destination = landing;
-            }
-        }
-
-        private void arrive() {
+        private void arrive(Location destination) {
             finish();
 
             Location target = destination.clone();
@@ -308,12 +235,6 @@ public class RtpService {
             settle(player, target);
         }
     }
-
-    /**
-     * Surveille l'arrivée pendant deux secondes. Le point a été validé sur un
-     * terrain chargé, mais le client peut recevoir le chunk avec du retard et le
-     * joueur traverser le sol avant qu'il n'arrive : on le remet alors en place.
-     */
     private void settle(final Player player, final Location target) {
         new BukkitRunnable() {
             private int passes;

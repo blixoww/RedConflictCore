@@ -36,7 +36,9 @@ import fr.redconflict.essentials.command.teleport.BackCommand;
 import fr.redconflict.essentials.command.teleport.DelHomeCommand;
 import fr.redconflict.essentials.command.teleport.DelWarpCommand;
 import fr.redconflict.essentials.command.teleport.HomeCommand;
+import fr.redconflict.essentials.command.teleport.HomeOfCommand;
 import fr.redconflict.essentials.command.teleport.SetHomeCommand;
+import fr.redconflict.essentials.command.teleport.TpHereCommand;
 import fr.redconflict.essentials.command.teleport.SetSpawnCommand;
 import fr.redconflict.essentials.command.teleport.SetWarpCommand;
 import fr.redconflict.essentials.command.teleport.SpawnCommand;
@@ -188,10 +190,12 @@ public class EssentialsModule implements Module, Reloadable {
         commands.register("tpaccept", new TpAcceptCommand(env, requests));
         commands.register("tpno", new TpDenyCommand(env, requests));
         commands.register("tpahere", new TpaHereCommand(env, requests));
+        commands.register("tphere", new TpHereCommand(env, teleports));
         commands.register("tp", new TpCommand(env, teleports));
         commands.register("top", new TopCommand(env, teleports));
         commands.register("back", new BackCommand(env, backService, teleports));
         commands.register("home", new HomeCommand(env, homes, teleports));
+        commands.register("homes", new HomeOfCommand(env, homes, seen, teleports));
         commands.register("sethome", new SetHomeCommand(env, homes));
         commands.register("delhome", new DelHomeCommand(env, homes));
         commands.register("warp", new WarpCommand(env, warps, teleports));
@@ -237,6 +241,7 @@ public class EssentialsModule implements Module, Reloadable {
         pm.registerEvents(new GodListener(states), plugin);
         pm.registerEvents(new BackDeathListener(backService, config), plugin);
         pm.registerEvents(new IgnoreChatListener(ignores), plugin);
+        pm.registerEvents(new fr.redconflict.essentials.listener.ChatColorListener(), plugin);
         pm.registerEvents(new InvseeListener(invsee), plugin);
         pm.registerEvents(new WeatherLockListener(weather), plugin);
 

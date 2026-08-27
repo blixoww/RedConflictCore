@@ -81,6 +81,7 @@ public class RedConflictCore extends JavaPlugin {
     private AntiCheatModule antiCheatModule;
     private PlayerLockService playerLockService;
     private PlayerDataSyncService playerDataSync;
+    private fr.redconflict.db.HandoffService handoff;
     private WorldGuardPlugin worldGuard;
     private FeatureToggles features;
 
@@ -267,8 +268,11 @@ public class RedConflictCore extends JavaPlugin {
             }
         }
 
+        this.handoff = new fr.redconflict.db.HandoffService(
+                this.playerLockService, this.playerDataSync, this.database.getServerId());
+
         getServer().getPluginManager().registerEvents(
-                new PlayerLockListener(this.playerLockService, this.playerDataSync,
+                new PlayerLockListener(this.playerLockService, this.playerDataSync, this.handoff,
                         this.database.getServerId(), this.database.isKickOnConflict(),
                         this.database.getLockWaitMillis()), this);
 
@@ -304,6 +308,14 @@ public class RedConflictCore extends JavaPlugin {
      * doit passer par {@code getChannelGuard().wrap(...)} : c'est ce qui applique
      * le plafond de taille et de débit avant qu'un octet reçu ne soit lu.
      */
+
+    /**
+     * Remise de relais avant un transfert inter-serveurs. Voir
+     * {@link fr.redconflict.db.HandoffService}.
+     */
+    public fr.redconflict.db.HandoffService getHandoff() {
+        return handoff;
+    }
     /** Le module anti-triche, pour les poignées qui doivent le consulter. */
     public AntiCheatModule getAntiCheat() {
         return antiCheatModule;

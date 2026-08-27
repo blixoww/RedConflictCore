@@ -7,6 +7,7 @@ import fr.redconflict.staff.StaffManager;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.scoreboard.*;
@@ -72,17 +73,19 @@ public class PlayerListManager {
             if (vaultChat != null) {
                 try {
                     String raw = vaultChat.getPlayerPrefix(p);
-                    if (raw != null) lpPrefix = raw.replace("&", "\u00a7");
+                    if (raw != null) {
+                        // translateAlternateColorCodes et non replace('&','§') :
+                        // le remplacement aveugle transformait aussi les & du
+                        // texte ordinaire (« Rock & Roll ») en code de couleur.
+                        lpPrefix = ChatColor.translateAlternateColorCodes('&', raw);
+                    }
                 } catch (Exception ignored) {}
             }
 
-            // Le nom de la team doit être unique par joueur et <= 16 chars
-            // On utilise sortPrefix + début du nom du joueur
-            String teamName = sortPrefix + p.getName();
-            if (teamName.length() > 16) teamName = teamName.substring(0, 16);
+            // Le nom de la team doit être unique par joueur et <= 16 chars.
+            String teamName = teamName(sortPrefix, p.getName());
 
-            // Tronquer le préfixe à 16 caractères (limite scoreboard 1.8)
-            if (lpPrefix.length() > 16) lpPrefix = lpPrefix.substring(0, 16);
+            lpPrefix = safePrefix(lpPrefix, p);
 
             Team team = board.getTeam(teamName);
             if (team == null) {
@@ -104,6 +107,67 @@ public class PlayerListManager {
         }
     }
 
+
+    /** Limite d'un préfixe de team en 1.8. Dépasser lève une exception côté Bukkit. */
+    private static final int PREFIX_LIMIT = 16;
+
+    /** Préfixes trop longs déjà signalés : on n'inonde pas la console. */
+    private final java.util.Set<String> warnedPrefixes = new java.util.HashSet<String>();
+
+    /**
+     * Ramène un préfixe sous la limite de 16 caractères SANS jamais couper un
+     * code de couleur en deux.
+     *
+     * <p><b>Le bug que ça corrige.</b> Un {@code substring(0, 16)} nu sur
+     * {@code §8[§7Joueur§8] §f} (17 caractères) rendait
+     * {@code §8[§7Joueur§8] §} — terminé par un {@code §} orphelin. Le client
+     * lit alors la première lettre du pseudo comme le code qui manque : un
+     * joueur dont le nom commence par « k » passait en {@code §k}, donc
+     * illisible, un « c » en {@code §c}, donc rouge — et dans tous les cas la
+     * lettre était mangée.
+     *
+     * <p>On coupe donc avant le {@code §} orphelin. Le préfixe perd sa dernière
+     * couleur au lieu de dévorer le pseudo, et l'administrateur est prévenu une
+     * fois en console : la vraie correction est de raccourcir le préfixe.
+     */
+    private String safePrefix(String prefix, Player owner) {
+        if (prefix.length() <= PREFIX_LIMIT) {
+            return prefix;
+        }
+        String cut = prefix.substring(0, PREFIX_LIMIT);
+        if (cut.charAt(cut.length() - 1) == ChatColor.COLOR_CHAR) {
+            cut = cut.substring(0, cut.length() - 1);
+        }
+        if (warnedPrefixes.add(prefix)) {
+            plugin.getLogger().warning("[Tab] Préfixe de grade trop long pour "
+                    + owner.getName() + " : « " + prefix.replace(ChatColor.COLOR_CHAR, '&') + " » fait "
+                    + prefix.length() + " caractères, la limite 1.8 est " + PREFIX_LIMIT + ".");
+            plugin.getLogger().warning("[Tab] Il est tronqué, donc le pseudo perd sa couleur. "
+                    + "Raccourcis-le dans LuckPerms (retirer l'espace avant le dernier code suffit souvent).");
+        }
+        return cut;
+    }
+
+    /**
+     * Nom de team unique et court.
+     *
+     * <p>Tronquer {@code sortPrefix + pseudo} à 16 caractères faisait collisionner
+     * deux joueurs dont les noms partagent leurs 13 premières lettres : ils
+     * atterrissaient dans la même team, donc avec le même préfixe. On remplace la
+     * fin par une empreinte du nom complet quand il faut couper.
+     */
+    private static String teamName(String sortPrefix, String playerName) {
+        String full = sortPrefix + playerName;
+        if (full.length() <= 16) {
+            return full;
+        }
+        String hash = Integer.toHexString(playerName.hashCode());
+        int keep = 16 - sortPrefix.length() - hash.length();
+        if (keep < 0) {
+            keep = 0;
+        }
+        return sortPrefix + playerName.substring(0, Math.min(keep, playerName.length())) + hash;
+    }
     private void sendTabHeader(Player p) {
         try {
             int online = countVisible(p);

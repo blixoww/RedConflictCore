@@ -5,17 +5,30 @@ rtp:
   # bloc : tourner la vue (souris) n'annule plus rien, seul un déplacement
   # annule — la même règle que /spawn. Les OP n'ont pas de préavis.
   warmup-seconds: 3
-  # Nombre de colonnes tirées au sort avant d'abandonner. Une colonne est
-  # rejetée si elle tombe en mer, dans la lave ou sur la cime d'un arbre.
-  max-attempts: 12
-  # Budget total de la préparation, en secondes. Le terrain d'arrivée est généré
-  # et chargé PENDANT le préavis, un chunk par tick (le chunk d'arrivée et ses
-  # huit voisins). Sur un monde neuf cela peut dépasser le préavis, et c'est
-  # voulu : mieux vaut faire patienter que déposer le joueur dans un chunk que
-  # son client n'a pas encore reçu — c'est ce qui le faisait apparaître
-  # « dans le sol ».
-  max-prepare-seconds: 20
+  # Temps d'attente maximal si la réserve de points d'arrivée est vide, après le
+  # préavis. Passé ce délai le joueur est invité à réessayer.
+  max-wait-seconds: 10
 
+  # ── Réserve de points d'arrivée ────────────────────────────────────────────
+  # Les points sont préparés EN ARRIÈRE-PLAN, jamais pendant la commande.
+  #
+  # loadChunk(..., true) GÉNÈRE le terrain quand il n'existe pas, sur le thread
+  # principal : à 1000-9000 blocs du spawn, sur un monde neuf, chaque appel peut
+  # coûter des centaines de millisecondes. Les faire pendant le /rtp figeait le
+  # serveur, les paquets des clients s'accumulaient, et Spigot en vidait des
+  # centaines au tick suivant — d'où le « Too many packets » qui expulsait le
+  # joueur qui venait de taper la commande.
+  pool:
+    # Nombre de points gardés d'avance.
+    size: 8
+    # Intervalle entre deux passes de remplissage (ticks). Une passe charge AU
+    # PLUS un chunk : c'est toute la discipline qui protège le tick.
+    refill-interval-ticks: 10
+    # Au-delà de cette durée, un chargement est considéré comme une génération
+    # de terrain vierge et la réserve lève le pied.
+    slow-load-ms: 40
+    # Nombre de passes sautées après un chargement lent.
+    slow-load-backoff: 4
 
 # ── Anti-triche ───────────────────────────────────────────────────────────────
 # Tous les contrôles ci-dessous s'exécutent sur le SERVEUR et jugent des faits
@@ -532,19 +545,21 @@ database:
   # Utilisé par le verrou de présence cross-serveur.
   server-id: faction
   lock:
-    # Temps accordé au serveur précédent, en millisecondes, pour sauvegarder et
-    # relâcher le verrou avant que le joueur n'apparaisse ici.
+    # Filet d'attente au pré-login, en millisecondes.
     #
-    # Velocity ouvre la connexion au serveur d'arrivée AVANT de fermer celle du
-    # serveur de départ : sans cette attente, l'arrivée charge l'inventaire
-    # d'avant le transfert et les deux serveurs se mettent à diverger. L'attente
-    # a lieu pendant le pré-login, hors du thread principal (le joueur patiente
-    # sur « Connexion… », le serveur ne rame pas) et s'arrête dès que l'autre a
-    # fini — en pratique quelques dizaines de millisecondes.
-    wait-ms: 4000
-    # Si true, un joueur encore verrouillé APRÈS cette attente est kické (le
-    # temps que ses données soient sauvegardées ailleurs). false = il entre
-    # quand même, avec un avertissement en console.
+    # ⚠️ DOIT RESTER COURT. Le transfert normal (/hub /minage /faction) ne passe
+    # plus par ici : le serveur de départ sauvegarde et relâche AVANT de demander
+    # le transfert (HandoffService), donc le verrou est déjà libre à l'arrivée et
+    # l'attente vaut zéro.
+    #
+    # Cette valeur ne sert qu'aux arrivées hors de ce chemin — reconnexion
+    # directe, retour après un crash. L'allonger n'aiderait pas : pendant un
+    # transfert Velocity, le proxy ne coupe l'ancienne session qu'APRÈS que le
+    # serveur d'arrivée ait fini sa connexion. Attendre ici bloquerait donc le
+    # départ qu'on attend, et ne se dénouerait qu'à l'expiration du délai.
+    wait-ms: 1500
+    # Si true, un joueur encore verrouillé APRÈS cette attente est kické. false =
+    # il entre quand même, avec un avertissement en console.
     kick-on-conflict: false
   sync:
     # Synchronisation cross-serveur de l'inventaire complet + enderchest.

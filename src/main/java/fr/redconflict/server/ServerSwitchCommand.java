@@ -2,7 +2,9 @@ package fr.redconflict.server;
 
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
+import fr.redconflict.RedConflictCore;
 import fr.redconflict.core.command.CoreCommand;
+import fr.redconflict.db.HandoffService;
 import fr.redconflict.core.text.RC;
 import fr.redconflict.core.text.Text;
 import fr.redconflict.cooldown.CooldownManager;
@@ -41,6 +43,17 @@ public class ServerSwitchCommand extends CoreCommand {
         if (left > 0) {
             player.sendMessage(Text.fmt(RC.CT_IN_COMBAT, Text.duration(left)));
             return;
+        }
+
+        // Sauvegarder et relâcher le verrou AVANT de demander le transfert.
+        // C'est le seul instant où ce serveur peut le faire utilement : une fois
+        // le message Connect envoyé, le proxy ouvre la session sur le serveur
+        // d'arrivée et n'y coupe la nôtre qu'après — l'arrivée chargerait donc
+        // un inventaire d'avant le transfert. Voir HandoffService.
+        HandoffService handoff = RedConflictCore.getInstance().getHandoff();
+        if (handoff != null && !handoff.handOff(player)) {
+            player.sendMessage(RC.ERR_INTERNAL);
+            return; // ne pas envoyer un joueur dont on n'a pas su sauvegarder l'état
         }
 
         player.sendMessage(Text.fmt(RC.SWITCH_SENDING, display));

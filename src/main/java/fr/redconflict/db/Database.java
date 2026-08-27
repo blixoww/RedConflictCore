@@ -66,7 +66,7 @@ public class Database {
         int maxSize = cfg.getInt("database.pool.maximum-size", 10);
         this.serverId = cfg.getString("database.server-id", "default");
         this.kickOnConflict = cfg.getBoolean("database.lock.kick-on-conflict", false);
-        this.lockWaitMillis = cfg.getLong("database.lock.wait-ms", 4000L);
+        this.lockWaitMillis = cfg.getLong("database.lock.wait-ms", 1500L);
 
         // baseDir du serveur H2 = dossier du plugin ; l'URL "./data/<name>" résout donc
         // vers <dataFolder>/data/<name>.mv.db.

@@ -46,6 +46,9 @@ public class MovementCheck implements Listener {
     /** Après une téléportation ou une poussée, les mesures n'ont pas de sens. */
     private static final long GRACE_MS = 1500L;
 
+    /** Potion custom Fall Protection : identifiant d'effet, inconnu du NMS vanilla. */
+    private static final int FALL_PROTECTION_EFFECT = 24;
+
     private final Plugin plugin;
     private final ViolationTracker violations;
     private final Map<UUID, State> states = new ConcurrentHashMap<UUID, State>();
@@ -151,6 +154,15 @@ public class MovementCheck implements Listener {
      * <p>C'est le mensonge qui annule les dégâts de chute : le serveur, croyant
      * le joueur au sol, remet sa distance de chute à zéro. On compare donc ce
      * qu'il annonce à ce qu'il y a réellement sous ses pieds.
+     *
+     * <p><b>Deux sources de faux positifs, corrigées ici.</b> D'abord les
+     * immunités légitimes du serveur — la potion Fall Protection (effet 24) et
+     * le Collier de Chute — qui font qu'un joueur ne prend pas de dégâts sans
+     * pour autant mentir sur sa position : ce contrôle n'a rien à leur dire.
+     * Ensuite le bord de bloc : la boîte de collision fait 0,6 de large, un
+     * joueur peut donc se tenir debout avec son CENTRE au-dessus du vide,
+     * porté par le bloc voisin. Sonder la seule colonne centrale le signalait à
+     * tort ; on balaie maintenant les quatre coins de sa boîte.
      */
     private void checkNoFall(Player player, State state, long now) {
         if (!enabled("nofall") || now - state.graceUntil < 0 || player.isInsideVehicle()) {
@@ -159,19 +171,61 @@ public class MovementCheck implements Listener {
         if (!player.isOnGround() || player.getFallDistance() > 0) {
             return;
         }
+        if (isFallImmune(player)) {
+            return;
+        }
         Location at = player.getLocation();
         if (at.getBlock().isLiquid() || isClimbable(at)) {
             return;
         }
-        // Deux blocs de marge sous les pieds : les escaliers, dalles et bordures
-        // laissent le joueur légèrement au-dessus du bloc plein le plus proche.
-        for (double depth = 0.0; depth <= 1.6; depth += 0.4) {
-            Location probe = at.clone().subtract(0, depth, 0);
-            if (probe.getBlock().getType().isSolid()) {
-                return;
-            }
+        if (hasSupportBelow(at)) {
+            return;
         }
         violations.flag(player, Check.NOFALL, "au sol annoncé à " + String.format("%.1f", at.getY()));
+    }
+
+    /**
+     * Un bloc plein sous l'un des quatre coins de la boîte de collision, jusqu'à
+     * 1,6 bloc plus bas.
+     *
+     * <p>La marge verticale couvre dalles, escaliers et bordures, qui laissent le
+     * joueur légèrement au-dessus du bloc plein le plus proche.
+     */
+    private static boolean hasSupportBelow(Location at) {
+        final double half = 0.31; // demi-largeur de la boîte, avec un cheveu de marge
+        for (double dx = -half; dx <= half; dx += 2 * half) {
+            for (double dz = -half; dz <= half; dz += 2 * half) {
+                for (double depth = 0.0; depth <= 1.6; depth += 0.4) {
+                    Location probe = at.clone().add(dx, -depth, dz);
+                    if (probe.getBlock().getType().isSolid()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Le joueur bénéficie-t-il d'une immunité de chute accordée par le serveur ?
+     *
+     * <p>Potion custom Fall Protection (identifiant d'effet 24, voir
+     * {@code FallProtectionListener}) ou Collier de Chute (voir
+     * {@code RingEffectListener}). Dans les deux cas le joueur ne ment pas : le
+     * serveur lui-même annule ses dégâts.
+     */
+    private static boolean isFallImmune(Player player) {
+        for (PotionEffect effect : player.getActivePotionEffects()) {
+            if (effect.getType() != null && effect.getType().getId() == FALL_PROTECTION_EFFECT) {
+                return true;
+            }
+        }
+        try {
+            return fr.redconflict.ring.RingEffects.hasRing(
+                    player, fr.redconflict.ring.RingEffects.NECKLACE_OF_FALL);
+        } catch (Throwable ignored) {
+            return false; // module anneaux absent ou non initialisé
+        }
     }
 
     /**

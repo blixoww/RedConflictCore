@@ -256,6 +256,10 @@ commands:
     description: Refuse la demande de téléportation en attente
     usage: /tpno
     aliases: [tpdeny]
+  tphere:
+    description: Amene un joueur a soi immediatement (staff)
+    usage: /tphere <joueur>
+    permission: redconflict.tphere
   tpahere:
     description: Demande à un joueur de venir vers vous
     usage: /tpahere <joueur>
@@ -273,6 +277,10 @@ commands:
   home:
     description: Se téléporter à un home
     usage: /home [nom]
+  homes:
+    description: Consulte les homes d'un joueur et s'y teleporte (staff)
+    usage: /homes <joueur> [nom]
+    permission: redconflict.homes.others
   sethome:
     description: Définit un home
     usage: /sethome [nom]
@@ -412,6 +420,21 @@ permissions:
   # aucun grade joueur : elle permet de s'offrir n'importe quel article.
   redconflict.site.deliver:
     description: Livre un achat effectué sur le site (réservé à la console / AzLink)
+    default: op
+  # Amene un joueur a soi sans son accord : pouvoir de moderation, pas de confort.
+  redconflict.tphere:
+    description: Teleporte un joueur a soi immediatement (/tphere)
+    default: op
+  # Ecrire des codes couleur en chat. Refusee aux joueurs : elle permet de
+  # rendre un message illisible (§k) et surtout d'imiter une ligne du staff.
+  redconflict.chat.color:
+    description: Autorise les codes de couleur dans les messages du chat
+    default: op
+  # Consultation et téléportation sur les homes d'AUTRUI : c'est un pouvoir
+  # d'enquête, pas une commodité. Il révèle l'emplacement des bases, donc il
+  # reste sur op / grade staff explicite.
+  redconflict.homes.others:
+    description: Consulte les homes d'un joueur et s'y téléporte (/homes)
     default: op
   # Déclarée explicitement en default false : sans déclaration, Bukkit accorde
   # la permission aux OP par défaut et la téléportation devient instantanée

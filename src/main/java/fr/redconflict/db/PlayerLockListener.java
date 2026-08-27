@@ -15,51 +15,57 @@ import java.util.logging.Logger;
 /**
  * Verrou de présence cross-serveur + synchronisation inventaire/enderchest.
  *
- * <p><b>Pré-login : on attend le serveur précédent.</b> C'est le point clé du
- * transfert. Quand Velocity fait passer un joueur du Faction au Minage, il
- * ouvre la connexion au Minage <i>avant</i> de fermer celle du Faction : le
- * {@link PlayerJoinEvent} du serveur d'arrivée précède donc le
- * {@link PlayerQuitEvent} du serveur de départ, et l'inventaire chargé serait
- * celui d'<i>avant</i> le transfert — le joueur verrait ses deux serveurs
- * diverger tout seuls. Le verrou est donc pris dans
- * {@link AsyncPlayerPreLoginEvent}, qui s'exécute hors du thread principal
- * pendant que le joueur est encore sur l'écran de connexion : on peut y
- * attendre sans figer le serveur, et l'attente s'arrête dès que l'autre serveur
- * a sauvegardé puis relâché (la sauvegarde du quit précède la libération).
+ * <p><b>L'ordre réel d'un transfert Velocity, et ce qu'il impose.</b> Le proxy
+ * ne ferme PAS la connexion à l'ancien serveur dès que la nouvelle est ouverte :
+ * il termine d'abord toute la séquence de connexion sur le serveur d'arrivée, et
+ * ne coupe l'ancienne qu'une fois reçu son {@code JoinGame}. Le
+ * {@code PlayerQuitEvent} du serveur de départ arrive donc APRÈS le
+ * {@code PlayerJoinEvent} du serveur d'arrivée — et attendre la libération du
+ * verrou pendant le pré-login de l'arrivée crée un blocage circulaire : le
+ * départ ne peut pas libérer tant que l'arrivée n'a pas fini, et l'arrivée
+ * attend le départ. Seule l'expiration du délai le dénoue, après quoi les
+ * données chargées sont périmées de toute façon.
  *
- * <p>Join : le verrou est déjà à nous, il ne reste qu'à charger et appliquer
- * l'inventaire + enderchest depuis H2.
- * Quit : sauvegarde synchrone dans H2 AVANT de libérer le verrou.
+ * <p>La solution ne peut donc pas vivre ici : c'est le serveur de DÉPART qui
+ * doit sauvegarder et relâcher, avant même de demander le transfert. Voir
+ * {@link HandoffService}, appelé par {@code ServerSwitchCommand}.
  *
- * <p>{@code syncService} peut être {@code null} si la synchro d'inventaire est désactivée
- * ({@code database.sync.enabled: false}) ; dans ce cas seul le verrou est géré.
+ * <p>Ce qui reste ici est un filet pour les arrivées qui ne suivent pas ce
+ * chemin (reconnexion directe, retour après un crash) : une attente COURTE, qui
+ * ne coûte rien quand le verrou est déjà libre — le cas normal désormais.
  */
 public class PlayerLockListener implements Listener {
 
     private static final Logger LOG = Logger.getLogger("PlayerLock");
 
     /** Intervalle entre deux tentatives d'acquisition pendant le pré-login. */
-    private static final long POLL_MS = 150L;
+    private static final long POLL_MS = 100L;
 
     private final PlayerLockService lockService;
     private final PlayerDataSyncService syncService; // nullable
+    private final HandoffService handoff;
     private final String serverId;
     private final boolean kickOnConflict;
     private final long waitMillis;
 
     public PlayerLockListener(PlayerLockService lockService, PlayerDataSyncService syncService,
-                              String serverId, boolean kickOnConflict, long waitMillis) {
+                              HandoffService handoff, String serverId, boolean kickOnConflict,
+                              long waitMillis) {
         this.lockService = lockService;
         this.syncService = syncService;
+        this.handoff = handoff;
         this.serverId = serverId;
         this.kickOnConflict = kickOnConflict;
         this.waitMillis = Math.max(0L, waitMillis);
     }
 
     /**
-     * Prend le verrou avant que le joueur n'apparaisse, en laissant au serveur
-     * précédent le temps de sauvegarder. Thread de connexion : l'attente ici ne
-     * coûte rien au serveur.
+     * Prend le verrou avant que le joueur n'apparaisse.
+     *
+     * <p>L'attente doit rester COURTE : pendant un transfert Velocity, le
+     * serveur de départ est incapable de libérer tant que nous n'avons pas fini
+     * (voir l'en-tête de classe). Une longue attente n'y changerait rien et
+     * retarderait chaque changement de serveur d'autant.
      */
     @EventHandler(priority = EventPriority.LOW)
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
@@ -72,7 +78,8 @@ public class PlayerLockListener implements Listener {
         while (!lockService.acquire(uuid, serverId)) {
             if (System.currentTimeMillis() >= deadline) {
                 LOG.warning("[Lock] " + event.getName() + " est encore verrouillé sur un autre serveur "
-                        + "après " + waitMillis + " ms (données potentiellement non sauvegardées).");
+                        + "après " + waitMillis + " ms. Si c'est un transfert /hub /minage /faction, "
+                        + "le serveur de départ n'a pas fait sa remise de relais (jar à jour ?).");
                 if (kickOnConflict) {
                     event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
                             "§cTransfert en cours...\n"
@@ -106,6 +113,11 @@ public class PlayerLockListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
+        // Un joueur qui revient ici ne doit pas traîner la marque d'un transfert
+        // précédent : sinon sa prochaine sortie ne sauvegarderait rien.
+        if (handoff != null) {
+            handoff.clear(p.getUniqueId());
+        }
         if (syncService != null) {
             try {
                 syncService.loadAndApply(p);
@@ -115,9 +127,18 @@ public class PlayerLockListener implements Listener {
         }
     }
 
+    /**
+     * Sauvegarde puis libération — sauf si la remise de relais a déjà eu lieu.
+     *
+     * <p>Dans ce cas le joueur est déjà en train de jouer ailleurs : resauvegarder
+     * l'instantané qu'on garde de lui écraserait dans H2 ce qu'il vient d'y faire.
+     */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
         Player p = event.getPlayer();
+        if (handoff != null && handoff.consume(p.getUniqueId())) {
+            return; // déjà sauvegardé et relâché avant le transfert
+        }
         if (syncService != null) {
             try {
                 syncService.saveNow(p);
