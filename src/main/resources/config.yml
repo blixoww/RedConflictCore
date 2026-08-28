@@ -109,6 +109,60 @@ anticheat:
     enabled: true
     threshold: 10
 
+  # ── Visée ──────────────────────────────────────────────────────────────────
+  # LE contrôle contre l'aura « discrète », celle qui ne dépasse aucun seuil de
+  # quantité : un coup par clic physique, quatre coups par seconde au plus, une
+  # cible à portée, aucun mur. Allonge, cadence et mur la laissent passer parce
+  # qu'elle ne triche pas sur ces grandeurs-là — elle triche sur le fait que le
+  # joueur ne REGARDAIT pas sa cible.
+  #
+  # Un client vanilla n'envoie une attaque que pour l'entité que son propre
+  # tracé de rayon a touchée, dans l'axe du regard, à moins de trois blocs.
+  # Frapper hors de cet axe demande de fabriquer le paquet : c'est la signature
+  # du cheat, pas un réglage qu'on peut baisser.
+  #
+  # Le contrôle est différé de quelques ticks exprès : il retient la MEILLEURE
+  # des rotations envoyées autour du coup, croisée avec les positions
+  # successives de la cible. Sans cette fenêtre, la latence ferait remonter tout
+  # le monde — le client vise avec une rotation que le serveur lira au tick
+  # suivant.
+  #
+  # Ne s'applique qu'aux cibles JOUEURS : les boîtes de collision des créatures
+  # varient trop pour qu'un contrôle d'angle y soit fiable.
+  aim:
+    enabled: true
+    # Élargissement de la boîte de collision de la cible, en blocs. Le client
+    # vanilla vise déjà une boîte élargie de 0,1 ; le reste couvre le
+    # désynchronisme.
+    tolerance-blocks: 0.35
+    # En dessous de cet écart, on ne compte rien : un quasi-manqué est de la
+    # latence. Un coup fabriqué se trompe de 40, 90 ou 180 degrés.
+    min-angle-degrees: 8.0
+    # Fenêtre de rotations retenue autour du coup.
+    lookback-ms: 400
+    lookahead-ms: 200
+    threshold: 8
+
+  # Coup porté sans animation de bras. Le client vanilla en envoie une à chaque
+  # clic ; une aura qui fabrique le seul paquet d'attaque n'en envoie aucune.
+  # Signal secondaire : une aura déclenchée par un vrai clic produit, elle, une
+  # vraie animation. Fenêtre large des deux côtés — en 1.8 l'attaque part AVANT
+  # l'animation dans le même tick.
+  no-swing:
+    enabled: true
+    before-ms: 600
+    after-ms: 300
+    threshold: 12
+
+  # Plusieurs JOUEURS distincts touchés en quelques ticks. Personne ne déplace
+  # son curseur assez vite pour ça ; une aura, si. Restreint aux joueurs : sur
+  # des créatures, une ferme à mobs produirait la même trace sans triche.
+  multi-aura:
+    enabled: true
+    window-ms: 250
+    max-targets: 3
+    threshold: 4
+
   # Minage : cadence et distance.
   nuker:
     enabled: true

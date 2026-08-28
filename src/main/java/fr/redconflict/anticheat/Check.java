@@ -44,6 +44,29 @@ public enum Check {
     /** Coup porté à travers un bloc plein. */
     THROUGH_WALL("through-wall", "Coup à travers un mur"),
 
+    /**
+     * Coup porté sur une cible que le joueur ne regardait pas.
+     *
+     * <p>C'est LE contrôle qui attrape l'aura moderne, celle qui reste sous
+     * tous les seuils de quantité : elle n'attaque qu'à cadence humaine, à
+     * portée légale, sans mur — mais elle désigne une entité que le curseur n'a
+     * jamais visée. Un client vanilla ne peut pas produire ce paquet.
+     */
+    AIM("aim", "Visée"),
+
+    /**
+     * Coup porté sans animation de bras. Le client vanilla en envoie une à
+     * chaque clic ; une aura qui fabrique le seul paquet d'attaque n'en envoie
+     * aucune.
+     */
+    NO_SWING("no-swing", "Coup sans animation"),
+
+    /**
+     * Plusieurs joueurs distincts touchés en quelques ticks : personne ne
+     * déplace son curseur assez vite pour ça.
+     */
+    MULTI_AURA("multi-aura", "Aura multi-cibles"),
+
     /** Blocs cassés trop vite, ou trop loin. */
     NUKER("nuker", "Minage anormal"),
 

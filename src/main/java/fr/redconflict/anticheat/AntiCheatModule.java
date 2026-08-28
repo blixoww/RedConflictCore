@@ -36,6 +36,7 @@ public class AntiCheatModule implements Module, Listener {
     private ChannelGuard guard;
     private AttestationService attestation;
     private VisibilityCulling visibility;
+    private AimCheck aim;
     private BukkitTask decayTask;
 
     public AntiCheatModule(Plugin plugin) {
@@ -64,6 +65,14 @@ public class AntiCheatModule implements Module, Listener {
         Bukkit.getPluginManager().registerEvents(new MovementCheck(plugin, violations), plugin);
         Bukkit.getPluginManager().registerEvents(new CombatCheck(plugin, violations), plugin);
         Bukkit.getPluginManager().registerEvents(new MiningCheck(plugin, violations), plugin);
+
+        // Visée : le seul contrôle de combat qui ne mesure pas une quantité mais
+        // une cohérence. C'est celui que l'aura « discrète » ne peut pas régler
+        // pour passer — elle doit changer de nature, pas de seuil.
+        this.aim = new AimCheck(plugin, violations);
+        Bukkit.getPluginManager().registerEvents(aim, plugin);
+        aim.start();
+
         registerCleanup();
 
         visibility.start();
@@ -86,6 +95,9 @@ public class AntiCheatModule implements Module, Listener {
     public void disable() {
         if (visibility != null) {
             visibility.stop();
+        }
+        if (aim != null) {
+            aim.stop();
         }
         if (decayTask != null) {
             decayTask.cancel();

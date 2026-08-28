@@ -25,6 +25,7 @@ fr\redconflict\bounty\KillstreakManager.class
 fr\redconflict\boutique\BoutiqueClientServerHandler.class
 fr\redconflict\ring\RingEffectListener.class
 fr\redconflict\hdv\HdvManager.class
+fr\redconflict\site\EntitlementService$1.class
 fr\redconflict\db\PotionEffectCodec.class
 fr\redconflict\repair\RepairItems.class
 fr\redconflict\essentials\service\EconomyService.class
@@ -47,6 +48,7 @@ fr\redconflict\essentials\command\social\NearCommand$1.class
 fr\redconflict\faction\MinimapPositionSender.class
 fr\redconflict\friend\FriendCommand.class
 fr\redconflict\staff\commands\MuteCommand.class
+fr\redconflict\anticheat\AimCheck$Victim.class
 fr\redconflict\essentials\command\teleport\TpCommand.class
 fr\redconflict\lagswitch\LagSwitchManager.class
 fr\redconflict\anticheat\ChannelGuard$1.class
@@ -179,6 +181,7 @@ fr\redconflict\loto\LotoManager$1.class
 fr\redconflict\anticheat\Check.class
 fr\redconflict\staff\StaffListener$1.class
 fr\redconflict\listeners\FallProtectionListener.class
+fr\redconflict\anticheat\AimCheck$1.class
 fr\redconflict\db\PlayerDataDatabase$PlayerData.class
 fr\redconflict\pb\PBCommand$1.class
 fr\redconflict\shop\ShopEventManager$EventConfig.class
@@ -230,6 +233,7 @@ fr\redconflict\repair\RepairModule.class
 fr\redconflict\bounty\BountyManager.class
 fr\redconflict\vote\VoteModule$2.class
 fr\redconflict\staff\StaffListener$4$1.class
+fr\redconflict\anticheat\AimCheck$Sample.class
 fr\redconflict\site\EntitlementService$Ownership.class
 fr\redconflict\server\ServerSwitchCommand.class
 fr\redconflict\announce\Announce.class
@@ -281,6 +285,7 @@ fr\redconflict\useful\MsgSpyCommand.class
 fr\redconflict\essentials\command\teleport\WarpCommand.class
 fr\redconflict\shop\ShopDatabase.class
 fr\redconflict\bottlexp\BottleXpListener.class
+fr\redconflict\anticheat\AimCheck$Track.class
 fr\redconflict\essentials\repository\SpawnRepository.class
 fr\redconflict\site\EntitlementService.class
 fr\redconflict\staff\commands\StaffModeCommand.class
@@ -400,10 +405,12 @@ fr\redconflict\trade\TradeListener.class
 fr\redconflict\anticheat\MovementCheck$State.class
 fr\redconflict\essentials\command\social\IgnoreCommand.class
 fr\redconflict\job\JobDatabase.class
+fr\redconflict\anticheat\AimCheck$Frame.class
 fr\redconflict\essentials\economy\EssentialsImporter.class
 fr\redconflict\essentials\command\teleport\DelWarpCommand.class
 fr\redconflict\essentials\service\TeleportService$1.class
 fr\redconflict\useful\GuideCommand.class
+fr\redconflict\anticheat\AimCheck.class
 fr\redconflict\annonyme\AnonymeCommand.class
 fr\redconflict\site\OrderService$Order.class
 fr\redconflict\server\ServerSwitchModule.class
