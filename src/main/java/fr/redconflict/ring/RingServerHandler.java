@@ -36,7 +36,7 @@ public class RingServerHandler implements PluginMessageListener {
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
         try {
             PacketReader reader = new PacketReader(message);
-            int packetId = reader.readVarInt();
+            int packetId = reader.readPacketId();
             switch (packetId) {
                 case RING_SYNC_REQUEST:
                     sender.sendSync(player);

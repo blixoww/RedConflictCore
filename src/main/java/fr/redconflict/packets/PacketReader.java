@@ -18,6 +18,18 @@ public class PacketReader {
         this.pos = 0;
     }
 
+    /**
+     * Lit l'identifiant de paquet en tête du payload et le ramène à sa valeur
+     * LOGIQUE — celle que le code métier compare à ses constantes.
+     *
+     * <p>À utiliser pour le premier champ, et lui seul : les suivants sont des
+     * données ordinaires que {@link #readVarInt()} lit telles quelles. Voir
+     * {@link WireIds} pour ce que la traduction achète.
+     */
+    public int readPacketId() throws IOException {
+        return WireIds.fromWire(readVarInt());
+    }
+
     public int readVarInt() throws IOException {
         int value = 0, shift = 0;
         while (true) {

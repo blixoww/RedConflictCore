@@ -230,8 +230,17 @@ anticheat:
 
   # ── Défi d'intégrité du client ─────────────────────────────────────────────
   # Le serveur envoie un aléa, le client répond par un HMAC dont la clé est
-  # l'empreinte SHA-256 de son propre jar. Un jar modifié, ou des classes
-  # chargées depuis un autre jar, donnent une réponse fausse.
+  # SHA-256(empreinte du jar || rapport d'environnement).
+  #
+  # Le rapport tient en un octet et doit valoir zéro : aucun agent
+  # d'instrumentation, pas d'API Attach chargeable, poignée de main du launcher
+  # présente, aucun code chargé hors du jar officiel. Le client le recalcule à
+  # CHAQUE défi : une injection faite en cours de partie bascule donc la réponse
+  # dès le contrôle suivant.
+  #
+  # Ce second terme corrige un contournement réel : un agent (-javaagent) ne
+  # modifie pas le fichier jar, il transforme le bytecode au chargement.
+  # L'empreinte du jar restait juste, et un client injecté passait le contrôle.
   #
   # ⚠️ LE SILENCE EST LA DÉFENSE PRINCIPALE, PAS LA CRYPTO. Le serveur ne coupe
   # pas, n'affiche rien, ne change aucun comportement observable : il alerte le
@@ -268,13 +277,29 @@ anticheat:
     recheck-max-seconds: 900
     threshold: 2
     action: alert
-  # Rapport d'environnement envoyé par le client (agent Java, débogueur,
-  # démarrage hors launcher). Indicatif : un client modifié n'envoie rien.
-  # À laisser en alerte, jamais en kick — le silence ne prouve rien et la
-  # présence d'un motif mérite un regard humain.
+  # Rapport MOU envoyé par le client : « poignée de main du launcher absente »,
+  # « API Attach disponible », « execution hors jar ». Le premier se lève chez
+  # TOUT joueur tant que le nouveau launcher n'est pas déployé — d'où l'alerte
+  # seule. Ne jamais mettre ce bloc en kick : on expulserait les honnêtes.
   client-report:
     enabled: true
     threshold: 1
+    action: alert
+
+  # Rapport DUR : « code chargé hors du jar officiel » ou « agent
+  # d'instrumentation ». Un joueur légitime ne les déclenche JAMAIS (il ne charge
+  # que le jar signé, sans -javaagent). C'est donc sûr d'agir dessus.
+  #
+  # action: kick expulse au premier signalement. Deux choses à savoir :
+  #   - c'est auto-déclaré : un client qui fait taire son rapport n'apparaît pas
+  #     ici (les vrais garde-fous restent serveur : anti-ESP, validation paquets) ;
+  #   - kicker apprend au tricheur qu'il est vu. Pour bannir plutôt qu'expulser :
+  #     action: command  +  command: "ban %player% Client injecté".
+  client-injection:
+    enabled: true
+    threshold: 1
+    action: kick
+
 # ── Système Anti Lag-Switch ───────────────────────────────────────────────────
 lagswitch:
 

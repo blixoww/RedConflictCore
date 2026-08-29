@@ -21,7 +21,7 @@ public class HdvServerHandler implements PluginMessageListener {
             long totalPrice;
             int quantity;
             PacketReader reader = new PacketReader(message);
-            int packetId = reader.readVarInt();
+            int packetId = reader.readPacketId();
             HdvManager manager = HdvManager.getInstance();
             if (manager == null) {
                 this.plugin.getLogger().warning("[HDV] HdvManager non initialise !");

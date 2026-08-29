@@ -35,7 +35,7 @@ public class TradeC2SHandler implements PluginMessageListener {
         if (!CHANNEL_C2S.equals(channel)) return;
         try {
             DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
-            int packetId = readVarInt(in);
+            int packetId = fr.redconflict.packets.WireIds.fromWire(readVarInt(in));
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 try { handle(player, packetId, in); } catch (Exception ignored) {}
             });

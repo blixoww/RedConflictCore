@@ -27,7 +27,7 @@ public class PlayerDataServerHandler implements PluginMessageListener {
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
         try {
             PacketReader reader = new PacketReader(message);
-            int packetId = reader.readVarInt();
+            int packetId = reader.readPacketId();
             if (packetId == 88) {          // 0x58 – PLAYER_DATA_REQUEST
                 sendAllPlayerData(player);
             } else if (packetId == 89) {   // 0x59 – PROFILE_REQUEST_OWN

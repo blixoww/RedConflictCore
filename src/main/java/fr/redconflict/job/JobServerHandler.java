@@ -39,7 +39,7 @@ public class JobServerHandler implements PluginMessageListener {
         if (!CHANNEL_C2S.equals(channel)) return;
         try {
             PacketReader r   = new PacketReader(message);
-            int          pkt = r.readVarInt();
+            int          pkt = r.readPacketId();
 
             switch (pkt) {
                 case PKT_JOB_REQUEST_TOP: {

@@ -7,6 +7,7 @@ import org.bukkit.plugin.Plugin;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,17 @@ public class AttestationService {
 
     private static final int CHALLENGE_BYTES = 32;
     private static final int PACKET_ATTEST_CHALLENGE = 0x62;
+
+    /**
+     * Rapport d'environnement d'un client sain, tel que le compose
+     * {@code RuntimeReport} côté client : tous les bits à zéro.
+     *
+     * <p>Un seul octet, et c'est ce qui rend le contrôle utilisable : le serveur
+     * doit pouvoir recalculer la clé attendue sans rien connaître du poste du
+     * joueur. Tout ce qui varie légitimement d'une machine à l'autre — mémoire,
+     * chemins, matériel — est donc volontairement exclu du rapport.
+     */
+    private static final byte[] CLEAN_REPORT = { 0 };
 
     private final Plugin plugin;
     private final ViolationTracker violations;
@@ -160,16 +172,48 @@ public class AttestationService {
             return;
         }
         for (String hex : accepted) {
-            byte[] key = fromHex(hex);
-            if (key == null) {
+            byte[] jar = fromHex(hex);
+            if (jar == null) {
                 continue;
             }
-            byte[] expected = hmac(key, waiting.nonce);
+            byte[] key = compositeKey(jar);
+            byte[] expected = key == null ? null : hmac(key, waiting.nonce);
             if (expected != null && constantTimeEquals(expected, answer)) {
-                return; // client conforme
+                return; // client conforme, dans un environnement propre
             }
         }
-        violations.flag(player, Check.ATTESTATION, "empreinte du client non reconnue");
+        violations.flag(player, Check.ATTESTATION, "client ou environnement non conforme");
+    }
+
+    /**
+     * Clé attendue : {@code SHA-256(empreinte du jar || rapport propre)}.
+     *
+     * <p><b>Pourquoi ce n'est plus la seule empreinte du jar.</b> Un agent
+     * d'instrumentation ne modifie pas le fichier : il transforme le bytecode au
+     * chargement, le jar reste intact sur le disque, et l'ancienne version de ce
+     * contrôle validait donc un client injecté. C'était le contournement
+     * démontré par un testeur.
+     *
+     * <p>Le client mélange désormais à sa clé un rapport d'un octet décrivant
+     * l'état réel de sa JVM — agent présent, API Attach chargeable, poignée de
+     * main du launcher absente, code chargé hors du jar. Le serveur n'accepte
+     * qu'une seule valeur, {@link #CLEAN_REPORT}, celle d'un environnement
+     * propre : il n'a rien à savoir de la machine du joueur, seulement à quoi
+     * ressemble un lancement normal.
+     *
+     * <p>Le rapport est recalculé par le client à CHAQUE défi. Comme les défis
+     * sont rejoués à intervalle imprévisible, une injection faite en cours de
+     * partie bascule la réponse au contrôle suivant.
+     */
+    private static byte[] compositeKey(byte[] jarFingerprint) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(jarFingerprint);
+            digest.update(CLEAN_REPORT);
+            return digest.digest();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public void forget(UUID player) {

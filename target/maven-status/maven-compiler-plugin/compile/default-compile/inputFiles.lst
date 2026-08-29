@@ -250,6 +250,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\trade\TradeModule.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\vote\VoteRewards.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\staff\commands\WarnCommand.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\anticheat\AimCheck.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\death\DeathMessages.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\useful\MsgCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\anticheat\ViolationTracker.java
@@ -283,6 +284,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\staff\StaffManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\service\TeleportService.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\repository\WarpRepository.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\packets\WireIds.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\backup\BackupManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\bounty\BountyModule.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\announce\AnnounceModule.java

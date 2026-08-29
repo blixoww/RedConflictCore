@@ -96,6 +96,26 @@
         </repository>
     </repositories>
     <dependencies>
+        <!--
+          Serveur Spigot complet (NMS + CraftBukkit), déclaré AVANT spigot-api :
+          il contient l'API en plus des classes internes, et doit donc primer
+          dans l'ordre de résolution.
+
+          Une seule chose en a besoin : le masquage anti-ESP
+          (VisibilityCulling), qui doit réémettre l'entrée de liste TAB que
+          Bukkit retire en même temps que l'entité. Aucune API publique ne sait
+          séparer les deux.
+
+          Cet artefact n'est sur aucun dépôt public : il est produit par
+          BuildTools et installé dans le dépôt local. Sur une machine qui ne l'a
+          pas, lancer BuildTools une fois pour la 1.8.8.
+        -->
+        <dependency>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot</artifactId>
+            <version>1.8.8-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>

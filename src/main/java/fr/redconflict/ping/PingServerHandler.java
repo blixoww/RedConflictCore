@@ -58,7 +58,7 @@ public class PingServerHandler implements PluginMessageListener {
         }
         try {
             PacketReader reader = new PacketReader(message);
-            if (reader.readVarInt() != PING_PLACE) {
+            if (reader.readPacketId() != PING_PLACE) {
                 return;
             }
             final double x = reader.readDouble();

@@ -48,7 +48,7 @@ public class CustomPacketServerHandler implements PluginMessageListener {
         }
         try {
             PacketReader reader = new PacketReader(message);
-            int packetId = reader.readVarInt();
+            int packetId = reader.readPacketId();
             if (packetId == PACKET_CUSTOM_ITEM_DROP) {
                 handleCustomDrop(player, reader);
             } else if (packetId == PACKET_CLIENT_REPORT) {
@@ -198,6 +198,7 @@ public class CustomPacketServerHandler implements PluginMessageListener {
             return;
         }
         StringBuilder findings = new StringBuilder();
+        boolean hard = false;
         for (int i = 0; i < count && reader.isReadable(); i++) {
             String finding = reader.readString(64);
             if (finding == null || finding.isEmpty()) {
@@ -207,10 +208,35 @@ public class CustomPacketServerHandler implements PluginMessageListener {
                 findings.append(", ");
             }
             findings.append(finding);
+            hard = hard || isHard(finding);
         }
-        if (findings.length() > 0) {
-            guard.violations().flag(player, Check.CLIENT_TAMPER, findings.toString());
+        if (findings.length() == 0) {
+            return;
         }
+        // Un rapport DUR (code injecté, agent) et un rapport MOU (poignée de main
+        // absente…) ne méritent pas la même réponse : le premier ne se lève que
+        // chez un client réellement modifié, le second chez tout le monde tant
+        // que le launcher n'est pas déployé. On les sépare pour que le staff
+        // puisse kicker le premier sans toucher au second.
+        Check check = hard ? Check.CLIENT_INJECTION : Check.CLIENT_TAMPER;
+        guard.violations().flag(player, check, findings.toString());
+    }
+
+    /**
+     * Un motif est « dur » s'il ne peut venir que d'un client réellement
+     * modifié : du code chargé hors du jar officiel, ou un agent
+     * d'instrumentation. Ces libellés sont produits par {@code TamperScan} côté
+     * client — les fragments testés ici doivent rester alignés avec eux.
+     *
+     * <p>« poignée de main du launcher absente » et « execution hors jar
+     * (developpement) » restent MOUS : le premier se lève chez tout joueur avant
+     * le déploiement du launcher, le second en développement.
+     */
+    private static boolean isHard(String finding) {
+        String f = finding.toLowerCase(java.util.Locale.ROOT);
+        return f.contains("hors du jar")         // code chargé hors du jar officiel
+                || f.contains("instrumentation") // agent -javaagent / -agentpath
+                || f.contains("jdwp");           // débogueur attaché
     }
     /**
      * Réponse au défi d'intégrité.

@@ -87,8 +87,27 @@ public enum Check {
      * Le client a signalé lui-même un environnement d'injection (agent Java,
      * débogueur attaché). Signal utile mais non fiable : un client modifié se
      * contente de ne rien signaler.
+     *
+     * <p>Motifs MOUS uniquement — au premier rang « poignée de main du launcher
+     * absente », qui se lève chez TOUT joueur tant que le nouveau launcher n'est
+     * pas déployé. À laisser en alerte, jamais en kick, sinon on expulse les
+     * joueurs légitimes.
      */
-    CLIENT_TAMPER("client-report", "Client instrumenté");
+    CLIENT_TAMPER("client-report", "Client instrumenté"),
+
+    /**
+     * Le client a signalé un motif DUR : du code chargé hors du jar officiel, ou
+     * un agent d'instrumentation. Un joueur légitime ne les déclenche jamais —
+     * il ne charge que le jar signé et ne passe pas de {@code -javaagent}. On
+     * peut donc agir dessus (kick) sans risque de faux positif sur un honnête.
+     *
+     * <p>Limite à garder en tête : c'est auto-déclaré. Un client qui fait taire
+     * son propre rapport n'apparaît pas ici — d'où l'importance des contrôles
+     * serveur autoritatifs à côté (masquage anti-ESP, validation des paquets).
+     * Kicker ici apprend aussi au tricheur qu'il est vu : utile contre les
+     * outils tout faits, sans illusion sur les plus tenaces.
+     */
+    CLIENT_INJECTION("client-injection", "Client injecté");
 
     private final String key;
     private final String label;

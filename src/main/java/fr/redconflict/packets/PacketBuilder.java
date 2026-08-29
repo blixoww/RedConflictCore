@@ -10,9 +10,17 @@ public class PacketBuilder {
 
     private final DataOutputStream dos = new DataOutputStream(this.baos);
 
+    /**
+     * Ouvre un paquet sur son identifiant LOGIQUE.
+     *
+     * <p>L'appelant écrit {@code 0x53} ou {@code 82} comme il l'a toujours fait :
+     * c'est ici, et seulement ici, que la valeur est traduite pour le fil par
+     * {@link WireIds}. Aucun des fichiers qui envoient des paquets n'a à
+     * connaître le brouillage.
+     */
     public static PacketBuilder create(int packetId) {
         PacketBuilder pb = new PacketBuilder();
-        pb.writeVarInt(packetId);
+        pb.writeVarInt(WireIds.toWire(packetId));
         return pb;
     }
 

@@ -42,7 +42,7 @@ public class BoutiqueClientServerHandler implements PluginMessageListener {
         if (!CHANNEL_C2S.equals(channel)) return;
         try {
             DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
-            int packetId = readVarInt(in);
+            int packetId = fr.redconflict.packets.WireIds.fromWire(readVarInt(in));
             switch (packetId) {
                 case BOUTIQUE_REQUEST:
                     Bukkit.getScheduler().runTask(plugin, () -> BoutiquePacketSender.sendData(player));

@@ -25,7 +25,6 @@ fr\redconflict\bounty\KillstreakManager.class
 fr\redconflict\boutique\BoutiqueClientServerHandler.class
 fr\redconflict\ring\RingEffectListener.class
 fr\redconflict\hdv\HdvManager.class
-fr\redconflict\site\EntitlementService$1.class
 fr\redconflict\db\PotionEffectCodec.class
 fr\redconflict\repair\RepairItems.class
 fr\redconflict\essentials\service\EconomyService.class
@@ -407,6 +406,7 @@ fr\redconflict\essentials\command\social\IgnoreCommand.class
 fr\redconflict\job\JobDatabase.class
 fr\redconflict\anticheat\AimCheck$Frame.class
 fr\redconflict\essentials\economy\EssentialsImporter.class
+fr\redconflict\packets\WireIds.class
 fr\redconflict\essentials\command\teleport\DelWarpCommand.class
 fr\redconflict\essentials\service\TeleportService$1.class
 fr\redconflict\useful\GuideCommand.class

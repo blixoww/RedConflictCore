@@ -24,7 +24,7 @@ public class ShopServerHandler implements PluginMessageListener {
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
         try {
             PacketReader reader = new PacketReader(message);
-            int packetId = reader.readVarInt();
+            int packetId = reader.readPacketId();
             ShopManager manager = ShopManager.getInstance();
 
             if (manager == null) {
