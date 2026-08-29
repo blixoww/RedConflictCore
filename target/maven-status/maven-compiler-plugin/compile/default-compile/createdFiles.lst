@@ -101,6 +101,7 @@ fr\redconflict\shop\ShopEventManager$AubaineConfig.class
 fr\redconflict\core\text\RC.class
 fr\redconflict\essentials\listener\IgnoreChatListener.class
 fr\redconflict\job\JobType.class
+fr\redconflict\worldborder\WorldBorderModule.class
 fr\redconflict\bottlexp\BottleXpItem.class
 fr\redconflict\site\SiteBridgeModule$3.class
 fr\redconflict\essentials\repository\h2\H2WarpRepository.class
@@ -222,6 +223,7 @@ fr\redconflict\boutique\BoutiquePacketSender.class
 fr\redconflict\rtp\RtpLocationPool.class
 fr\redconflict\pb\PBManager.class
 fr\redconflict\anticheat\MovementCheck$1.class
+fr\redconflict\worldborder\WorldBorderService.class
 fr\redconflict\essentials\listener\InvseeListener.class
 fr\redconflict\anticheat\ViolationTracker.class
 fr\redconflict\essentials\command\item\ClearCommand.class
@@ -283,6 +285,7 @@ fr\redconflict\essentials\service\TeleportRequestService.class
 fr\redconflict\useful\MsgSpyCommand.class
 fr\redconflict\essentials\command\teleport\WarpCommand.class
 fr\redconflict\shop\ShopDatabase.class
+fr\redconflict\worldborder\WorldBorderListener.class
 fr\redconflict\bottlexp\BottleXpListener.class
 fr\redconflict\anticheat\AimCheck$Track.class
 fr\redconflict\essentials\repository\SpawnRepository.class

@@ -30,6 +30,44 @@ rtp:
     # Nombre de passes sautées après un chargement lent.
     slow-load-backoff: 4
 
+# ── Bordure du monde ───────────────────────────────────────────────────────
+# Bordure vanilla : c'est le CLIENT qui dessine le mur translucide animé et le
+# voile rouge d'approche, et le serveur qui repousse. Aucun bloc n'est posé dans
+# le monde, aucun listener de déplacement ne tourne : le coût serveur est nul et
+# changer la taille ne demande rien à nettoyer.
+#
+# La bordure est enregistrée dans le level.dat du monde, donc elle survit à un
+# redémarrage et même au retrait du plugin. C'est pourquoi « enabled: false » ne
+# se contente pas de ne rien faire : il remet explicitement la bordure par défaut.
+# Idem pour un monde retiré de « worlds ».
+worldborder:
+  enabled: true
+
+  # Côté du carré, en blocs. 10000 = de -5000 à +5000 autour du centre.
+  #
+  # ⚠️ À tenir cohérent avec rtp.max plus haut, qui est une distance AU CENTRE :
+  # rtp.max: 9000 contre une bordure de 10000 (soit 5000 du centre) dépose le
+  # joueur jusqu'à 4000 blocs dehors. Le module le signale au démarrage.
+  size: 10000
+
+  # Centre de la bordure.
+  center:
+    x: 0
+    z: 0
+
+  # Mondes concernés. Liste vide = tous les mondes.
+  worlds: []
+
+  # Dégâts par seconde et par bloc au-delà de la bordure, et marge en blocs avant
+  # que les dégâts commencent. Valeurs vanilla.
+  damage-amount: 0.2
+  damage-buffer: 5
+
+  # Distance (blocs) à laquelle le voile rouge apparaît, et préavis (secondes)
+  # affiché quand une bordure qui rétrécit va rattraper le joueur.
+  warning-distance: 32
+  warning-time: 15
+
 # ── Anti-triche ───────────────────────────────────────────────────────────────
 # Tous les contrôles ci-dessous s'exécutent sur le SERVEUR et jugent des faits
 # que le serveur mesure lui-même : une distance, une cadence, une proportion.

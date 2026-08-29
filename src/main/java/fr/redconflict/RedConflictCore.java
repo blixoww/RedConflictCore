@@ -55,6 +55,7 @@ import fr.redconflict.staff.StaffModule;
 import fr.redconflict.trade.TradeModule;
 import fr.redconflict.useful.MessagingModule;
 import fr.redconflict.useful.UtilityModule;
+import fr.redconflict.worldborder.WorldBorderModule;
 import fr.redconflict.xpboost.XpBoostModule;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -180,6 +181,7 @@ public class RedConflictCore extends JavaPlugin {
         modules.install(new DeathModule(this, anonymeModule.getManager()));
         modules.install(new CombatLogModule(this));
         modules.install(new RtpModule(this));
+        modules.install(new WorldBorderModule(this));
         modules.install(new RepairModule(this));
         modules.install(new BottleXpModule(this));
         modules.install(new GiveAllModule(this));
