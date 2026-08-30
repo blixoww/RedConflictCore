@@ -224,14 +224,14 @@ boutique:
       commande: "lp user %player% permission set greatkits.kits.Bonus true"
       prix_monnaie: 30000
       prix_pb: 40
-    - id: "kit-potion"
-      nom: "&dKit Potion"
+    - id: "kit-potions"
+      nom: "&dKit Potions"
       icone: POTION
       description:
         - "&7Kit combat avec potions avancees"
         - "&7Potions de force, vitesse, regeneration"
         - "&7Dominez chaque combat"
-      commande: "lp user %player% permission set greatkits.kits.Potion true"
+      commande: "lp user %player% permission set greatkits.kits.Potions true"
       prix_monnaie: 50000
       prix_pb: 65
 
@@ -363,7 +363,7 @@ boutique:
         - "&7Epee Cobalt Tranchant V"
         - "&7Pioche Cobalt Efficacite V Incassable III"
         - "&710 stacks d'Obsidienne"
-        - "&dKit Potion &7(Permanent)"
+        - "&dKit Potions &7(Permanent)"
         - "&73 Cles en Cobalt"
       # Composantes individuelles ~1305 PB en perm → pack à 500 PB (-62%, cap 50€)
       prix_pb: 400
