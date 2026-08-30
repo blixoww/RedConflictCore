@@ -217,29 +217,61 @@ public class CombatCheck implements Listener {
         if (!enabled("through-wall")) {
             return;
         }
+
         Location eye = attacker.getEyeLocation();
         Location targetEye = target.getLocation().add(0, 1.0, 0);
+
         if (eye.getWorld() != targetEye.getWorld()) {
             return;
         }
+
         Vector direction = targetEye.toVector().subtract(eye.toVector());
         double length = direction.length();
-        if (length < 1.5 || length > 8) {
+
+        if (length < 1.5 || length > 8.0) {
             return;
         }
-        try {
-            BlockIterator iterator = new BlockIterator(
-                    eye.getWorld(), eye.toVector(), direction.normalize(), 0, (int) (length - 1));
-            while (iterator.hasNext()) {
-                Block block = iterator.next();
-                if (block.getType().isSolid() && block.getType().isOccluding()) {
-                    violations.flag(attacker, Check.THROUGH_WALL,
-                            "à travers " + block.getType() + " sur " + String.format("%.1f", length) + " blocs");
+
+        Vector step = direction.normalize().multiply(0.25);
+        Location current = eye.clone();
+
+        double maxDistance = length - 1.0;
+        double travelled = 0.0;
+
+        int lastChunkX = Integer.MIN_VALUE;
+        int lastChunkZ = Integer.MIN_VALUE;
+
+        while (travelled < maxDistance) {
+            int blockX = current.getBlockX();
+            int blockY = current.getBlockY();
+            int blockZ = current.getBlockZ();
+
+            int chunkX = blockX >> 4;
+            int chunkZ = blockZ >> 4;
+
+            if (chunkX != lastChunkX || chunkZ != lastChunkZ) {
+                if (!eye.getWorld().isChunkLoaded(chunkX, chunkZ)) {
                     return;
                 }
+
+                lastChunkX = chunkX;
+                lastChunkZ = chunkZ;
             }
-        } catch (IllegalStateException ignored) {
-            // BlockIterator refuse les vecteurs dégénérés : rien à conclure.
+
+            Block block = eye.getWorld().getBlockAt(blockX, blockY, blockZ);
+
+            if (block.getType().isSolid() && block.getType().isOccluding()) {
+                violations.flag(
+                        attacker,
+                        Check.THROUGH_WALL,
+                        "à travers " + block.getType()
+                                + " sur " + String.format("%.1f", length) + " blocs"
+                );
+                return;
+            }
+
+            current.add(step);
+            travelled += 0.25;
         }
     }
 
