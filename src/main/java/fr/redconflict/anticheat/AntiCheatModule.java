@@ -30,6 +30,9 @@ import org.bukkit.scheduler.BukkitTask;
  */
 public class AntiCheatModule implements Module, Listener {
 
+    /** Positions passées, pour la compensation de latence (voir CombatCheck). */
+    private PositionHistory positions;
+
     private final Plugin plugin;
 
     private ViolationTracker violations;
@@ -37,6 +40,7 @@ public class AntiCheatModule implements Module, Listener {
     private AttestationService attestation;
     private VisibilityCulling visibility;
     private AimCheck aim;
+    private HoneypotCheck honeypot;
     private BukkitTask decayTask;
 
     public AntiCheatModule(Plugin plugin) {
@@ -63,7 +67,12 @@ public class AntiCheatModule implements Module, Listener {
         }
 
         Bukkit.getPluginManager().registerEvents(new MovementCheck(plugin, violations), plugin);
-        Bukkit.getPluginManager().registerEvents(new CombatCheck(plugin, violations), plugin);
+        // L'historique des positions alimente la compensation de latence de
+        // l'allonge. Il s'échantillonne à chaque tick, indépendamment des
+        // événements de déplacement.
+        positions = new PositionHistory();
+        positions.start(plugin);
+        Bukkit.getPluginManager().registerEvents(new CombatCheck(plugin, violations, positions), plugin);
         Bukkit.getPluginManager().registerEvents(new MiningCheck(plugin, violations), plugin);
 
         // Visée : le seul contrôle de combat qui ne mesure pas une quantité mais
@@ -72,6 +81,15 @@ public class AntiCheatModule implements Module, Listener {
         this.aim = new AimCheck(plugin, violations);
         Bukkit.getPluginManager().registerEvents(aim, plugin);
         aim.start();
+
+        // Entite fantome : le piege. Tous les controles au-dessus mesurent une
+        // grandeur et tolerent une marge, donc laissent passer ce qui se regle
+        // juste en dessous. Celui-ci ne mesure rien — il constate qu'un paquet
+        // a designe une cible que la boucle de visee du jeu ne pouvait pas
+        // designer. C'est le seul dont un declenchement se defend seul.
+        this.honeypot = new HoneypotCheck(plugin, violations);
+        Bukkit.getPluginManager().registerEvents(honeypot, plugin);
+        honeypot.start();
 
         registerCleanup();
 
@@ -93,11 +111,19 @@ public class AntiCheatModule implements Module, Listener {
 
     @Override
     public void disable() {
+        if (positions != null) {
+            positions.stop();
+            positions = null;
+        }
         if (visibility != null) {
             visibility.stop();
         }
         if (aim != null) {
             aim.stop();
+        }
+        if (honeypot != null) {
+            honeypot.stop();
+            honeypot = null;
         }
         if (decayTask != null) {
             decayTask.cancel();
@@ -141,6 +167,9 @@ public class AntiCheatModule implements Module, Listener {
         }
         if (visibility != null) {
             visibility.forget(player.getUniqueId());
+        }
+        if (honeypot != null) {
+            honeypot.forget(player.getUniqueId());
         }
     }
 }

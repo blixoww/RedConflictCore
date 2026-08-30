@@ -208,7 +208,12 @@ public class EssentialsModule implements Module, Reloadable {
         commands.register("enchant", new EnchantCommand(env, enchantments));
         commands.register("anvil", new AnvilCommand(env));
         commands.register("craft", new WorkbenchCommand(env));
-        commands.register("ec", new EnderchestCommand(env));
+        // Le /ec d'un joueur hors ligne se lit dans player_data, la table du
+        // transfert entre serveurs. Une instance de lecture suffit : elle ne
+        // tient aucun etat et ne cree rien (init() reste l'affaire du module de
+        // synchronisation, qui peut tres bien etre desactive — le /ec le dira).
+        commands.register("ec", new EnderchestCommand(env, seen, invsee,
+                new fr.redconflict.db.PlayerDataDatabase(database)));
         commands.register("hat", new HatCommand(env));
         commands.register("invsee", new InvseeCommand(env, invsee));
         // Joueur / statut
@@ -243,6 +248,7 @@ public class EssentialsModule implements Module, Reloadable {
         pm.registerEvents(new IgnoreChatListener(ignores), plugin);
         pm.registerEvents(new fr.redconflict.essentials.listener.ChatColorListener(), plugin);
         pm.registerEvents(new InvseeListener(invsee), plugin);
+        pm.registerEvents(new fr.redconflict.essentials.listener.SpawnListener(spawns), plugin);
         pm.registerEvents(new WeatherLockListener(weather), plugin);
 
         Bukkit.getScheduler().runTaskTimer(plugin, cooldowns::purgeExpired,

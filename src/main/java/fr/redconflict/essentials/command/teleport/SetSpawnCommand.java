@@ -10,6 +10,10 @@ import org.bukkit.entity.Player;
 
 /**
  * /setspawn — définit le spawn du serveur à la position actuelle (admin).
+ *
+ * <p>Trois choses d'un coup : la destination de {@code /spawn}, le spawn du
+ * monde (boussole, mort sans lit) et l'endroit où apparaissent les joueurs qui
+ * découvrent la carte — ce dernier via {@code SpawnListener}.
  */
 public class SetSpawnCommand extends EssCommand {
 
@@ -28,6 +32,7 @@ public class SetSpawnCommand extends EssCommand {
         player.sendMessage(Text.success("Spawn défini en §f" + location.getBlockX() + ", "
                 + location.getBlockY() + ", " + location.getBlockZ()
                 + " §7(" + location.getWorld().getName() + ")§a."));
+        player.sendMessage(Text.info("Les nouveaux joueurs apparaîtront ici."));
         return true;
     }
 }

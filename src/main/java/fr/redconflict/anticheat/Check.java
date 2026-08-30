@@ -73,6 +73,15 @@ public enum Check {
     /** Proportion de minerais rares trop élevée pour être due au hasard. */
     XRAY("xray", "X-ray probable"),
 
+    /**
+     * Coup porte sur une entite fantome placee hors du champ de vision.
+     *
+     * <p>Le seul controle du module qui produise une PREUVE et non un indice :
+     * il ne mesure aucune grandeur et ne compare a aucun seuil, il constate une
+     * impossibilite geometrique. Voir {@link HoneypotCheck}.
+     */
+    HONEYPOT("honeypot", "Entite fantome"),
+
     /** Messages de canal trop gros ou trop nombreux. */
     CHANNEL_ABUSE("channels", "Abus de canal"),
 

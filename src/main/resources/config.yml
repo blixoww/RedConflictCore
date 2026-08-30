@@ -129,16 +129,48 @@ anticheat:
     enabled: true
     threshold: 8
 
-  # Allonge au combat. 3 blocs dans le jeu ; la marge couvre la latence.
+  # Allonge au combat.
+  #
+  # La 1.8 autorise 3 blocs. L'ancien plafond de 4,2 forfaitisait la latence :
+  # 1,2 bloc de mou accorde a TOUT LE MONDE en permanence, y compris a un joueur
+  # a 15 ms qui n'en a aucun besoin — et un killaura regle sur 4,1 blocs passait
+  # sous le radar pour toujours.
+  #
+  # Le controle rembobine desormais la cible sur la profondeur que le ping de
+  # l'attaquant rend plausible (PositionHistory) et retient la position la plus
+  # favorable a celui-ci. La latence etant payee a son cout reel, joueur par
+  # joueur, le plafond redescend pres de la valeur du jeu.
+  #
+  # 3.25 est un reglage prudent. Descendre vers 3.1 resserre encore l'etau ;
+  # surveiller d'abord les signalements pendant quelques jours.
   reach:
     enabled: true
-    max-blocks: 4.2
+    max-blocks: 3.25
+    # Marge ajoutee au ping pour couvrir la gigue et le retard de tick.
+    latency-margin-ms: 150
     threshold: 8
 
   # Coups PORTÉS par seconde (pas les clics : seuls les coups qui touchent).
+  #
+  # Ce plafond mesure une QUANTITE : un autoclick regle a 10 coups/s passe
+  # dessous sans difficulte. C'est pourquoi il est double d'une analyse de la
+  # REGULARITE, qui mesure une maniere et non un volume.
+  #
+  # Une main humaine ne produit jamais deux intervalles identiques : tremblement
+  # et fatigue donnent un ecart-type de 15 a 40 % de l'intervalle moyen. Un
+  # automate reste sous 10 %, meme « randomise ». Baisser sa cadence ne l'aide
+  # pas : il devient un automate lent.
   autoclick:
     enabled: true
     max-hits-per-second: 16
+    # Coefficient de variation (ecart-type / moyenne) sous lequel la cadence est
+    # jugee mecanique. 0.10 est prudent ; un humain descend rarement sous 0.15.
+    max-cv: 0.10
+    # Intervalles rigoureusement identiques toleres dans l'echantillon.
+    max-repeats: 6
+    # Taille minimale d'echantillon avant tout verdict : on juge une sequence de
+    # combat soutenue, jamais trois clics.
+    min-samples: 20
     threshold: 10
 
   # Coup à travers un bloc plein. Le tracé s'arrête un bloc avant la cible pour
@@ -200,6 +232,64 @@ anticheat:
     window-ms: 250
     max-targets: 3
     threshold: 4
+
+  # Entite fantome (honeypot) — le piege.
+  #
+  # Tous les controles ci-dessus mesurent une grandeur et la comparent a un
+  # seuil. Un seuil est un compromis : assez large pour epargner le joueur a
+  # 250 ms de latence, donc assez large pour qu'une triche reglee juste en
+  # dessous passe. On discute toujours d'un chiffre.
+  #
+  # Celui-ci ne mesure rien. Il pose une entite INVISIBLE dans le DOS du joueur
+  # pendant une seconde et demie. Le client vanilla choisit sa cible en lancant
+  # un rayon droit devant lui : une entite situee derriere n'est jamais
+  # candidate, quelle que soit la latence. Si le paquet d'attaque la nomme quand
+  # meme, il a ete fabrique. Ce n'est pas un indice, c'est une preuve — d'où le
+  # seuil a 1, le seul du module.
+  #
+  # L'action reste 'alert' au depart : le raisonnement est solide mais il n'a
+  # pas encore tourne sur CE serveur. Regarde-le se declencher une fois, puis :
+  #   action: command
+  #   command: "ban %player% perm Killaura"
+  honeypot:
+    enabled: true
+
+    # Support de l'entite. ARMOR_STAND est de loin le plus sûr : aucun son,
+    # aucune combustion au soleil, aucune intelligence, aucun butin, et une
+    # boite de collision normale.
+    #
+    # Un mob classique (ZOMBIE, PIG_ZOMBIE...) mord davantage d'auras — beaucoup
+    # ne visent que ce qui peut riposter et ignorent les porte-armures — mais il
+    # produit des sons d'ambiance et, pour les morts-vivants, du feu au soleil.
+    # Le code l'eteint et le rend invisible, sans garantie que rien ne se voie.
+    entity-type: ARMOR_STAND
+
+    # Ne se pose que sur un joueur ayant frappe au corps a corps recemment. Une
+    # aura n'existe qu'en combat ; hors combat on ne veut aucune entite en trop.
+    engage-window-seconds: 20
+
+    # Espacement entre deux poses pour un meme joueur.
+    interval-seconds: 30
+
+    # Distance de pose, en blocs. Assez pres pour entrer dans la portee que
+    # scrute une aura, assez loin pour ne jamais gener le joueur.
+    spawn-distance: 2.6
+
+    # Duree de vie. Courte a dessein : une aura frappe en quelques dizaines de
+    # millisecondes, et une entite qui traine est une entite qu'on remarque.
+    lifetime-ms: 1500
+
+    # Ecart minimal entre le regard du joueur AU MOMENT DU COUP et la direction
+    # de l'entite. Au-dela de 90 degres l'entite est derriere lui, donc hors de
+    # tout rayon de visee possible. La marge a 100 absorbe le desynchronisme de
+    # rotation sans jamais rendre un vrai coup suspect.
+    min-angle-degrees: 100.0
+
+    # Mondes ou l'on ne pose rien (evenementiel, lobby, parcours...).
+    disabled-worlds: []
+
+    # Un seul declenchement suffit : il n'y a pas de bruit a absorber.
+    threshold: 1
 
   # Minage : cadence et distance.
   nuker:

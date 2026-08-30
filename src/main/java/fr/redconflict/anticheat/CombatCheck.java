@@ -37,9 +37,16 @@ public class CombatCheck implements Listener {
     private final ViolationTracker violations;
     private final Map<UUID, Window> windows = new ConcurrentHashMap<UUID, Window>();
 
-    public CombatCheck(Plugin plugin, ViolationTracker violations) {
+    /** Positions passées des joueurs — voir {@link PositionHistory}. */
+    private final PositionHistory positions;
+
+    /** Régularité des clics — voir {@link ClickPattern}. */
+    private final ClickPattern clicks = new ClickPattern();
+
+    public CombatCheck(Plugin plugin, ViolationTracker violations, PositionHistory positions) {
         this.plugin = plugin;
         this.violations = violations;
+        this.positions = positions;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -77,13 +84,60 @@ public class CombatCheck implements Listener {
         if (eye.getWorld() != target.getWorld()) {
             return;
         }
-        double distance = distanceToBox(eye, target);
-        double max = plugin.getConfig().getDouble("anticheat.reach.max-blocks", 4.2);
+
+        // ── Compensation de latence ──────────────────────────────────────────
+        //
+        // On rembobine la cible sur la profondeur que le ping de l'attaquant
+        // rend plausible, et on retient la position la PLUS FAVORABLE à
+        // celui-ci. La latence est donc payée à son coût réel, joueur par
+        // joueur, au lieu d'être forfaitisée dans un plafond gonflé.
+        //
+        // C'est ce qui permet de ramener le plafond de 4,2 à 3,25 blocs : le
+        // mou de 1,2 bloc qu'on accordait à tout le monde — et dont un killaura
+        // se servait pour rester sous le seuil — disparaît, sans faire remonter
+        // le joueur à 200 ms.
+        int ping = pingOf(attacker);
+        long margin = plugin.getConfig().getLong("anticheat.reach.latency-margin-ms", 150L);
+        long window = Math.min(2000L, Math.max(0, ping) + Math.max(0L, margin));
+
+        double distance = positions.minDistanceToBox(eye, target, window);
+        double max = plugin.getConfig().getDouble("anticheat.reach.max-blocks", 3.25);
         if (distance > max) {
             violations.flag(attacker, Check.REACH,
-                    String.format("%.2f blocs (max %.2f)", distance, max));
+                    String.format("%.2f blocs (max %.2f, ping %d ms)", distance, max, ping));
         }
     }
+
+    /**
+     * Ping de l'attaquant, ou 0 s'il est illisible.
+     *
+     * <p>Lu par réflexion sur {@code EntityPlayer.ping} : l'API Bukkit 1.8 ne
+     * l'expose pas. Les accesseurs sont résolus une fois et mémorisés.
+     *
+     * <p>Un ping introuvable donne 0 : la fenêtre se réduit alors à la marge,
+     * donc le contrôle devient plus STRICT, jamais plus permissif. Une panne de
+     * mesure ne doit pas ouvrir une porte.
+     */
+    private int pingOf(Player attacker) {
+        try {
+            if (pingLookupFailed) return 0;
+            if (craftGetHandle == null) {
+                craftGetHandle = attacker.getClass().getMethod("getHandle");
+                Object handle = craftGetHandle.invoke(attacker);
+                entityPingField = handle.getClass().getField("ping");
+            }
+            Object handle = craftGetHandle.invoke(attacker);
+            return entityPingField.getInt(handle);
+        } catch (Throwable t) {
+            pingLookupFailed = true;
+            return 0;
+        }
+    }
+
+    private java.lang.reflect.Method craftGetHandle;
+    private java.lang.reflect.Field  entityPingField;
+    private boolean pingLookupFailed;
+
 
     /**
      * Distance de l'œil à la boîte de collision de la cible, approchée par sa
@@ -133,6 +187,23 @@ public class CombatCheck implements Listener {
         if (hits > max) {
             violations.flag(attacker, Check.AUTOCLICK, hits + " coups portés/s (max " + max + ")");
         }
+
+        // ── Régularité ───────────────────────────────────────────────────────
+        //
+        // Le plafond ci-dessus mesure une QUANTITÉ, donc il se contourne en
+        // restant dessous. Celui-ci mesure une MANIÈRE : un automate réglé à
+        // 10 coups/s passe le premier sans difficulté, mais ne peut pas imiter
+        // le tremblement d'un poignet.
+        double maxCv = plugin.getConfig().getDouble("anticheat.autoclick.max-cv", 0.10);
+        int maxRepeats = plugin.getConfig().getInt("anticheat.autoclick.max-repeats", 6);
+        int minSamples = plugin.getConfig().getInt("anticheat.autoclick.min-samples", 20);
+
+        ClickPattern.Verdict v = clicks.record(attacker.getUniqueId(), now, maxCv, maxRepeats, minSamples);
+        if (v.suspicious) {
+            violations.flag(attacker, Check.AUTOCLICK,
+                    String.format("cadence mécanique : variation %.3f (< %.2f), %d intervalles identiques sur %d",
+                            v.cv, maxCv, v.repeats, v.samples));
+        }
     }
 
     /**
@@ -174,6 +245,7 @@ public class CombatCheck implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        clicks.forget(event.getPlayer().getUniqueId());
         windows.remove(event.getPlayer().getUniqueId());
     }
 

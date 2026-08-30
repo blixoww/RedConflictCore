@@ -27,9 +27,14 @@ commands:
     description: Hôtel des Ventes
     usage: /hdv [info|collect|history|list|clear|reload]
     aliases: [ah]
-  shop:
-    description: Boutique du serveur (prix dynamiques)
-    usage: /shop [open]
+  # Renommee : « shop » designait le marche des ressources a cours variable,
+  # alors que « boutique » designait le catalogue a prix fixes. Les deux noms se
+  # confondaient, et /shop n'ouvrait pas ce que les joueurs attendaient.
+  #   /bourse -> marche des ressources (cours dynamiques)
+  #   /shop   -> Boutique (grades, kits, packs) — voir l'alias sur pbshop
+  bourse:
+    description: Bourse du serveur — ressources au cours du marche
+    usage: /bourse [open]
     aliases: [magasin]
   pb:
     description: Consulter ou administrer les Points Boutique
@@ -38,7 +43,9 @@ commands:
   pbshop:
     description: Ouvre la boutique PB (grades, commandes, spawners, offres spéciales)
     usage: /pbshop [offre <id> enable|disable|reroll] | /pbshop reload
-    aliases: [boutique, pbboutique]
+    # « shop » pointe desormais ici : c'est la Boutique que les joueurs
+    # cherchent quand ils la tapent.
+    aliases: [boutique, pbboutique, shop]
   rcvote:
     description: Récompense un vote (appelée par Azuriom via AzLink)
     usage: /rcvote <pseudo> | reload | info | compte <pseudo> | reset <pseudo>

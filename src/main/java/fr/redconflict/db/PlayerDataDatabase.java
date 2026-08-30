@@ -108,7 +108,7 @@ public class PlayerDataDatabase {
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(
                 "SELECT inv_main, inv_armor, held_slot, ender, exp_level, exp_progress, " +
-                "health, food, saturation, effects FROM player_data WHERE uuid = ?")) {
+                "health, food, saturation, effects, updated_at FROM player_data WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -123,6 +123,7 @@ public class PlayerDataDatabase {
                     d.food        = rs.getInt("food");
                     d.saturation  = rs.getFloat("saturation");
                     d.effects     = rs.getBytes("effects");
+                    d.updatedAt   = rs.getLong("updated_at");
                     return d;
                 }
             }
@@ -142,5 +143,11 @@ public class PlayerDataDatabase {
         public int    food        = 20;
         public float  saturation  = 5.0F;
         public byte[] effects;
+        /**
+         * Horodatage de la derniere sauvegarde. Renseigne a la lecture, ignore a
+         * l'ecriture (ou {@code save} pose l'heure courante). Sert a dire au
+         * staff de quand date ce qu'il regarde dans un /ec hors ligne.
+         */
+        public long   updatedAt;
     }
 }

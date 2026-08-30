@@ -36,7 +36,10 @@ public class ShopModule implements Module {
 
         CommandRegistrar commands = new CommandRegistrar(plugin);
         ShopCommand shopCommand = new ShopCommand(plugin, manager);
-        commands.register(shopCommand, "shop", "shopdebug");
+        // « bourse » remplace « shop » : le nom decrit ce que l'ecran fait —
+        // acheter et vendre des ressources a un cours qui bouge. /shop est
+        // desormais un alias de /pbshop, la Boutique.
+        commands.register(shopCommand, "bourse", "shopdebug");
         commands.register("sellall", new SellAllCommand(plugin, manager));
 
         // Événements boursiers (krach, inflation, aubaines).

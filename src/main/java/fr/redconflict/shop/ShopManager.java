@@ -363,7 +363,7 @@ public class ShopManager {
         }
 
         // Retirer l'argent
-        if (!economy.withdrawPlayer(player, totalCost).transactionSuccess()) {
+        if (!economy.withdrawPlayer(player, toCurrency(totalCost)).transactionSuccess()) {
             sendTransactionResult(player, false, "Erreur lors du retrait.", getBalance(player));
             return;
         }
@@ -432,7 +432,7 @@ public class ShopManager {
         long totalEarned = unitSell * quantity;
 
         // Donner l'argent
-        economy.depositPlayer(player, totalEarned);
+        economy.depositPlayer(player, toCurrency(totalEarned));
 
         // Enregistrer le volume cumulatif (prix mis à jour uniquement toutes les 24h)
         database.recordSellVolume(itemId, quantity);
@@ -501,7 +501,7 @@ public class ShopManager {
         }
 
         // Déposer l'argent
-        economy.depositPlayer(player, totalEarned);
+        economy.depositPlayer(player, toCurrency(totalEarned));
         player.updateInventory();
 
         long newBalance = getBalance(player);
@@ -1001,8 +1001,35 @@ public class ShopManager {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  FRONTIÈRE AVEC L'ÉCONOMIE — centimes ⇄ unités
+    // ══════════════════════════════════════════════════════════════════════
+    //
+    // TOUT le shop compte en CENTIMES : le fichier de configuration le dit en
+    // en-tête (« Prix en centimes (100 = 1€) »), formatPrice divise par 100
+    // pour l'affichage, et le client fait de même (GuiShop.fmtC).
+    //
+    // Vault, lui, compte en unités entières de monnaie. Les quatre appels qui
+    // le touchaient passaient donc des centimes bruts :
+    //
+    //   64 Soul Sand à 300 centimes = 19 200 centimes = 192,00 $
+    //   → withdrawPlayer(player, 19200)  ⇒  19 200 $ retirés
+    //
+    // Le joueur voyait « 192,00 $ » et payait cent fois ce prix. Symétrique à
+    // la vente : il encaissait cent fois trop. Et la vérification de solde
+    // comparait des unités à des centimes, donc refusait des achats finançables.
+    //
+    // Les deux conversions ci-dessous sont le SEUL endroit où l'on passe d'une
+    // unité à l'autre. Tout le reste du fichier reste en centimes.
+
+    /** Centimes → unités de monnaie, pour Vault. */
+    private static double toCurrency(long centimes) {
+        return centimes / 100.0D;
+    }
+
+    /** Solde du joueur, EN CENTIMES — l'unité de tout le reste du shop. */
     private long getBalance(Player player) {
-        return economy != null ? (long) economy.getBalance(player) : 0L;
+        return economy != null ? Math.round(economy.getBalance(player) * 100.0D) : 0L;
     }
 
     private String formatPrice(long centimes) {

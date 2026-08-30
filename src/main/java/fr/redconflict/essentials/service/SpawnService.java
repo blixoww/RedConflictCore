@@ -27,7 +27,15 @@ public class SpawnService {
         return cached != null;
     }
 
-    /** Définit le spawn du serveur et aligne le spawn du monde (boussoles, premiers joins). */
+    /**
+     * Définit le spawn du serveur et aligne le spawn du monde (boussoles, mort
+     * sans lit).
+     *
+     * <p>Aligner le spawn du monde ne suffit pas pour le <b>premier passage</b>
+     * d'un joueur : celui-ci apparaît au spawn du monde principal, et les
+     * coordonnées de bloc perdent l'orientation du regard. C'est
+     * {@code SpawnListener} qui s'en charge, sur l'événement de connexion.
+     */
     public void set(Location location) {
         this.cached = StoredLocation.of(location);
         repository.save(this.cached);

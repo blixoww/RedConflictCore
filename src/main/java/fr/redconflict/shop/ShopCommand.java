@@ -17,7 +17,9 @@ public class ShopCommand extends CoreCommand {
     private final ShopManager manager;
 
     public ShopCommand(JavaPlugin plugin, ShopManager manager) {
-        super(plugin, "shop", false);
+        // « bourse » : le nom sert aux messages et au journal ; il doit dire ce
+        // que la commande ouvre, pas ce qu'elle s'appelait avant.
+        super(plugin, "bourse", false);
         this.manager = manager;
     }
 

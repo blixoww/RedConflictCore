@@ -49,6 +49,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\config\EssentialsConfig.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\profil\ProfilCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\annonyme\AnonymeModule.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\anticheat\ClickPattern.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\bounty\FactionLeaveTracker.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\announce\AnnounceCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\site\OrderService.java
@@ -64,6 +65,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\boutique\PBShopModule.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\automsg\AutoMessageManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\friend\FriendCommand.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\anticheat\HoneypotCheck.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\economy\EssentialsImporter.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\faction\FactionModule.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\db\Database.java
@@ -207,6 +209,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\bounty\BountyCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\data\PlayerDatabase.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\repository\h2\H2AccountRepository.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\anticheat\PositionHistory.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\core\command\CommandRegistrar.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\command\economy\PayCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\service\TeleportRequestPolicy.java
@@ -254,6 +257,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\job\JobArtisanListener.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\trade\TradeModule.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\vote\VoteRewards.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\listener\SpawnListener.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\staff\commands\WarnCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\anticheat\AimCheck.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\death\DeathMessages.java
