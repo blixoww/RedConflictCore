@@ -55,9 +55,11 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\anticheat\CombatCheck.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\command\world\WeatherCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\useful\MessagingModule.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\staff\HwidBanService.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\announce\AnnounceService.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\death\EnchantName.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\rtp\RtpListener.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\worldborder\WorldBorderService.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\job\JobManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\boutique\PBShopModule.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\automsg\AutoMessageManager.java
@@ -65,6 +67,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\economy\EssentialsImporter.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\faction\FactionModule.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\db\Database.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\worldborder\WorldBorderModule.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\staff\commands\BanCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\clearlagg\ClearLaggCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\pb\PBLogger.java
@@ -75,6 +78,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\pb\PBManager.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\faction\FactionHook.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\site\EntitlementService.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\site\HwidMirror.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\site\OrderRetry.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\listeners\DisabledCommands.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\boutique\BoutiqueAnnonce.java
@@ -234,6 +238,7 @@ C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\anticheat\MiningCheck.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\command\teleport\SetWarpCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\faction\FactionDataSender.java
+C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\worldborder\WorldBorderListener.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\RedConflictCore.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\command\player\PotionCommand.java
 C:\Users\Valentin\Desktop\JAVA MC\Project\IntelliJ\RedConflictCore\src\main\java\fr\redconflict\essentials\repository\h2\H2IgnoreRepository.java

@@ -265,7 +265,7 @@ commands:
     usage: /tpahere <joueur>
   tp:
     description: Téléportation directe (admin)
-    usage: /tp <joueur> [joueur2]
+    usage: /tp <joueur> [joueur2] | /tp [joueur] <x> <y> <z>
     permission: redconflict.tp
   top:
     description: Se téléporter au sommet du bloc courant

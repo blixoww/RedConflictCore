@@ -338,6 +338,42 @@ anticheat:
     threshold: 1
     action: kick
 
+  # ── Ban matériel (HWID) ────────────────────────────────────────────────────
+  # Le compte banni qui revient sous un pseudo neuf, depuis le même PC.
+  #
+  # Le client rapporte au join une empreinte de sa machine — des SHA-256, jamais
+  # un vrai numéro de série — par le canal signé. Le serveur la stocke, puis
+  # cherche un compte SOUS BAN ACTIF qui partage assez de matériel.
+  #
+  # Ce n'est PAS un verrou absolu : le relevé a lieu chez le joueur, donc un
+  # spoofer peut mentir. Ça élève le coût du contournement, ça ne l'interdit
+  # pas. Les verrous durs restent le ban de compte et le ban d'IP, que le
+  # serveur voit lui-même.
+  #
+  # Le launcher applique la même règle AVANT le lancement (bouton JOUER grisé),
+  # en lisant le miroir publié dans la base du site. Rien à régler de ce côté :
+  # les trois valeurs ci-dessous y sont recopiées à chaque cycle.
+  ban:
+    hwid:
+      # false par défaut, à dessein : on n'active un refus automatique qu'en
+      # connaissance de cause.
+      enabled: false
+
+      # Refuser les machines virtuelles. C'est le contournement le plus propre
+      # d'un ban matériel — repartir d'un « PC neuf » à volonté. Faux positifs
+      # possibles (cloud gaming, portables OEM qui se déclarent « Virtual
+      # Machine »), d'où un interrupteur séparé.
+      block-vms: true
+
+      # Score de correspondance requis pour refuser. Chaque TYPE de composant
+      # qui coïncide apporte son poids, une seule fois :
+      #   machine-id 3 · disque 3 · UUID SMBIOS 2 · MAC 1 · carte mère 1
+      # À 4, il faut donc au moins deux composants sérieux — un machine-id seul
+      # (3) ne suffit pas. Monter ce chiffre rend le refus plus rare et plus sûr,
+      # le baisser attrape plus large au risque de toucher deux frères qui
+      # jouent sur le même ordinateur.
+      threshold: 4
+
 # ── Système Anti Lag-Switch ───────────────────────────────────────────────────
 lagswitch:
 

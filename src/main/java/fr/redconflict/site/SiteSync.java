@@ -58,6 +58,14 @@ public final class SiteSync {
     private long intervalMinutes;
 
     /**
+     * Miroir des empreintes matérielles des bannis, publié dans le même cycle.
+     * Il ne concerne pas les profils, mais il lit les mêmes deux bases et doit
+     * tourner à la même cadence : lui donner sa propre tâche périodique aurait
+     * doublé les réveils pour rien.
+     */
+    private final HwidMirror hwid;
+
+    /**
      * La colonne {@code rc_factions.points} est-elle en place ? Elle est arrivee apres les autres :
      * une base deja deployee ne l'a pas tant que la migration SQL n'est pas passee, et le miroir
      * doit continuer de tourner sans elle plutot que d'echouer a chaque cycle.
@@ -68,6 +76,7 @@ public final class SiteSync {
         this.plugin = plugin;
         this.h2 = h2;
         this.site = site;
+        this.hwid = new HwidMirror(plugin, h2, site);
     }
 
     // ── Cycle de vie ───────────────────────────────────────────────────────────
@@ -264,6 +273,14 @@ public final class SiteSync {
         if (!site.isAvailable() || !h2.isAvailable()) return;
 
         long started = System.currentTimeMillis();
+
+        // En premier, et hors du try qui suit : le miroir HWID a sa propre
+        // gestion d'erreur, et il ne doit pas dépendre du miroir des profils.
+        // Une panne sur les classements laisserait sinon les empreintes des
+        // bannis se périmer — et le launcher laisserait entrer un banni parce
+        // qu'une agrégation de factions a échoué.
+        int hwidRows = hwid.sync();
+
         int players;
         int factions;
         try {
@@ -281,7 +298,24 @@ public final class SiteSync {
 
         long ms = System.currentTimeMillis() - started;
         plugin.getLogger().info("[SiteSync] " + players + " profils, "
-                + factions + " factions en " + ms + " ms.");
+                + factions + " factions"
+                + (hwidRows >= 0 ? ", " + hwidRows + " empreintes bannies" : "")
+                + " en " + ms + " ms.");
+    }
+
+    /**
+     * Republie les empreintes des bannis sans attendre le cycle complet.
+     *
+     * <p>Appelee apres un {@code /ban} ou un {@code /unban} : la sanction prend
+     * effet en jeu tout de suite (le serveur relit H2 a chaque connexion), et il
+     * n'y a aucune raison que le launcher, lui, reste cinq minutes en retard —
+     * ni pour bloquer, ni surtout pour debloquer un joueur qu'on vient de
+     * gracier.
+     *
+     * <p>A n'appeler que depuis un thread asynchrone.
+     */
+    public void syncHwidNow() {
+        hwid.sync();
     }
 
     /**

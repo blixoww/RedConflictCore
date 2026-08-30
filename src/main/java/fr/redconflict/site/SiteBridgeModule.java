@@ -132,6 +132,24 @@ public final class SiteBridgeModule implements Module, Listener {
     public EntitlementService getEntitlements() { return entitlements; }
     public OrderService getOrders()            { return orders; }
 
+    /**
+     * Republie les empreintes des bannis — appelée après un {@code /ban} ou un
+     * {@code /unban}.
+     *
+     * <p>Sans condition sur {@code mirror-enabled} : la commande peut être tapée
+     * depuis n'importe quel serveur, et un staff qui gracie un joueur n'a pas à
+     * savoir lequel porte le miroir. Les deux calculeraient de toute façon le
+     * même résultat depuis la même base H2, et l'écriture est une transaction
+     * complète — au pire, deux passages se marchent dessus, l'un échoue, et le
+     * cycle suivant remet tout d'aplomb.
+     */
+    public void refreshHwidMirror() {
+        if (sync == null) return;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+            @Override public void run() { sync.syncHwidNow(); }
+        });
+    }
+
     /** Republie le catalogue — appelée après un {@code /pbshop reload}. */
     public void republishCatalog() {
         if (catalogExporter == null) return;

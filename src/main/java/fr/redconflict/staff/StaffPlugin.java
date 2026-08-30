@@ -15,12 +15,18 @@ public class StaffPlugin {
     private final StaffDatabase db;
     private final StaffListener listener;
     private final RedConflictCore plugin;
+    private final HwidBanService hwidBan;
 
     public StaffPlugin(RedConflictCore plugin) {
         this.plugin = plugin;
         this.db = new StaffDatabase(plugin.getCoreDatabase());
         this.listener = new StaffListener(db, plugin);
+        this.hwidBan = new HwidBanService(plugin, db);
+        // Exposé au plugin pour que la poignée de paquet HWID le retrouve.
+        plugin.setHwidBanService(hwidBan);
     }
+
+    public HwidBanService getHwidBan() { return hwidBan; }
 
     public boolean enable() {
         if (!db.init()) return false;

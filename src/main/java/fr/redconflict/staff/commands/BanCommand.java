@@ -83,6 +83,7 @@ public class BanCommand extends CoreCommand {
             if (p.isOp() || p.hasPermission("staff.staff")) p.sendMessage(broadcastMsg);
 
         sender.sendMessage(StaffFormatter.PREFIX + "§a✔ §f" + name + " §abanni — " + expiryLabel);
+        refreshHwidMirror();
     }
 
     private void handleUnban(CommandSender sender, String[] args) {
@@ -98,6 +99,28 @@ public class BanCommand extends CoreCommand {
 
         listener.broadcastStaff(StaffFormatter.PREFIX + "§a✔ §f" + staffName + " §aa débanni §f" + name);
         sender.sendMessage(StaffFormatter.PREFIX + "§a✔ §f" + name + " §adébanni avec succès.");
+        refreshHwidMirror();
+    }
+
+    /**
+     * Pousse les empreintes des bannis vers le site sans attendre le cycle du
+     * miroir (5 min).
+     *
+     * <p>Le jeu, lui, n'a rien a attendre : il relit les sanctions dans H2 a
+     * chaque connexion. C'est le launcher qui, sans ce coup de pouce, laisserait
+     * un joueur gracie devant un bouton grise en se demandant pourquoi.
+     *
+     * <p>Silencieux et sans consequence si le pont vers le site est inactif : la
+     * sanction est deja enregistree, c'est tout ce qui compte.
+     */
+    private void refreshHwidMirror() {
+        try {
+            fr.redconflict.site.SiteBridgeModule bridge =
+                    fr.redconflict.RedConflictCore.getInstance().getSiteBridge();
+            if (bridge != null) bridge.refreshHwidMirror();
+        } catch (Throwable ignored) {
+            // Pont absent ou plugin en cours d'extinction : rien a signaler.
+        }
     }
 
     private boolean isStaff(CommandSender s) {

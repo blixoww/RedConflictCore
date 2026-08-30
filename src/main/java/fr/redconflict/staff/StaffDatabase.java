@@ -4,7 +4,11 @@ import fr.redconflict.db.Database;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Accès H2 (pool partagé) pour le système staff.
@@ -62,6 +66,27 @@ public class StaffDatabase {
                             "  PRIMARY KEY (uuid, block)" +
                             ")"
             );
+
+            // Empreintes matérielles (HWID) — même rôle que player_ips, en plus
+            // fin : une ligne par (uuid, type de composant, empreinte). Un joueur
+            // a plusieurs lignes (machine-id, chaque disque, MAC…). Le hash est un
+            // SHA-256 calculé CÔTÉ CLIENT : aucun vrai numéro de série ici. Le
+            // POIDS accompagne chaque composant (machine-id/disque = 3, etc.) pour
+            // le match flou : on somme les poids des TYPES qui coïncident avec un
+            // compte banni, et on refuse au-delà d'un seuil (anticheat.ban.hwid).
+            st.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS player_hwid (" +
+                            "  uuid    VARCHAR(36) NOT NULL," +
+                            "  name    VARCHAR(32) NOT NULL," +
+                            "  type    VARCHAR(24) NOT NULL," +   // machineId / disk / smbiosUuid / mac / baseboard
+                            "  weight  INT NOT NULL," +
+                            "  hash    VARCHAR(64) NOT NULL," +   // SHA-256 hex, haché côté client
+                            "  seen_at BIGINT NOT NULL," +
+                            "  PRIMARY KEY (uuid, type, hash)" +
+                            ")"
+            );
+            // Recherche par empreinte : « quels comptes partagent ce composant ? »
+            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_hwid_hash ON player_hwid(hash)");
             return true;
         } catch (SQLException e) {
             fr.redconflict.RedConflictCore.getInstance().getLogger().severe("[Staff] Erreur H2 : " + e.getMessage());
@@ -212,6 +237,116 @@ public class StaffDatabase {
         } catch (SQLException e) {
             log("saveIp: " + e.getMessage());
         }
+    }
+
+    // ── HWID (empreinte matérielle) ────────────────────────────────────────────
+
+    /** Un composant d'empreinte reçu du client : type, poids, et ses hachages. */
+    public static final class HwidComponent {
+        public final String type;
+        public final int weight;
+        public final List<String> hashes;
+        public HwidComponent(String type, int weight, List<String> hashes) {
+            this.type = type; this.weight = weight; this.hashes = hashes;
+        }
+    }
+
+    /** Un compte banni dont le matériel recoupe celui du joueur qui se connecte. */
+    public static final class HwidHit {
+        public final String uuid;
+        public final String name;
+        public final int score;
+        public HwidHit(String uuid, String name, int score) {
+            this.uuid = uuid; this.name = name; this.score = score;
+        }
+    }
+
+    /**
+     * Enregistre (ou rafraîchit) l'empreinte matérielle d'un joueur — une ligne
+     * par (uuid, type, hash). Idempotent : un {@code MERGE} par empreinte.
+     */
+    public void saveHwid(String uuid, String name, List<HwidComponent> comps) {
+        String sql = "MERGE INTO player_hwid (uuid, type, hash, name, weight, seen_at) " +
+                     "KEY(uuid, type, hash) VALUES (?, ?, ?, ?, ?, ?)";
+        long now = System.currentTimeMillis();
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            for (HwidComponent comp : comps) {
+                for (String h : comp.hashes) {
+                    ps.setString(1, uuid);
+                    ps.setString(2, comp.type);
+                    ps.setString(3, h);
+                    ps.setString(4, name);
+                    ps.setInt(5, comp.weight);
+                    ps.setLong(6, now);
+                    ps.addBatch();
+                }
+            }
+            ps.executeBatch();
+        } catch (SQLException e) {
+            log("saveHwid: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Cherche un compte <b>banni actif</b> qui partage assez de matériel avec les
+     * composants fournis (contournement par changement de compte, même PC).
+     *
+     * <p>Score = somme des poids des <b>types</b> qui coïncident : un type compte
+     * une seule fois, même si plusieurs disques correspondent, pour ne pas gonfler
+     * artificiellement le score. On renvoie le compte banni au plus fort score
+     * <b>≥ seuil</b>, ou {@code null} si personne n'atteint le seuil — le seuil
+     * évite qu'un simple {@code machine-id} partagé (cybercafé, fratrie) suffise.
+     */
+    public HwidHit findHwidBanEvasion(List<HwidComponent> comps, int threshold) {
+        List<String> allHashes = new ArrayList<>();
+        Map<String, Integer> weightByType = new HashMap<>();
+        for (HwidComponent comp : comps) {
+            weightByType.put(comp.type, comp.weight);
+            allHashes.addAll(comp.hashes);
+        }
+        if (allHashes.isEmpty()) return null;
+
+        StringBuilder in = new StringBuilder();
+        for (int i = 0; i < allHashes.size(); i++) in.append(i == 0 ? "?" : ",?");
+        String sql =
+                "SELECT ph.uuid, ph.name, ph.type FROM player_hwid ph " +
+                "JOIN sanctions s ON s.uuid = ph.uuid AND s.type = 'BAN' AND s.active = 1 " +
+                "  AND (s.expires_at IS NULL OR s.expires_at > ?) " +
+                "WHERE ph.hash IN (" + in + ")";
+
+        Map<String, String> nameByUuid = new HashMap<>();
+        Map<String, Set<String>> typesByUuid = new HashMap<>();
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, System.currentTimeMillis());
+            for (int i = 0; i < allHashes.size(); i++) ps.setString(i + 2, allHashes.get(i));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String u = rs.getString("uuid");
+                    nameByUuid.put(u, rs.getString("name"));
+                    Set<String> types = typesByUuid.get(u);
+                    if (types == null) { types = new HashSet<>(); typesByUuid.put(u, types); }
+                    types.add(rs.getString("type"));
+                }
+            }
+        } catch (SQLException e) {
+            log("findHwidBanEvasion: " + e.getMessage());
+            return null;
+        }
+
+        HwidHit best = null;
+        for (Map.Entry<String, Set<String>> e : typesByUuid.entrySet()) {
+            int score = 0;
+            for (String type : e.getValue()) {
+                Integer w = weightByType.get(type);
+                if (w != null) score += w;
+            }
+            if (score >= threshold && (best == null || score > best.score)) {
+                best = new HwidHit(e.getKey(), nameByUuid.get(e.getKey()), score);
+            }
+        }
+        return best;
     }
 
     /**

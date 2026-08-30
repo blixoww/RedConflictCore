@@ -33,6 +33,9 @@ public class CustomPacketServerHandler implements PluginMessageListener {
     /** Réponse au défi d'intégrité (voir AttestationService). */
     private static final int PACKET_ATTEST_ANSWER = 0x63;
 
+    /** Empreinte matérielle (HWID) + indice de VM (voir HwidBanService). */
+    private static final int PACKET_HWID_REPORT = 0x64;
+
     private final RedConflictCore plugin;
     private final ChannelGuard guard;
 
@@ -55,9 +58,28 @@ public class CustomPacketServerHandler implements PluginMessageListener {
                 handleClientReport(player, reader);
             } else if (packetId == PACKET_ATTEST_ANSWER) {
                 handleAttestation(player, reader);
+            } else if (packetId == PACKET_HWID_REPORT) {
+                handleHwidReport(player, reader);
             }
         } catch (Exception ignored) {
             // Paquet malformé : déjà compté par le garde, rien de plus à faire.
+        }
+    }
+
+    /**
+     * Empreinte matérielle du client (une fois par connexion) : motif de VM puis
+     * composants sérialisés. On délègue tout au {@link HwidBanService}, qui
+     * stocke, croise avec les comptes bannis et refuse VM / contournement. Rien
+     * ici n'est cru sur parole — le service revalide types, poids et hachages.
+     */
+    private void handleHwidReport(Player player, PacketReader reader) throws Exception {
+        String vmReason = reader.readString(64);
+        // Empreinte : jusqu'à ~5 composants x plusieurs hachages de 64 hex ; une
+        // borne large mais finie évite qu'un client modifié envoie un pavé.
+        String fingerprint = reader.readString(4096);
+        fr.redconflict.staff.HwidBanService service = plugin.getHwidBanService();
+        if (service != null) {
+            service.handleReport(player, vmReason, fingerprint);
         }
     }
 

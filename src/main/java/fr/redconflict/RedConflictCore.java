@@ -331,6 +331,21 @@ public class RedConflictCore extends JavaPlugin {
         return this.database;
     }
 
+    /**
+     * Service de ban HWID / refus de VM. Renseigne par StaffPlugin a l'enable ;
+     * consulte paresseusement par la poignee de paquet HWID (peut etre null si le
+     * systeme staff n'est pas encore pret ou desactive).
+     */
+    private volatile fr.redconflict.staff.HwidBanService hwidBanService;
+
+    public fr.redconflict.staff.HwidBanService getHwidBanService() {
+        return this.hwidBanService;
+    }
+
+    public void setHwidBanService(fr.redconflict.staff.HwidBanService service) {
+        this.hwidBanService = service;
+    }
+
     public WorldGuardPlugin getWorldGuard() {
         return this.worldGuard;
     }
