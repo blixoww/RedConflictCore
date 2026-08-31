@@ -87,12 +87,30 @@ public class CombatLogListener implements Listener {
         sender.forget(player.getUniqueId());
     }
 
+    /**
+     * La mort met fin au combat : le tag tombe, et le widget se vide tout de suite.
+     *
+     * <p>Deux corrections tiennent dans ces trois lignes.
+     *
+     * <p>Le tag était bien levé, mais rien n'en informait le client : le widget
+     * gardait son compte à rebours jusqu'au tick suivant de {@link CombatLogSender},
+     * soit jusqu'à une demi-seconde après la mort — et surtout, il réapparaissait
+     * au respawn le temps de ce tick. Un {@code send} immédiat pousse zéro et
+     * masque le widget dans le même tick que la mort.
+     *
+     * <p>Le tag est aussi levé sans condition. La garde {@code timeLeft > 0}
+     * laissait passer le cas où le cooldown venait d'expirer entre le dernier
+     * coup et la mort : le client, lui, gardait son dernier état affiché.
+     *
+     * <p>Le tueur, lui, reste en combat : il peut très bien être encore aux
+     * prises avec quelqu'un d'autre, et lever son tag parce qu'une de ses cibles
+     * est tombée rouvrirait la déconnexion de combat.
+     */
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
-        if (CooldownManager.instance().timeLeft(player, CooldownType.COMBAT) > 0) {
-            CooldownManager.instance().clear(player);
-        }
+        CooldownManager.instance().clear(player, CooldownType.COMBAT);
+        sender.send(player);
     }
 
     public boolean hasPvP(Player player) {

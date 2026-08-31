@@ -16,8 +16,9 @@ Trois bases portent des données vivantes.
 | 3 | **MariaDB `azuriom`** | comptes joueurs, boutique web, rôles, tickets, vote + `rc_players` / `rc_factions` | à faire — cron / Pterodactyl |
 
 À côté, du stockage fichier qui n'est pas une base mais se perd aussi : les
-factions (YAML de RedFaction), les mondes (`world/`, `world/playerdata/`), les
-configurations des plugins.
+factions (`plugins/RedFaction/data/`), les spawners possédés
+(`plugins/MySpawner/Spawners/*.json`), les mondes (`world/`,
+`world/playerdata/`), les configurations des plugins.
 
 > Le point 1 est verrouillé. **Les points 2 et 3 sont le vrai risque** : le
 > journal de migration les signale déjà comme le seul manque dont la perte

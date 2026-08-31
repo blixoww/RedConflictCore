@@ -41,7 +41,7 @@ Aucune permission requise — ne rien accorder, ne rien retirer.
 | `redconflict.back` | `/back` | à l'unité + Elite |
 | `redconflict.craft` | `/craft`, `/wb` | à l'unité + Elite |
 | `redconflict.furnace` | `/furnace` | à l'unité + Elite |
-| `redconflict.nv` | `/vision`, `/nv` | à l'unité + Elite |
+| `redconflict.nv` | `/nightvision`, `/nv`, `/vision` | à l'unité + Elite |
 | `redconflict.sethome.multiple.6` | 6 homes | Elite |
 | `redconflict.ec` | `/ec`, `/enderchest` | à l'unité + Immortel |
 | `redconflict.repair` | `/repairall` | à l'unité + Immortel |

@@ -109,6 +109,7 @@ fr\redconflict\essentials\listener\IgnoreChatListener.class
 fr\redconflict\job\JobType.class
 fr\redconflict\staff\StaffDatabase$HwidHit.class
 fr\redconflict\worldborder\WorldBorderModule.class
+fr\redconflict\anticheat\CombatCheck$SwingWindow.class
 fr\redconflict\bottlexp\BottleXpItem.class
 fr\redconflict\site\SiteBridgeModule$3.class
 fr\redconflict\site\HwidMirror$1.class

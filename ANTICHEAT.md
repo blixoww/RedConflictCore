@@ -73,7 +73,7 @@ plusieurs jours sur ce serveur, avec sa latence et ses habitudes.**
 | `fly` | 6 | altitude tenue ou gagnée sans support |
 | `nofall` | 8 | le client prétend toucher le sol pour annuler les dégâts |
 | `reach` | 8 | allonge, **compensée en latence** (voir §4) |
-| `autoclick` | 10 | régularité des clics (voir §4) |
+| `autoclick` | 10 | cadence et régularité des clics, portés **et à vide** (voir §4) |
 | `through-wall` | 10 | coup porté à travers un bloc plein |
 | `nuker` | 8 | cadence et distance de minage |
 | `xray` | 1 | proportion de minerais rares — **ouvre une enquête, ne la conclut pas** |
@@ -165,6 +165,47 @@ après 1,2 s sans coup.
     max-repeats: 6
     min-samples: 20
 ```
+
+#### Les clics dans le vide
+
+La régularité ci-dessus ne se nourrissait que des coups **portés**. Un autoclick
+n'y apparaissait donc que pendant les quelques secondes où il était collé à une
+cible, et l'échantillon mettait une éternité à se remplir. Or un automate tourne
+en permanence, y compris à vide — c'est son état le plus courant, et le plus
+lisible : ni cooldown d'attaque, ni coups manqués, ni mort de la cible pour
+brouiller le rythme.
+
+Le contrôle écoute donc aussi `LEFT_CLICK_AIR`. Le serveur ne l'émet qu'après un
+tracé de 4,5 blocs sans bloc touché, ce qui **exclut gratuitement le minage** —
+qui produit un swing parfaitement régulier toutes les quelques ticks et aurait
+fait remonter tout joueur tenant une pioche.
+
+Trois signaux, une violation par seconde au maximum (signaler à chaque clic
+rendrait tout seuil illisible) :
+
+| Signal | Défaut | Ce qu'il attrape |
+|---|---|---|
+| `max-swings-per-second` | 20 | le filet grossier ; un humain en drag-click peut le frôler sur une seconde |
+| `sustained-cps` + `sustained-seconds` | 13 pendant 10 s | **l'automate réglé sous le plafond** |
+| `max-cv` / `max-repeats` | 0.10 / 6 | la cadence mécanique, à n'importe quelle vitesse |
+
+`sustained-cps: 13` est calibré, pas deviné. Sur des séries simulées : un
+butterfly-clicker humain tenant 13 clics/s pendant 15 s ne déclenche rien (son
+jitter casse la série de secondes consécutives), là où un autoclick randomisé à
+±20 % en déclenche des dizaines. À 11, le jitter humain remonte — c'est la
+frontière.
+
+**Angle mort assumé** : un autoclick à 11 clics/s avec une vraie randomisation
+reste dans la plage humaine sur la seule cadence. Il faut alors la régularité,
+ou la durée : personne ne clique en continu pendant dix minutes.
+
+> **Ce contrôle dépend du client.** Le vanilla 1.8 impose une pénalité de coup
+> manqué (`leftClickCounter = 10`) : dix ticks pendant lesquels le client
+> n'envoie plus rien après un clic dans le vide, ce qui plafonne les clics à
+> vide à environ deux par seconde. Elle a été retirée du client Red Conflict —
+> elle punissait surtout les joueurs honnêtes, qui perdaient la moitié de leurs
+> clics sans comprendre pourquoi. Les clics à vide arrivent donc tous au serveur,
+> et c'est ce qui rend cette détection possible.
 
 ### `honeypot` — l'entité fantôme
 

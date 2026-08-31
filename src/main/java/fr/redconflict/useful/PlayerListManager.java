@@ -12,6 +12,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.scoreboard.*;
 
+import java.util.UUID;
+
 public class PlayerListManager {
 
     private final RedConflictCore plugin;
@@ -33,6 +35,15 @@ public class PlayerListManager {
             if (rsp != null) vaultChat = rsp.getProvider();
         } catch (Exception ignored) {}
 
+        // Nom affiché dans le tab : une passe par joueur, pas une par spectateur.
+        // setPlayerListName diffuse déjà le paquet à tous ceux qui voient le
+        // joueur ; le refaire dans la boucle des viewers multiplierait l'envoi
+        // par le nombre de connectés.
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            applyTabName(p, rankPrefix(p, vaultChat));
+        }
+        purgeOfflineTabNames();
+
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             Scoreboard board = viewer.getScoreboard();
             if (board == null || board.equals(Bukkit.getScoreboardManager().getMainScoreboard())) {
@@ -42,6 +53,22 @@ public class PlayerListManager {
             setupTeams(board, viewer, vaultChat);
             sendTabHeader(viewer);
         }
+    }
+
+    /**
+     * Préfixe de grade traduit, ou {@code ""} si Vault ne répond pas.
+     *
+     * <p>translateAlternateColorCodes et non replace('&','§') : le remplacement
+     * aveugle transformait aussi les &amp; du texte ordinaire (« Rock &amp; Roll »)
+     * en code de couleur.
+     */
+    private String rankPrefix(Player p, Chat vaultChat) {
+        if (vaultChat == null) return "";
+        try {
+            String raw = vaultChat.getPlayerPrefix(p);
+            if (raw != null) return ChatColor.translateAlternateColorCodes('&', raw);
+        } catch (Exception ignored) {}
+        return "";
     }
 
     /**
@@ -69,22 +96,14 @@ public class PlayerListManager {
             else if (isStaff)              sortPrefix = "10_";
             else                           sortPrefix = "20_";
 
-            String lpPrefix = "";
-            if (vaultChat != null) {
-                try {
-                    String raw = vaultChat.getPlayerPrefix(p);
-                    if (raw != null) {
-                        // translateAlternateColorCodes et non replace('&','§') :
-                        // le remplacement aveugle transformait aussi les & du
-                        // texte ordinaire (« Rock & Roll ») en code de couleur.
-                        lpPrefix = ChatColor.translateAlternateColorCodes('&', raw);
-                    }
-                } catch (Exception ignored) {}
-            }
+            String lpPrefix = rankPrefix(p, vaultChat);
 
             // Le nom de la team doit être unique par joueur et <= 16 chars.
             String teamName = teamName(sortPrefix, p.getName());
 
+            // Ici, la limite de 16 est incontournable : elle vient du paquet
+            // scoreboard. Ce préfixe-là ne sert plus qu'au nom au-dessus de la
+            // tête — celui du tab passe par applyTabName(), sans limite.
             lpPrefix = safePrefix(lpPrefix, p);
 
             Team team = board.getTeam(teamName);
@@ -110,6 +129,65 @@ public class PlayerListManager {
 
     /** Limite d'un préfixe de team en 1.8. Dépasser lève une exception côté Bukkit. */
     private static final int PREFIX_LIMIT = 16;
+
+    /** Dernier nom de tab posé par joueur, pour ne pas rediffuser le paquet toutes les 2 s. */
+    private final java.util.Map<UUID, String> appliedTabNames = new java.util.HashMap<UUID, String>();
+
+    /**
+     * Écrit le nom du joueur dans le tab, préfixe de grade compris et
+     * <b>sans troncature</b>.
+     *
+     * <p><b>Pourquoi ne pas se contenter de la team.</b> Le préfixe de team est
+     * plafonné à 16 caractères par le paquet scoreboard de la 1.8 : à 17,
+     * {@code §8[§7Joueur§8] §f} devait sacrifier soit l'espace, soit le {@code §f},
+     * donc soit un pseudo collé au crochet, soit un pseudo gris foncé. Le nom
+     * affiché du tab, lui, voyage dans le paquet PlayerInfo sous forme de
+     * composant de chat : aucune limite de longueur. On y met donc le préfixe
+     * entier, espace compris, et la team ne sert plus qu'au nom au-dessus de la
+     * tête et au tri.
+     *
+     * <p>Le tri du tab n'est pas affecté : le client trie sur le nom de la team
+     * ({@code 00_/10_/20_}), pas sur le nom affiché.
+     *
+     * <p>On ne réécrit que sur changement — {@code setPlayerListName} diffuse un
+     * paquet à tous les joueurs qui voient celui-ci, et la boucle tourne toutes
+     * les deux secondes.
+     */
+    private void applyTabName(Player p, String fullPrefix) {
+        UUID id = p.getUniqueId();
+
+        // L'anonymat retire le grade du tab : on laisse la team faire, sans nom custom.
+        fr.redconflict.annonyme.AnonymeManager anon = plugin.getAnonymeManager();
+        boolean anonymous = anon != null && anon.isAnonymous(p);
+
+        String prefix = anonymous ? "" : trimTrailingCodes(fullPrefix);
+        if (prefix.isEmpty()) {
+            // Sans préfixe, le nom custom vaudrait le pseudo nu : autant ne rien
+            // poser du tout, sinon CraftPlayer remet listName à null et on
+            // rediffuserait le paquet à chaque tour.
+            if (appliedTabNames.remove(id) != null) p.setPlayerListName(null);
+            return;
+        }
+
+        String wanted = prefix + p.getName();
+        // getPlayerListName() renvoie le pseudo nu quand rien n'est posé : c'est
+        // le cas d'une reconnexion, où notre cache est en avance sur le serveur.
+        boolean unset = p.getName().equals(p.getPlayerListName());
+        if (unset || !wanted.equals(appliedTabNames.get(id))) {
+            p.setPlayerListName(wanted);
+            appliedTabNames.put(id, wanted);
+        }
+    }
+
+    /** Oublie les joueurs partis, sinon la table grossit à chaque déconnexion. */
+    private void purgeOfflineTabNames() {
+        if (appliedTabNames.isEmpty()) return;
+        java.util.Iterator<UUID> it = appliedTabNames.keySet().iterator();
+        while (it.hasNext()) {
+            Player p = Bukkit.getPlayer(it.next());
+            if (p == null || !p.isOnline()) it.remove();
+        }
+    }
 
     /** Préfixes trop longs déjà signalés : on n'inonde pas la console. */
     private final java.util.Set<String> warnedPrefixes = new java.util.HashSet<String>();
@@ -137,29 +215,83 @@ public class PlayerListManager {
      *
      * <p>Les codes de <i>couleur</i>, eux, sont conservés : c'est par eux que le
      * pseudo prend la teinte du grade, et c'est voulu.
+     *
+     * <p><b>Ce qu'on sacrifie quand ça dépasse.</b> Les espaces d'abord, la
+     * couleur ensuite — voir {@link #squeezeSpaces}.
      */
     private String safePrefix(String prefix, Player owner) {
         String out = prefix;
+
+        // 1. Trop long : on tente d'abord de le faire rentrer sans rien perdre
+        //    d'utile, en retirant les espaces depuis la fin.
+        if (out.length() > PREFIX_LIMIT) {
+            String squeezed = squeezeSpaces(out, PREFIX_LIMIT);
+            if (squeezed.length() <= PREFIX_LIMIT) {
+                if (warnedPrefixes.add("space:" + prefix)) {
+                    plugin.getLogger().info("[Nametag] Préfixe de « " + owner.getName() + " » : « " + raw(prefix)
+                            + " » fait " + prefix.length() + " caractères pour une limite de " + PREFIX_LIMIT
+                            + " en 1.8. Espace(s) retiré(s) → « " + raw(squeezed)
+                            + " » pour le nom AU-DESSUS DE LA TÊTE ; le tab, lui, affiche le préfixe entier.");
+                }
+            }
+            out = squeezed;
+        }
+
+        // 2. Toujours trop long : là on coupe, et le pseudo y perd sa couleur.
+        boolean truncated = false;
         if (out.length() > PREFIX_LIMIT) {
             out = out.substring(0, PREFIX_LIMIT);
+            truncated = true;
             if (warnedPrefixes.add(prefix)) {
-                plugin.getLogger().warning("[Tab] Préfixe de grade trop long pour "
-                        + owner.getName() + " : « " + prefix.replace(ChatColor.COLOR_CHAR, '&') + " » fait "
-                        + prefix.length() + " caractères, la limite 1.8 est " + PREFIX_LIMIT + ".");
-                plugin.getLogger().warning("[Tab] Il est tronqué, donc le pseudo perd sa couleur. "
-                        + "Raccourcis-le dans LuckPerms (retirer l'espace avant le dernier code suffit souvent).");
+                plugin.getLogger().warning("[Nametag] Préfixe de grade trop long pour "
+                        + owner.getName() + " : « " + raw(prefix) + " » fait "
+                        + prefix.length() + " caractères, la limite 1.8 est " + PREFIX_LIMIT
+                        + " (espaces déjà retirés).");
+                plugin.getLogger().warning("[Nametag] Il est tronqué pour le nom au-dessus de la tête, "
+                        + "qui y perd sa couleur. Le tab n'est pas concerné. Raccourcis-le dans LuckPerms.");
             }
         }
+
         String trimmed = trimTrailingCodes(out);
-        if (!trimmed.equals(out) && warnedPrefixes.add("style:" + prefix)) {
+        // Signalé seulement si la troncature n'a pas déjà tout expliqué, sinon
+        // le même préfixe génère trois lignes de console d'affilée.
+        if (!truncated && !trimmed.equals(out) && warnedPrefixes.add("style:" + prefix)) {
             // Dire pourquoi le gras a disparu, sinon le prochain qui édite
             // LuckPerms le remet et refait le tour.
-            plugin.getLogger().info("[Tab] Préfixe de « " + owner.getName() + " » : « "
-                    + out.replace(ChatColor.COLOR_CHAR, '&') + " » se termine par un code sans texte, "
+            plugin.getLogger().info("[Nametag] Préfixe de « " + owner.getName() + " » : « "
+                    + raw(out) + " » se termine par un code sans texte, "
                     + "il débordait sur le pseudo. Envoyé au client comme « "
-                    + trimmed.replace(ChatColor.COLOR_CHAR, '&') + " ».");
+                    + raw(trimmed) + " ».");
         }
         return trimmed;
+    }
+
+    /**
+     * Retire des espaces, en partant de la fin, jusqu'à tenir dans la limite.
+     *
+     * <p>Un préfixe qui déborde d'un caractère déborde presque toujours à cause
+     * de l'espace posé avant le dernier code : {@code §8[§7Joueur§8] §f} fait 17.
+     * Couper à 16 y mange le {@code §f}, et le pseudo repart alors sur la
+     * dernière couleur encore ouverte — le {@code §8} du crochet fermant, donc
+     * gris foncé, presque illisible. Retirer l'espace garde la couleur voulue et
+     * ne coûte qu'un pseudo collé au crochet.
+     *
+     * <p>Ne touche qu'au nombre d'espaces strictement nécessaire, et jamais aux
+     * caractères visibles : si le préfixe déborde sans contenir d'espace, il
+     * ressort tel quel et c'est la troncature qui tranchera.
+     */
+    private static String squeezeSpaces(String s, int limit) {
+        if (s.length() <= limit) return s;
+        StringBuilder sb = new StringBuilder(s);
+        for (int i = sb.length() - 1; i >= 0 && sb.length() > limit; i--) {
+            if (sb.charAt(i) == ' ') sb.deleteCharAt(i);
+        }
+        return sb.toString();
+    }
+
+    /** Le préfixe tel qu'il est écrit dans LuckPerms, pour les messages console. */
+    private static String raw(String s) {
+        return s.replace(ChatColor.COLOR_CHAR, '&');
     }
 
     /**

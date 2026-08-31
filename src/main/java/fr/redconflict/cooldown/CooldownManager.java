@@ -50,8 +50,28 @@ public final class CooldownManager {
         return timeLeft(player, type) > 0;
     }
 
-    /** Efface tous les cooldowns du joueur (utilisé à la sortie du combat). */
+    /** Efface tous les cooldowns du joueur (déconnexion définitive, purge). */
     public void clear(Player player) {
         expiries.remove(player.getUniqueId());
+    }
+
+    /**
+     * Efface un seul cooldown.
+     *
+     * <p>Ce n'est pas un raffinement : {@link #clear(Player)} vide <b>tous</b> les
+     * cooldowns. L'appeler à la mort pour lever le combat-log remettait aussi
+     * {@code /rtp} et {@code /repairall} à zéro — mourir était donc le moyen le
+     * plus rapide de recharger ses cooldowns, et sur un serveur PvP mourir ne
+     * coûte rien quand on est déjà nu.
+     */
+    public void clear(Player player, CooldownType type) {
+        EnumMap<CooldownType, Long> byType = expiries.get(player.getUniqueId());
+        if (byType == null) {
+            return;
+        }
+        byType.remove(type);
+        if (byType.isEmpty()) {
+            expiries.remove(player.getUniqueId());
+        }
     }
 }

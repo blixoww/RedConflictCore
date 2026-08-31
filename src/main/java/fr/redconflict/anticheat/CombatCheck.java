@@ -7,7 +7,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.BlockIterator;
@@ -40,8 +42,21 @@ public class CombatCheck implements Listener {
     /** Positions passées des joueurs — voir {@link PositionHistory}. */
     private final PositionHistory positions;
 
-    /** Régularité des clics — voir {@link ClickPattern}. */
+    /** Régularité des coups PORTÉS — voir {@link ClickPattern}. */
     private final ClickPattern clicks = new ClickPattern();
+
+    /**
+     * Régularité des coups DANS LE VIDE, série séparée.
+     *
+     * <p>Mélanger les deux corromprait l'analyse : un coup porté produit aussi un
+     * swing, donc deux horodatages à quelques millisecondes d'écart. La série
+     * fusionnée serait pleine de faux intervalles minuscules, et son écart-type
+     * exploserait — ce qui blanchirait précisément l'automate qu'on cherche.
+     */
+    private final ClickPattern airSwings = new ClickPattern();
+
+    /** Fenêtres d'une seconde des clics dans le vide, par joueur. */
+    private final Map<UUID, SwingWindow> swingWindows = new ConcurrentHashMap<UUID, SwingWindow>();
 
     public CombatCheck(Plugin plugin, ViolationTracker violations, PositionHistory positions) {
         this.plugin = plugin;
@@ -206,6 +221,97 @@ public class CombatCheck implements Listener {
         }
     }
 
+    // ── Clics dans le vide ────────────────────────────────────────────────────
+
+    /**
+     * Cadence des coups qui ne touchent RIEN.
+     *
+     * <p><b>Le trou que ça bouche.</b> {@link #checkRate} ne compte que les coups
+     * qui ont touché : un autoclick n'y apparaît que pendant les quelques
+     * secondes où il est effectivement collé à une cible, et l'échantillon de
+     * régularité met une éternité à se remplir. Or un autoclick tourne en
+     * permanence, y compris à vide — c'est même son état le plus courant, et de
+     * loin le plus lisible : rien ne vient perturber le rythme, ni le cooldown
+     * d'attaque, ni les coups manqués, ni la mort de la cible.
+     *
+     * <p><b>Pourquoi {@code LEFT_CLICK_AIR} et pas {@code PlayerAnimationEvent}.</b>
+     * Les deux naissent du même paquet, mais le serveur ne déclenche
+     * {@code LEFT_CLICK_AIR} qu'après un tracé de 4,5 blocs sans bloc touché
+     * (voir {@code PlayerConnection.a(PacketPlayInArmAnimation)}). Il exclut donc
+     * gratuitement le minage — qui produit un swing parfaitement régulier toutes
+     * les quelques ticks, et aurait fait remonter chaque joueur avec une pioche.
+     */
+    private void checkAirSwingRate(Player player) {
+        long now = System.currentTimeMillis();
+        UUID id = player.getUniqueId();
+
+        SwingWindow window = swingWindows.get(id);
+        if (window == null) {
+            window = new SwingWindow(now);
+            swingWindows.put(id, window);
+        }
+
+        boolean closed;
+        int finished;
+        int streak;
+        synchronized (window) {
+            long elapsed = now - window.since;
+            closed = elapsed >= WINDOW_MS;
+            if (closed) {
+                finished = window.count;
+                // Une pause casse la série : après deux secondes de silence, la
+                // "seconde écoulée" n'en est plus une et le compte serait faux.
+                boolean fast = elapsed <= 2L * WINDOW_MS && finished >= sustainedCps();
+                window.streak = fast ? window.streak + 1 : 0;
+                streak = window.streak;
+                window.since = now;
+                window.count = 0;
+            } else {
+                finished = 0;
+                streak = window.streak;
+            }
+            window.count++;
+        }
+
+        // La série de régularité se nourrit de CHAQUE clic — c'est elle qui a
+        // besoin de l'échantillon — mais on ne juge qu'à la fermeture de la
+        // fenêtre : signaler à chaque clic ferait grimper le compteur de
+        // violations quinze fois par seconde et rendrait tout seuil illisible.
+        double maxCv = plugin.getConfig().getDouble("anticheat.autoclick.max-cv", 0.10);
+        int maxRepeats = plugin.getConfig().getInt("anticheat.autoclick.max-repeats", 6);
+        int minSamples = plugin.getConfig().getInt("anticheat.autoclick.min-samples", 20);
+        ClickPattern.Verdict verdict = airSwings.record(id, now, maxCv, maxRepeats, minSamples);
+
+        if (!closed) {
+            return;
+        }
+
+        int max = plugin.getConfig().getInt("anticheat.autoclick.max-swings-per-second", 20);
+        int sustainedSeconds = plugin.getConfig().getInt("anticheat.autoclick.sustained-seconds", 10);
+
+        if (finished > max) {
+            violations.flag(player, Check.AUTOCLICK,
+                    finished + " clics dans le vide/s (max " + max + ")");
+        } else if (streak >= sustainedSeconds) {
+            // Le plafond seul laisse passer l'automate réglé sous la barre. Une
+            // main peut tenir 20 clics/s deux secondes ; elle ne tient pas 14
+            // pendant dix secondes d'affilée.
+            violations.flag(player, Check.AUTOCLICK,
+                    finished + " clics dans le vide/s tenus " + streak + " s (max "
+                            + sustainedCps() + "/s au-delà de " + sustainedSeconds + " s)");
+        }
+
+        if (verdict.suspicious) {
+            violations.flag(player, Check.AUTOCLICK,
+                    String.format("clics à vide mécaniques : variation %.3f (< %.2f), %d intervalles identiques sur %d",
+                            verdict.cv, maxCv, verdict.repeats, verdict.samples));
+        }
+    }
+
+    private int sustainedCps() {
+        return plugin.getConfig().getInt("anticheat.autoclick.sustained-cps", 13);
+    }
+
     /**
      * Bloc plein entre l'œil de l'attaquant et sa cible.
      *
@@ -275,10 +381,35 @@ public class CombatCheck implements Listener {
         }
     }
 
+    /**
+     * Un clic gauche qui ne touche aucun bloc.
+     *
+     * <p>Pas de {@code ignoreCancelled} : un détecteur doit voir le comportement
+     * brut. Qu'un autre plugin annule l'interaction — mode staff, région
+     * protégée — ne rend pas les clics moins mécaniques.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onAirSwing(PlayerInteractEvent event) {
+        if (event.getAction() != Action.LEFT_CLICK_AIR) {
+            return;
+        }
+        if (!plugin.getConfig().getBoolean("anticheat.enabled", true) || !enabled("autoclick")) {
+            return;
+        }
+        Player player = event.getPlayer();
+        if (player.hasPermission("redconflict.anticheat.bypass")) {
+            return;
+        }
+        checkAirSwingRate(player);
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        clicks.forget(event.getPlayer().getUniqueId());
-        windows.remove(event.getPlayer().getUniqueId());
+        UUID id = event.getPlayer().getUniqueId();
+        clicks.forget(id);
+        airSwings.forget(id);
+        windows.remove(id);
+        swingWindows.remove(id);
     }
 
     private boolean enabled(String key) {
@@ -288,5 +419,16 @@ public class CombatCheck implements Listener {
     private static final class Window {
         private long since = System.currentTimeMillis();
         private int hits;
+    }
+
+    /** Fenêtre d'une seconde de clics à vide, plus le compte de secondes rapides consécutives. */
+    private static final class SwingWindow {
+        private long since;
+        private int count;
+        private int streak;
+
+        SwingWindow(long now) {
+            this.since = now;
+        }
     }
 }
