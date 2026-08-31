@@ -12,7 +12,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -202,13 +205,23 @@ public class StaffListener implements Listener {
         Player p = event.getPlayer();
         if (!mgr.isInStaffMode(p.getUniqueId())) return;
 
-        ItemStack item = p.getItemInHand();
-        if (item == null || item.getType() == Material.AIR) return;
-
         org.bukkit.event.block.Action action = event.getAction();
         boolean isRightClick = action == org.bukkit.event.block.Action.RIGHT_CLICK_AIR
                             || action == org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK;
         if (!isRightClick) return;
+
+        // Conteneur : consultation silencieuse, avant tout usage d'item staff.
+        // Passe en premier pour que le contenu d'un coffre reste consultable
+        // quelle que soit la boussole/glace tenue en main.
+        if (action == org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK
+                && event.getClickedBlock() != null
+                && openSilently(p, event.getClickedBlock())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        ItemStack item = p.getItemInHand();
+        if (item == null || item.getType() == Material.AIR) return;
 
         event.setUseItemInHand(org.bukkit.event.Event.Result.ALLOW);
         event.setCancelled(true);
@@ -371,13 +384,101 @@ public class StaffListener implements Listener {
             event.setCancelled(true);
     }
 
+    /**
+     * En staffmode, aucun item ne bouge : ni depuis un coffre consulté, ni depuis
+     * le kit staff, ni vers le sol.
+     *
+     * <p>On annule tous les clics plutôt que les seuls items staff. Un modérateur
+     * en vanish n'a aucune raison de déplacer un item, et l'inventaire réel du
+     * joueur est de toute façon rendu à la sortie du mode : le moindre item
+     * ramassé entre-temps serait perdu par {@code disableStaffMode}, qui réécrit
+     * le contenu depuis l'instantané.
+     *
+     * <p>Les menus du plugin continuent de fonctionner : ils s'annulent déjà
+     * eux-mêmes et lisent le clic sans tenir compte de son annulation.
+     */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onStaffInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player p = (Player) event.getWhoClicked();
-        if (!mgr.isInStaffMode(p.getUniqueId())) return;
-        if (StaffItems.isAnyStaffItem(event.getCurrentItem()) || StaffItems.isAnyStaffItem(event.getCursor()))
-            event.setCancelled(true);
+        if (mgr.isInStaffMode(p.getUniqueId())) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onStaffInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player p = (Player) event.getWhoClicked();
+        if (mgr.isInStaffMode(p.getUniqueId())) event.setCancelled(true);
+    }
+
+    /** Marcher sur un drop ne le ramasse pas : le loot reste au sol pour son propriétaire. */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onStaffPickup(PlayerPickupItemEvent event) {
+        if (mgr.isInStaffMode(event.getPlayer().getUniqueId())) event.setCancelled(true);
+    }
+
+    // ── Consultation silencieuse des conteneurs ───────────────────────────────
+
+    /**
+     * Ouvre une copie du conteneur au lieu du conteneur lui-même.
+     *
+     * <p>Ouvrir le vrai inventaire incrémente le compteur de spectateurs de la
+     * tuile, ce qui déclenche l'animation du couvercle et son bruit pour tout le
+     * monde autour : un modérateur en vanish se trahissait à chaque coffre
+     * ouvert. La copie n'existe que pour lui, et rien n'y est écrit en retour —
+     * ce que le staff voit est un instantané, jamais une prise.
+     *
+     * @return false si le bloc n'est pas un conteneur, pour laisser passer le clic
+     */
+    private boolean openSilently(Player staff, org.bukkit.block.Block block) {
+        Inventory source;
+        String title;
+
+        if (block.getType() == Material.ENDER_CHEST) {
+            // Le coffre de l'End est propre au joueur : celui du staff, donc.
+            // On l'ouvre quand même en copie, seulement pour ne pas animer le bloc.
+            source = staff.getEnderChest();
+            title = "§8Coffre de l'End §7(lecture)";
+        } else {
+            org.bukkit.block.BlockState state = block.getState();
+            if (!(state instanceof InventoryHolder)) return false;
+            try {
+                source = ((InventoryHolder) state).getInventory();
+            } catch (Exception e) {
+                return false;
+            }
+            title = containerTitle(block.getType());
+        }
+        if (source == null) return false;
+
+        int size = source.getSize();
+        Inventory copy = (size > 0 && size <= 54 && size % 9 == 0)
+                ? Bukkit.createInventory(null, size, title)
+                : Bukkit.createInventory(null, source.getType(), title);
+
+        ItemStack[] contents = source.getContents();
+        int n = Math.min(contents.length, copy.getSize());
+        ItemStack[] cloned = new ItemStack[n];
+        for (int i = 0; i < n; i++) cloned[i] = contents[i] == null ? null : contents[i].clone();
+        copy.setContents(cloned);
+
+        staff.openInventory(copy);
+        return true;
+    }
+
+    /** Titre de la fenêtre — 32 caractères maximum côté client 1.8. */
+    private static String containerTitle(Material type) {
+        switch (type) {
+            case CHEST:          return "§8Coffre §7(lecture)";
+            case TRAPPED_CHEST:  return "§8Coffre piégé §7(lecture)";
+            case FURNACE:
+            case BURNING_FURNACE: return "§8Four §7(lecture)";
+            case DISPENSER:      return "§8Distributeur §7(lecture)";
+            case DROPPER:        return "§8Dropper §7(lecture)";
+            case HOPPER:         return "§8Entonnoir §7(lecture)";
+            case BREWING_STAND:  return "§8Alambic §7(lecture)";
+            default:             return "§8Conteneur §7(lecture)";
+        }
     }
 
     // ── TopLuck ───────────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ fr\redconflict\boutique\BoutiqueItem.class
 fr\redconflict\shop\ShopModule$1.class
 fr\redconflict\staff\StaffPlugin.class
 fr\redconflict\core\RankResolver.class
+fr\redconflict\staff\StaffListener$5.class
 fr\redconflict\friend\FriendDatabase.class
 fr\redconflict\shop\ShopDatabase$ShopItem.class
 fr\redconflict\trade\TradeSession$State.class
@@ -25,7 +26,6 @@ fr\redconflict\bounty\KillstreakManager.class
 fr\redconflict\boutique\BoutiqueClientServerHandler.class
 fr\redconflict\ring\RingEffectListener.class
 fr\redconflict\hdv\HdvManager.class
-fr\redconflict\site\EntitlementService$1.class
 fr\redconflict\db\PotionEffectCodec.class
 fr\redconflict\repair\RepairItems.class
 fr\redconflict\essentials\service\EconomyService.class

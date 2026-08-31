@@ -132,11 +132,16 @@ boutique:
       prix_monnaie_perm: 10000
       prix_pb_perm: 100
       duree: 2592000
+    # Le noeud vendu est redconflict.nv, teste par /vision. Le nom de l'article
+    # affiche les trois facons de l'appeler : les joueurs cherchaient « /nv » ou
+    # « /nightvision » dans la boutique et repartaient en croyant que la commande
+    # n'y etait pas.
     - id: "vision"
-      nom: "&fCommande /vision"
+      nom: "&fCommande /nightvision (/nv)"
       icone: ENDER_EYE
       description:
         - "&7Vision nocturne permanente"
+        - "&7Commande : &f/nightvision &7- alias &f/nv &7et &f/vision"
         - "&8Permission : redconflict.nv"
       commande: "lp user %player% permission settemp redconflict.nv true %duree%"
       commande_perm: "lp user %player% permission set redconflict.nv true"

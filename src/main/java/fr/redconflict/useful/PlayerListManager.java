@@ -115,37 +115,79 @@ public class PlayerListManager {
     private final java.util.Set<String> warnedPrefixes = new java.util.HashSet<String>();
 
     /**
-     * Ramène un préfixe sous la limite de 16 caractères SANS jamais couper un
-     * code de couleur en deux.
+     * Ramène un préfixe sous la limite de 16 caractères, puis enlève ce qui
+     * déborderait sur le pseudo.
      *
-     * <p><b>Le bug que ça corrige.</b> Un {@code substring(0, 16)} nu sur
+     * <p>Le client 1.8 affiche la ligne du tab comme un seul texte,
+     * {@code préfixe + pseudo} : tout ce que le préfixe laisse ouvert à la fin
+     * s'applique au pseudo. Deux fins de préfixe posent problème.
+     *
+     * <p><b>Un {@code §} orphelin.</b> Un {@code substring(0, 16)} nu sur
      * {@code §8[§7Joueur§8] §f} (17 caractères) rendait
-     * {@code §8[§7Joueur§8] §} — terminé par un {@code §} orphelin. Le client
-     * lit alors la première lettre du pseudo comme le code qui manque : un
-     * joueur dont le nom commence par « k » passait en {@code §k}, donc
-     * illisible, un « c » en {@code §c}, donc rouge — et dans tous les cas la
-     * lettre était mangée.
+     * {@code §8[§7Joueur§8] §}. Le client lit alors la première lettre du pseudo
+     * comme le code qui manque : un « k » passait en {@code §k}, donc illisible,
+     * un « c » en {@code §c}, donc rouge, un « l » en {@code §l}, donc gras — et
+     * dans tous les cas la lettre était mangée.
      *
-     * <p>On coupe donc avant le {@code §} orphelin. Le préfixe perd sa dernière
-     * couleur au lieu de dévorer le pseudo, et l'administrateur est prévenu une
-     * fois en console : la vraie correction est de raccourcir le préfixe.
+     * <p><b>Un code de style final</b> ({@code §l}, {@code §k}, {@code §m},
+     * {@code §n}, {@code §o}). Là, rien n'est tronqué et rien n'est mangé : le
+     * préfixe se termine simplement par un {@code &l} écrit dans LuckPerms, et
+     * le gras coule sur le pseudo. C'est le cas que la version précédente
+     * laissait passer, parce qu'elle ne nettoyait qu'en cas de troncature.
+     *
+     * <p>Les codes de <i>couleur</i>, eux, sont conservés : c'est par eux que le
+     * pseudo prend la teinte du grade, et c'est voulu.
      */
     private String safePrefix(String prefix, Player owner) {
-        if (prefix.length() <= PREFIX_LIMIT) {
-            return prefix;
+        String out = prefix;
+        if (out.length() > PREFIX_LIMIT) {
+            out = out.substring(0, PREFIX_LIMIT);
+            if (warnedPrefixes.add(prefix)) {
+                plugin.getLogger().warning("[Tab] Préfixe de grade trop long pour "
+                        + owner.getName() + " : « " + prefix.replace(ChatColor.COLOR_CHAR, '&') + " » fait "
+                        + prefix.length() + " caractères, la limite 1.8 est " + PREFIX_LIMIT + ".");
+                plugin.getLogger().warning("[Tab] Il est tronqué, donc le pseudo perd sa couleur. "
+                        + "Raccourcis-le dans LuckPerms (retirer l'espace avant le dernier code suffit souvent).");
+            }
         }
-        String cut = prefix.substring(0, PREFIX_LIMIT);
-        if (cut.charAt(cut.length() - 1) == ChatColor.COLOR_CHAR) {
-            cut = cut.substring(0, cut.length() - 1);
+        String trimmed = trimTrailingCodes(out);
+        if (!trimmed.equals(out) && warnedPrefixes.add("style:" + prefix)) {
+            // Dire pourquoi le gras a disparu, sinon le prochain qui édite
+            // LuckPerms le remet et refait le tour.
+            plugin.getLogger().info("[Tab] Préfixe de « " + owner.getName() + " » : « "
+                    + out.replace(ChatColor.COLOR_CHAR, '&') + " » se termine par un code sans texte, "
+                    + "il débordait sur le pseudo. Envoyé au client comme « "
+                    + trimmed.replace(ChatColor.COLOR_CHAR, '&') + " ».");
         }
-        if (warnedPrefixes.add(prefix)) {
-            plugin.getLogger().warning("[Tab] Préfixe de grade trop long pour "
-                    + owner.getName() + " : « " + prefix.replace(ChatColor.COLOR_CHAR, '&') + " » fait "
-                    + prefix.length() + " caractères, la limite 1.8 est " + PREFIX_LIMIT + ".");
-            plugin.getLogger().warning("[Tab] Il est tronqué, donc le pseudo perd sa couleur. "
-                    + "Raccourcis-le dans LuckPerms (retirer l'espace avant le dernier code suffit souvent).");
+        return trimmed;
+    }
+
+    /**
+     * Enlève, en fin de chaîne, ce qui s'appliquerait au texte suivant : un
+     * marqueur de code sans sa lettre ({@code §} ou {@code &} isolé) et les codes
+     * de style ({@code §l} et compagnie). Boucle, parce qu'un préfixe peut en
+     * empiler plusieurs — {@code §c§l§} en laisse trois à retirer.
+     *
+     * <p>Un {@code &} au milieu du texte n'est pas touché : « Rock &amp; Roll »
+     * reste « Rock &amp; Roll ».
+     */
+    static String trimTrailingCodes(String s) {
+        if (s == null) return "";
+        int end = s.length();
+        boolean changed = true;
+        while (changed && end > 0) {
+            changed = false;
+            char last = s.charAt(end - 1);
+            if (last == ChatColor.COLOR_CHAR || last == '&') {
+                end--;
+                changed = true;
+            } else if (end >= 2 && s.charAt(end - 2) == ChatColor.COLOR_CHAR
+                    && "klmnoKLMNO".indexOf(last) >= 0) {
+                end -= 2;
+                changed = true;
+            }
         }
-        return cut;
+        return end == s.length() ? s : s.substring(0, end);
     }
 
     /**
