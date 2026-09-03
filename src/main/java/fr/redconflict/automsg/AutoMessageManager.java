@@ -1,104 +1,103 @@
 package fr.redconflict.automsg;
 
 import fr.redconflict.RedConflictCore;
+import fr.redconflict.core.text.ChatFont;
 import org.bukkit.Bukkit;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Système de messages automatiques dans le chat.
- * <p>
- * Les messages s'affichent à intervalle régulier (configurable via INTERVAL_TICKS).
- * Modifier la liste MESSAGES pour changer les annonces.
- * <p>
- * Intervalle par défaut : 5 minutes (6000 ticks).
+ * Messages d'information diffusés en rotation dans le chat.
+ *
+ * <p><b>Les colonnes sont calculées, plus alignées à la main.</b> Les lignes
+ * étaient auparavant écrites en dur, la commande complétée d'espaces jusqu'à ce
+ * que le tiret « tombe à peu près bien ». Ça ne pouvait pas marcher : la police
+ * du chat est proportionnelle, donc {@code /ks} et {@code /profil} n'occupent
+ * pas la même place à nombre de caractères égal, et chaque ligne se décalait de
+ * quelques pixels — visiblement, sur huit messages. Chaque ligne est désormais
+ * décrite par un couple (commande, description), et {@link ChatFont} complète
+ * jusqu'à une colonne commune mesurée EN PIXELS sur la commande la plus large de
+ * la section. Ajouter une commande plus longue réaligne le bloc tout seul.
+ *
+ * <p><b>Le trait de séparation est un trait.</b> C'étaient trente-deux tirets,
+ * donc une ligne à trous, plus courte que le texte qu'elle encadrait. C'est
+ * maintenant un trait plein de la largeur du chat, comme celui de
+ * {@code Announce}.
+ *
+ * <p>Les textes sont volontairement courts : au-delà de la largeur du chat, le
+ * client passe à la ligne SANS conserver l'indentation, et la colonne qu'on
+ * vient de construire disparaît. Une description tient en trois ou quatre mots.
  */
 public class AutoMessageManager {
 
     // ── Configuration ─────────────────────────────────────────────────────────
 
-    /**
-     * Intervalle entre chaque message en ticks (20 ticks = 1 seconde).
-     */
+    /** Intervalle entre deux messages, en ticks (20 ticks = 1 seconde). */
     private static final long INTERVAL_TICKS = 20L * 60 * 30; // 30 minutes
 
-    /**
-     * Séparateur affiché avant/après le message.
-     */
-    private static final String SEP = "§8--------------------------------";
+    /** Préfixe de la ligne de titre. */
+    private static final String PREFIX = "§8[§6§lRedConflict§8] ";
 
     /**
-     * Préfixe du message automatique.
+     * Marge entre la colonne des commandes et le tiret, en pixels.
+     *
+     * <p>12 et pas moins : c'est à partir de là que toute largeur se compose
+     * exactement en espaces normaux et gras, donc que la colonne tombe au pixel
+     * (voir {@link ChatFont#padTo}).
      */
-    private static final String PRE = "§8[§6§lRedConflict§8] ";
+    private static final int COLUMN_GAP = 12;
+
+    /** Trait de séparation, à la largeur de la fenêtre de chat. */
+    private static final String SEPARATOR = ChatFont.bar("§8", ChatFont.CHAT_WIDTH);
 
     /**
-     * Liste des messages affichés en rotation. Modifiez-les librement.
+     * Les messages, dans leur ordre de passage.
+     *
+     * <p>Pour en modifier un, il n'y a que du texte à toucher : l'alignement
+     * n'est écrit nulle part, il est recalculé à l'affichage.
      */
-    private static final List<String> MESSAGES = Arrays.asList(
+    private static final List<Message> MESSAGES = Arrays.asList(
 
-            // 1 — Présentation générale
-            SEP + "\n" +
-                    PRE + "§6§l★ Tapez §f/commands §epour voir tout ce que vous pouvez faire !\n" +
-                    SEP,
+            new Message("§6§l★ §eToutes les commandes avec §f/commands"),
 
-            // 2 — Duels
-            SEP + "\n" +
-                    PRE + "§c§l⚔ §eSystème de §fDuels §edisponible !\n" +
-                    "  §8| §f/duel <joueur>        §7— Duel avec votre équipement\n" +
-                    "  §8| §f/duelk <joueur>       §7— Duel avec un kit défini\n" +
-                    "  §8| §f/duelrandom           §7— Duel aléatoire avec votre stuff\n" +
-                    "  §8| §f/duelkrandom          §7— Duel aléatoire avec kit\n" +
-                    SEP,
+            new Message("§c§l⚔ §eSystème de duels",
+                    line("/duel <joueur>", "Duel avec votre stuff"),
+                    line("/duelk <joueur>", "Duel avec un kit"),
+                    line("/duelrandom", "Adversaire au hasard"),
+                    line("/duelkrandom", "Au hasard, avec kit")),
 
-            // 3 — Profil & statistiques
-            SEP + "\n" +
-                    PRE + "§e§lVos stats de combat sont accessibles en temps réel !\n" +
-                    "  §8| §f/ks              ��7— Vos kills, morts, ratio et temps de jeu\n" +
-                    "  §8| §f/profil <joueur> §7— Voir le profil complet d'un joueur\n" +
-                    "  §8| §f/ct              §7— Vérifier votre statut de combat\n" +
-                    SEP,
+            new Message("§e§l★ §eVos statistiques de combat",
+                    line("/ks", "Kills, morts, ratio"),
+                    line("/profil <joueur>", "Profil d'un joueur"),
+                    line("/ct", "Statut de combat")),
 
-            // 4 — Économie
-            SEP + "\n" +
-                    PRE + "§6§l$ §eÉconomie du serveur !\n" +
-                    "  §8| §f/hdv             §7— Hôtel des Ventes : achat/vente entre joueurs\n" +
-                    "  §8| §f/shop            §7— Boutique du serveur\n" +
-                    "  §8| §f/baltop          §7— Classement des plus riches\n" +
-                    SEP,
+            new Message("§6§l$ §eÉconomie du serveur",
+                    line("/hdv", "Hôtel des ventes"),
+                    line("/shop", "Boutique du serveur"),
+                    line("/baltop", "Les plus riches")),
 
-            // 5 — Primes & Loto
-            SEP + "\n" +
-                    PRE + "§6§l☠ §ePrimes & §6§l★ §eLoto !\n" +
-                    "  §8| §f/prime <joueur> <montant> §7— Mettre une prime sur un joueur\n" +
-                    "  §8| §f/loto <montant>            §7— Parier pendant le loto\n" +
-                    "  §8| §f/loto next                 §7— Savoir quand arrive le prochain loto\n" +
-                    SEP,
+            new Message("§6§l☠ §ePrimes et loto",
+                    line("/prime <joueur>", "Mettre une prime"),
+                    line("/loto <montant>", "Parier au loto"),
+                    line("/loto next", "Prochain tirage")),
 
-            // 6 — Amis & Trade
-            SEP + "\n" +
-                    PRE + "§a§l♥ §eAmis & Échanges !\n" +
-                    "  §8| §f/friend add <joueur>  §7— Ajouter un ami §8(pas de dégâts mutuels)\n" +
-                    "  §8| §f/friend list          §7— Voir votre liste d'amis\n" +
-                    "  §8| §f/trade <joueur>       §7— Échange sécurisé d'items\n" +
-                    SEP,
+            new Message("§a§l♥ §eAmis et échanges",
+                    line("/friend add <joueur>", "Ajouter un ami"),
+                    line("/friend list", "Votre liste d'amis"),
+                    line("/trade <joueur>", "Échange sécurisé"),
+                    note("Entre amis, aucun dégât mutuel.")),
 
-            // 7 — Événements & Plannings
-            SEP + "\n" +
-                    PRE + "§d§l✦ §eÉvénements & Plannings !\n" +
-                    "  §8| §f/plannings  §7— Voir les prochains événements prévus sur le serveur\n" +
-                    "  §8| §7Tournois, events PvP, lotos spéciaux — restez connectés !\n" +
-                    SEP,
+            new Message("§d§l✦ §eÉvénements",
+                    line("/plannings", "Les prochains events"),
+                    note("Tournois, PvP, lotos : restez connectés !")),
 
-            // 8 — Utilitaires
-            SEP + "\n" +
-                    PRE + "§7§lUtilitaires pratiques !\n" +
-                    "  §8| §f/repairall  §7— Réparer tout votre équipement §8(cooldown 24h)\n" +
-                    "  §8| §f/cobble     §7— Filtrer la cobblestone automatiquement\n" +
-                    "  §8| §f/furnace    §7— Cuire sans four §8(§f/furnace this §8/ §f/furnace all§8)\n" +
-                    "  §8| §f/bottlexp   §7— Embouteiller vos niveaux d'XP\n" +
-                    SEP
+            new Message("§7§l★ §eUtilitaires",
+                    line("/repairall", "Tout réparer §8(24h)"),
+                    line("/cobble", "Filtrer la cobble"),
+                    line("/furnace", "Cuire sans four"),
+                    line("/bottlexp", "Embouteiller l'XP"))
     );
 
     // ── Logique ───────────────────────────────────────────────────────────────
@@ -107,20 +106,83 @@ public class AutoMessageManager {
 
     public AutoMessageManager(RedConflictCore plugin) {
         Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
-            public void run() {
+            @Override public void run() {
                 sendNext();
             }
         }, INTERVAL_TICKS, INTERVAL_TICKS);
     }
 
     private void sendNext() {
-        if (Bukkit.getOnlinePlayers().isEmpty()) return; // personne en ligne
-        String msg = MESSAGES.get(index % MESSAGES.size());
-        // Chaque \n dans le message est une ligne séparée
-        for (String line : msg.split("\n")) {
+        if (Bukkit.getOnlinePlayers().isEmpty()) {
+            return; // personne pour lire
+        }
+        for (String line : MESSAGES.get(index % MESSAGES.size()).render()) {
             Bukkit.broadcastMessage(line);
         }
         index++;
     }
-}
 
+    // ── Modèle ────────────────────────────────────────────────────────────────
+
+    /** Une ligne « commande — description ». */
+    private static Entry line(String command, String description) {
+        return new Entry(command, description);
+    }
+
+    /** Une ligne de commentaire, sans commande : elle n'entre pas dans la colonne. */
+    private static Entry note(String text) {
+        return new Entry(null, text);
+    }
+
+    private static final class Entry {
+        private final String command;     // null = simple remarque
+        private final String description;
+
+        private Entry(String command, String description) {
+            this.command = command;
+            this.description = description;
+        }
+    }
+
+    /** Un message : une ligne de titre, puis ses lignes de détail. */
+    private static final class Message {
+        private final String title;
+        private final Entry[] entries;
+
+        private Message(String title, Entry... entries) {
+            this.title = title;
+            this.entries = entries;
+        }
+
+        /**
+         * Rend le message, colonne comprise.
+         *
+         * <p>La colonne est mesurée ici, à chaque diffusion : c'est du calcul
+         * négligeable une fois par demi-heure, et ça garantit qu'une commande
+         * ajoutée ne laisse pas derrière elle un alignement périmé.
+         */
+        private List<String> render() {
+            int column = 0;
+            for (Entry entry : entries) {
+                if (entry.command != null) {
+                    column = Math.max(column, ChatFont.width(entry.command));
+                }
+            }
+            column += COLUMN_GAP;
+
+            List<String> lines = new ArrayList<String>();
+            lines.add(SEPARATOR);
+            lines.add(PREFIX + title);
+            for (Entry entry : entries) {
+                if (entry.command == null) {
+                    lines.add("  §8| §7" + entry.description);
+                } else {
+                    lines.add("  §8| §f" + ChatFont.padTo(entry.command, column)
+                            + "§8— §7" + entry.description);
+                }
+            }
+            lines.add(SEPARATOR);
+            return lines;
+        }
+    }
+}

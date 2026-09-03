@@ -15,6 +15,16 @@ tpa:
   # Durée de validité d'une demande /tpa ou /tpahere (secondes).
   expire-seconds: 60
 
+# Commandes du module coupées sur CE serveur. Le nom est celui de plugin.yml,
+# sans la barre oblique ; la commande répond « désactivée » et ne fait rien
+# d'autre — ni téléportation, ni cooldown armé.
+#
+# Chaque serveur a son propre essentials.yml : couper /spawn ici ne le coupe
+# pas ailleurs. C'est l'intérêt — le Minage n'a pas de spawn de Faction.
+#
+#   disabled-commands: [spawn, home, sethome]
+disabled-commands: []
+
 # Cooldown par commande (secondes, 0 = aucun).
 # Bypass : permission redconflict.cooldown.bypass
 cooldowns:

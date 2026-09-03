@@ -41,6 +41,11 @@ public class AntiCheatModule implements Module, Listener {
     private VisibilityCulling visibility;
     private AimCheck aim;
     private HoneypotCheck honeypot;
+    private BreakBurst bursts;
+    private FlyCheck fly;
+    private BreakSpeedCheck breakSpeed;
+    private ContainerCulling containers;
+    private NativeGuard natives;
     private BukkitTask decayTask;
 
     public AntiCheatModule(Plugin plugin) {
@@ -57,6 +62,7 @@ public class AntiCheatModule implements Module, Listener {
         this.violations = new ViolationTracker(plugin);
         this.guard = new ChannelGuard(plugin, violations);
         this.attestation = new AttestationService(plugin, violations);
+        this.natives = new NativeGuard(plugin, violations);
         this.visibility = new VisibilityCulling(plugin);
 
         if (!plugin.getConfig().getBoolean("anticheat.enabled", true)) {
@@ -73,7 +79,24 @@ public class AntiCheatModule implements Module, Listener {
         positions = new PositionHistory();
         positions.start(plugin);
         Bukkit.getPluginManager().registerEvents(new CombatCheck(plugin, violations, positions), plugin);
-        Bukkit.getPluginManager().registerEvents(new MiningCheck(plugin, violations), plugin);
+        // Mémoire commune des volées de casses (marteau 3×3) : cadence et
+        // vitesse de minage jugent un coup, pas neuf blocs. Voir BreakBurst.
+        this.bursts = new BreakBurst();
+        Bukkit.getPluginManager().registerEvents(new MiningCheck(plugin, violations, bursts), plugin);
+
+        // Fast break : le pendant qualitatif de MiningCheck. Celui-ci compte les
+        // blocs par seconde, celui-la verifie que CHAQUE bloc a mis le temps que
+        // l'outil tenu impose. Un joueur qui casse un seul bloc trop vite passe
+        // sous tous les plafonds de cadence.
+        this.breakSpeed = new BreakSpeedCheck(plugin, violations, bursts);
+        Bukkit.getPluginManager().registerEvents(breakSpeed, plugin);
+
+        // Vol : echantillonnage par tick et comparaison a la gravite du jeu. Il
+        // remplace l'ancien controle de MovementCheck, qui ne comptait qu'une
+        // duree en l'air et laissait passer tout vol qui redescend un peu.
+        this.fly = new FlyCheck(plugin, violations);
+        Bukkit.getPluginManager().registerEvents(fly, plugin);
+        fly.start();
 
         // Visée : le seul contrôle de combat qui ne mesure pas une quantité mais
         // une cohérence. C'est celui que l'aura « discrète » ne peut pas régler
@@ -91,6 +114,13 @@ public class AntiCheatModule implements Module, Listener {
         Bukkit.getPluginManager().registerEvents(honeypot, plugin);
         honeypot.start();
 
+        // Anti chest-ESP : meme principe que le masquage des joueurs, applique
+        // aux conteneurs. Le balayage tourne des que le module est actif ; le
+        // masquage effectif, lui, attend anticheat.chest-esp.mask.
+        this.containers = new ContainerCulling(plugin, violations);
+        Bukkit.getPluginManager().registerEvents(containers, plugin);
+        containers.start();
+
         registerCleanup();
 
         visibility.start();
@@ -103,6 +133,30 @@ public class AntiCheatModule implements Module, Listener {
 
         plugin.getLogger().info("[AC] Anti-triche actif — action par défaut : "
                 + plugin.getConfig().getString("anticheat.action", "alert") + ".");
+        announceArmedSanctions();
+    }
+
+    /**
+     * Journalise les contrôles qui font autre chose qu'alerter.
+     *
+     * <p>Une sanction automatique se pose en une ligne de configuration et ne se
+     * voit ensuite nulle part : rien ne distingue, au démarrage, un serveur qui
+     * prévient le staff d'un serveur qui bannit tout seul. Or c'est exactement
+     * ce qu'on veut relire avant d'ouvrir — surtout sur les contrôles nourris
+     * par le client, où un faux positif bannit des innocents.
+     */
+    private void announceArmedSanctions() {
+        for (Check check : Check.values()) {
+            String action = plugin.getConfig().getString(
+                    "anticheat." + check.key() + ".action",
+                    plugin.getConfig().getString("anticheat.action", "alert"));
+            if (action == null || action.trim().isEmpty() || "alert".equalsIgnoreCase(action.trim())) {
+                continue;
+            }
+            plugin.getLogger().warning("[AC] " + check.key() + " : sanction automatique armée — « "
+                    + action.trim() + " » au seuil de "
+                    + plugin.getConfig().getInt("anticheat." + check.key() + ".threshold", 8) + ".");
+        }
     }
 
     private void registerCleanup() {
@@ -125,6 +179,14 @@ public class AntiCheatModule implements Module, Listener {
             honeypot.stop();
             honeypot = null;
         }
+        if (fly != null) {
+            fly.stop();
+            fly = null;
+        }
+        if (containers != null) {
+            containers.stop();
+            containers = null;
+        }
         if (decayTask != null) {
             decayTask.cancel();
             decayTask = null;
@@ -143,6 +205,11 @@ public class AntiCheatModule implements Module, Listener {
     /** Défi d'intégrité du client, pour la poignée du canal et la connexion. */
     public AttestationService getAttestation() {
         return attestation;
+    }
+
+    /** Manifeste des bibliothèques natives, pour la poignée du canal. */
+    public NativeGuard getNativeGuard() {
+        return natives;
     }
 
     /** Le défi part à la connexion ; le client a quelques secondes pour répondre. */
@@ -170,6 +237,21 @@ public class AntiCheatModule implements Module, Listener {
         }
         if (honeypot != null) {
             honeypot.forget(player.getUniqueId());
+        }
+        if (fly != null) {
+            fly.forget(player.getUniqueId());
+        }
+        if (breakSpeed != null) {
+            breakSpeed.forget(player.getUniqueId());
+        }
+        if (bursts != null) {
+            bursts.forget(player.getUniqueId());
+        }
+        if (containers != null) {
+            containers.forget(player.getUniqueId());
+        }
+        if (natives != null) {
+            natives.forget(player.getUniqueId());
         }
     }
 }

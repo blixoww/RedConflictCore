@@ -82,6 +82,51 @@ public enum Check {
      */
     HONEYPOT("honeypot", "Entite fantome"),
 
+    /**
+     * Bloc cassé plus vite que ce que l'outil tenu permet.
+     *
+     * <p>Complément indispensable du plafond de {@link #NUKER}, qui compte les
+     * blocs par seconde et laisse donc passer le joueur qui casse UN bloc — de
+     * l'obsidienne, un coffre, de la pierre à mains nues — en une fraction du
+     * temps prévu. Ici on ne compte pas, on compare : le serveur recalcule la
+     * durée que le jeu impose pour ce bloc avec cet outil, ces enchantements et
+     * ces effets, et la confronte au temps réellement écoulé entre le début du
+     * minage et la casse.
+     */
+    FASTBREAK("fastbreak", "Minage trop rapide"),
+
+    /**
+     * Suspension immobile en l'air : le joueur ne monte pas, ne descend pas.
+     *
+     * <p>La gravité de la 1.8 est déterministe — {@code dY = (dY - 0,08) x 0,98}
+     * à chaque tick. Aucune position vanilla ne tient une altitude constante
+     * sans support. C'est le contrôle qui attrape le vol « discret », celui qui
+     * reste sous le plafond de vitesse et ne monte jamais assez pour se faire
+     * remarquer.
+     */
+    HOVER("hover", "Vol stationnaire"),
+
+    /**
+     * Conteneur enterré ouvert ou cassé sans l'avoir jamais eu en vue.
+     *
+     * <p>Indice de chest-ESP : le joueur creuse droit sur un coffre muré, qu'il
+     * ne pouvait pas voir. Une fois, c'est de la chance ; la répétition, non.
+     * La vraie parade reste le masquage ({@code anticheat.chest-esp.mask}) —
+     * ceci n'est que le compteur qui dit qu'il faut l'activer.
+     */
+    CHEST_ESP("chest-esp", "Coffre trouvé sans le voir"),
+
+    /**
+     * Une bibliothèque native (DLL/so/dylib) du jeu ne correspond plus à
+     * l'empreinte publiée, ou un fichier s'est ajouté au dossier des natives.
+     *
+     * <p>Les natives sont le seul code du client qui n'est pas du bytecode :
+     * l'obfuscateur ne les protège pas, l'attestation du jar ne les couvre pas.
+     * Remplacer {@code lwjgl64.dll} par une version instrumentée est donc le
+     * chemin le plus court pour greffer un cheat sans toucher au jar.
+     */
+    NATIVES("natives", "Bibliothèques natives"),
+
     /** Messages de canal trop gros ou trop nombreux. */
     CHANNEL_ABUSE("channels", "Abus de canal"),
 

@@ -34,7 +34,14 @@ public class TradeC2SHandler implements PluginMessageListener {
     public void onPluginMessageReceived(String channel, Player player, byte[] message) {
         if (!CHANNEL_C2S.equals(channel)) return;
         try {
-            DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
+            // Cette poignée lit le fil sans passer par PacketReader : le
+            // descellement doit donc être fait à la main. Toute nouvelle poignée
+            // doit faire l'un ou l'autre, jamais aucun des deux.
+            byte[] opened = fr.redconflict.packets.WireCrypt.open(message);
+            if (opened == null) {
+                return; // paquet fabriqué ou graine différente : silence
+            }
+            DataInputStream in = new DataInputStream(new ByteArrayInputStream(opened));
             int packetId = fr.redconflict.packets.WireIds.fromWire(readVarInt(in));
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 try { handle(player, packetId, in); } catch (Exception ignored) {}

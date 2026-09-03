@@ -13,8 +13,20 @@ public class PacketReader {
 
     private int pos;
 
+    /**
+     * Ouvre un paquet reçu du client moddé.
+     *
+     * <p>Le descellement de {@link WireCrypt} a lieu ici, au seul point d'entrée
+     * commun : un paquet fabriqué, modifié, ou produit par un client dont la
+     * graine diffère ne passe pas le MAC. Dans ce cas le tampon est remplacé par
+     * un tampon vide, si bien que la première lecture lève {@code IOException} —
+     * l'erreur que toutes les poignées savent déjà attraper. Aucun retour n'est
+     * envoyé au client : comme pour l'attestation, le silence est ce qui empêche
+     * d'itérer.
+     */
     public PacketReader(byte[] data) {
-        this.data = data;
+        byte[] opened = WireCrypt.open(data);
+        this.data = opened == null ? new byte[0] : opened;
         this.pos = 0;
     }
 

@@ -106,7 +106,7 @@ vote:
       poids: 110            # 11,0 %
       nom: "&fUne clé en Acier"
       commandes:
-        - "give %player% STEEL_KEY 1"
+        - "cc give physical acier 1 %player%"
 
     - id: "materiaux"
       poids: 95             # 9,5 %
@@ -159,7 +159,7 @@ vote:
       poids: 40             # 4,0 %
       nom: "&aUne clé en Émeraude"
       commandes:
-        - "give %player% EMERALD_KEY 1"
+        - "cc give physical emeraude 1 %player%"
 
     - id: "bonus-pb"
       poids: 20             # 2,0 %
@@ -179,7 +179,7 @@ vote:
       poids: 10             # 1,0 %
       nom: "&cUne clé en Ruby"
       commandes:
-        - "give %player% RUBY_KEY 1"
+        - "cc give physical rubis 1 %player%"
 
     # Le lot le plus cher de la table une fois revendu (~69 000$), d'ou une
     # rarete sous le pourcent — plus rare encore que le jackpot en valeur.
@@ -203,7 +203,7 @@ vote:
     # ── Hors tirage (poids 0) : réservé à la garantie de fidélité ─────────────
     - id: "fidelite"
       poids: 0
-      nom: "&6Coffre de fidélité &7— clé Ruby, 8 000$ et 8 pommes dorées"
+      nom: "&6Clé Ruby, 8 000$ et 8 pommes dorées"
       # Pas de PB ici : tous les 25 votes, ça ferait un revenu régulier en euros.
       commandes:
         - "eco give %player% 8000"

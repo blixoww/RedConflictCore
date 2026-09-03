@@ -6,6 +6,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -86,7 +87,20 @@ public class RingEffectListener implements Listener {
         }
     }
 
-    @EventHandler
+    /**
+     * Anneau de Fortune : une chance de doubler les drops du bloc cassé.
+     *
+     * <p><b>{@code ignoreCancelled = true} n'est pas décoratif ici, c'est la
+     * correction d'une duplication d'objets.</b> Sans lui, ce code s'exécutait
+     * aussi quand la casse avait été REFUSÉE — zone WorldGuard protégée, claim
+     * RedFaction, spawn. Le bloc restait en place et ses drops tombaient quand
+     * même : un coffre donnait un coffre, un enderchest donnait ses huit
+     * obsidiennes, et l'opération était répétable à l'infini sur le même bloc.
+     *
+     * <p>La priorité MONITOR va avec : on lit un verdict déjà rendu par les
+     * plugins de protection, on ne le modifie pas.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         if (!RingEffects.hasRing(player, RingEffects.RING_OF_FORTUNE)) return;
@@ -102,7 +116,7 @@ public class RingEffectListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onFallDamage(EntityDamageEvent event) {
         if (event.getCause() != EntityDamageEvent.DamageCause.FALL) return;
         if (!(event.getEntity() instanceof Player)) return;

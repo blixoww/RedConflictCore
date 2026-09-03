@@ -18,6 +18,7 @@ import java.util.logging.Logger;
  *   inv_armor    BYTEA    — 4 slots d'armure
  *   held_slot    INT      — index de la hotbar tenue (0-8)
  *   ender        BYTEA    — 27 slots d'enderchest
+ *   rings        BYTEA    — 8 slots d'anneaux (module ring)
  *   exp_level    INT      — niveau d'XP
  *   exp_progress REAL     — progression vers le niveau suivant (0.0–1.0)
  *   health       DOUBLE   — points de vie
@@ -46,6 +47,7 @@ public class PlayerDataDatabase {
                 "  inv_armor    BYTEA," +
                 "  held_slot    INT    NOT NULL DEFAULT 0," +
                 "  ender        BYTEA," +
+                "  rings        BYTEA," +
                 "  exp_level    INT    NOT NULL DEFAULT 0," +
                 "  exp_progress REAL   NOT NULL DEFAULT 0," +
                 "  health       DOUBLE NOT NULL DEFAULT 20," +
@@ -62,6 +64,7 @@ public class PlayerDataDatabase {
             st.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS food         INT    NOT NULL DEFAULT 20");
             st.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS saturation   REAL   NOT NULL DEFAULT 5");
             st.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS effects      BYTEA");
+            st.executeUpdate("ALTER TABLE player_data ADD COLUMN IF NOT EXISTS rings        BYTEA");
             return true;
         } catch (SQLException e) {
             LOG.severe("[Sync] init: " + e.getMessage());
@@ -80,13 +83,22 @@ public class PlayerDataDatabase {
         } catch (SQLException e) { LOG.warning("[Sync] has: " + e.getMessage()); return false; }
     }
 
-    /** Sauvegarde (upsert) l'état complet du joueur. */
+    /**
+     * Sauvegarde (upsert) l'état complet du joueur.
+     *
+     * <p>Un champ {@code rings} nul ne veut pas dire « pas d'anneaux » mais
+     * « je ne sais pas » : c'est le cas quand l'instantané est pris après le
+     * déchargement du module ring. On recopie alors la valeur déjà en base
+     * plutôt que d'écraser — sinon une déconnexion dans le mauvais ordre
+     * effacerait les anneaux du joueur.
+     */
     public void save(UUID uuid, PlayerData d) {
+        byte[] rings = d.rings != null ? d.rings : currentRings(uuid);
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(
                 "MERGE INTO player_data (uuid, inv_main, inv_armor, held_slot, ender, " +
-                "exp_level, exp_progress, health, food, saturation, effects, updated_at) " +
-                "KEY(uuid) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")) {
+                "exp_level, exp_progress, health, food, saturation, effects, rings, updated_at) " +
+                "KEY(uuid) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
             ps.setString(1, uuid.toString());
             ps.setBytes(2, d.invMain);
             ps.setBytes(3, d.invArmor);
@@ -98,9 +110,22 @@ public class PlayerDataDatabase {
             ps.setInt(9, d.food);
             ps.setFloat(10, d.saturation);
             ps.setBytes(11, d.effects);
-            ps.setLong(12, System.currentTimeMillis());
+            ps.setBytes(12, rings);
+            ps.setLong(13, System.currentTimeMillis());
             ps.executeUpdate();
         } catch (SQLException e) { LOG.severe("[Sync] save(" + uuid + "): " + e.getMessage()); }
+    }
+
+    /** Les anneaux déjà enregistrés pour ce joueur, ou {@code null}. */
+    private byte[] currentRings(UUID uuid) {
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                "SELECT rings FROM player_data WHERE uuid = ?")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getBytes(1) : null;
+            }
+        } catch (SQLException e) { LOG.warning("[Sync] currentRings: " + e.getMessage()); return null; }
     }
 
     /** Charge l'état du joueur, ou {@code null} si absent. */
@@ -108,7 +133,7 @@ public class PlayerDataDatabase {
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(
                 "SELECT inv_main, inv_armor, held_slot, ender, exp_level, exp_progress, " +
-                "health, food, saturation, effects, updated_at FROM player_data WHERE uuid = ?")) {
+                "health, food, saturation, effects, rings, updated_at FROM player_data WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -123,6 +148,7 @@ public class PlayerDataDatabase {
                     d.food        = rs.getInt("food");
                     d.saturation  = rs.getFloat("saturation");
                     d.effects     = rs.getBytes("effects");
+                    d.rings       = rs.getBytes("rings");
                     d.updatedAt   = rs.getLong("updated_at");
                     return d;
                 }
@@ -137,6 +163,8 @@ public class PlayerDataDatabase {
         public byte[] invArmor;
         public int    heldSlot;
         public byte[] ender;
+        /** 8 slots d'anneaux ; {@code null} = inconnu, ne pas écraser la base. */
+        public byte[] rings;
         public int    expLevel;
         public float  expProgress;
         public double health      = 20.0D;

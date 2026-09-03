@@ -12,7 +12,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.bukkit.util.Vector;
 
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Canal générique du client moddé (CUSTOM:C2S).
@@ -36,8 +38,36 @@ public class CustomPacketServerHandler implements PluginMessageListener {
     /** Empreinte matérielle (HWID) + indice de VM (voir HwidBanService). */
     private static final int PACKET_HWID_REPORT = 0x64;
 
+    /** Manifeste des bibliothèques natives du client (voir NativeGuard). */
+    private static final int PACKET_NATIVE_REPORT = 0x65;
+
     private final RedConflictCore plugin;
     private final ChannelGuard guard;
+
+    /**
+     * Dernier rapport d'environnement traité, par joueur.
+     *
+     * <p><b>Un état qui dure ne vaut qu'une alerte.</b> Le client renvoie son
+     * rapport tant qu'un motif dur persiste — c'est ce qui permet de voir une
+     * injection apparue en cours de partie. Mais un motif PERMANENT, fût-il
+     * légitime, produit alors une alerte toutes les dix secondes et par joueur :
+     * le staff n'a plus que ça sous les yeux, et le vrai signalement se noie.
+     * On ne signale donc qu'un rapport DIFFÉRENT du précédent.
+     *
+     * <p>Ce garde est côté serveur exprès : il protège aussi des clients déjà
+     * déployés, qu'on ne peut pas corriger à distance.
+     *
+     * <p>Table bornée à 256 entrées, la plus ancienne partant d'elle-même : la
+     * poignée de canal peut être appelée hors du thread principal, d'où la
+     * synchronisation, et on ne veut pas d'une carte qui grossit sans fin.
+     */
+    private final Map<java.util.UUID, String> lastReport = java.util.Collections.synchronizedMap(
+            new LinkedHashMap<java.util.UUID, String>(32, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<java.util.UUID, String> eldest) {
+                    return size() > 256;
+                }
+            });
 
     public CustomPacketServerHandler(RedConflictCore plugin, ChannelGuard guard) {
         this.plugin = plugin;
@@ -60,6 +90,8 @@ public class CustomPacketServerHandler implements PluginMessageListener {
                 handleAttestation(player, reader);
             } else if (packetId == PACKET_HWID_REPORT) {
                 handleHwidReport(player, reader);
+            } else if (packetId == PACKET_NATIVE_REPORT) {
+                handleNativeReport(player, reader);
             }
         } catch (Exception ignored) {
             // Paquet malformé : déjà compté par le garde, rien de plus à faire.
@@ -80,6 +112,28 @@ public class CustomPacketServerHandler implements PluginMessageListener {
         fr.redconflict.staff.HwidBanService service = plugin.getHwidBanService();
         if (service != null) {
             service.handleReport(player, vmReason, fingerprint);
+        }
+    }
+
+    /**
+     * Manifeste des bibliothèques natives : nom, taille et empreinte de chaque
+     * fichier du dossier des natives, puis les natives chargées depuis ailleurs.
+     *
+     * <p>Les DLL sont le seul code du client que l'obfuscateur ne protège pas et
+     * que l'attestation du jar ne couvre pas : les remplacer est le chemin le
+     * plus court pour injecter du code sans toucher une classe. Le tri est fait
+     * par {@link fr.redconflict.anticheat.NativeGuard}, qui revalide chaque champ
+     * — rien de ce qui arrive ici n'est cru sur parole.
+     */
+    private void handleNativeReport(Player player, PacketReader reader) throws Exception {
+        // Bornes larges mais finies : une trentaine de fichiers, un chemin par
+        // native étrangère. Le garde de canal a déjà plafonné la taille totale.
+        String files = reader.readString(4096);
+        String foreign = reader.isReadable() ? reader.readString(1024) : "";
+        fr.redconflict.anticheat.NativeGuard guard = plugin.getAntiCheat() == null
+                ? null : plugin.getAntiCheat().getNativeGuard();
+        if (guard != null) {
+            guard.handleReport(player, files, foreign);
         }
     }
 
@@ -235,6 +289,10 @@ public class CustomPacketServerHandler implements PluginMessageListener {
         if (findings.length() == 0) {
             return;
         }
+        // Rapport identique au précédent : rien de nouveau à apprendre au staff.
+        if (findings.toString().equals(lastReport.put(player.getUniqueId(), findings.toString()))) {
+            return;
+        }
         // Un rapport DUR (code injecté, agent) et un rapport MOU (poignée de main
         // absente…) ne méritent pas la même réponse : le premier ne se lève que
         // chez un client réellement modifié, le second chez tout le monde tant
@@ -254,11 +312,25 @@ public class CustomPacketServerHandler implements PluginMessageListener {
      * (developpement) » restent MOUS : le premier se lève chez tout joueur avant
      * le déploiement du launcher, le second en développement.
      */
-    private static boolean isHard(String finding) {
+    private boolean isHard(String finding) {
         String f = finding.toLowerCase(java.util.Locale.ROOT);
-        return f.contains("hors du jar")         // code chargé hors du jar officiel
+        if (f.contains("hors du jar")           // code chargé hors du jar officiel
                 || f.contains("instrumentation") // agent -javaagent / -agentpath
-                || f.contains("jdwp");           // débogueur attaché
+                || f.contains("jdwp")) {         // débogueur attaché
+            return true;
+        }
+        // Pile réseau instrumentée et bibliothèque native étrangère : deux motifs
+        // aussi solides que les trois ci-dessus EN THÉORIE — un client vanilla
+        // n'ajoute aucun handler Netty et ne charge aucune native hors du jeu —
+        // mais qui n'ont encore jamais tourné sur ce parc de machines. Or
+        // client-injection expulse dès le premier signalement : un faux positif
+        // se traduirait par un joueur honnête expulsé en boucle, toutes les
+        // vingt secondes. On les laisse donc en alerte le temps de les observer,
+        // et on les promeut d'une ligne de configuration quand ils ont fait
+        // leurs preuves.
+        boolean strict = plugin.getConfig().getBoolean(
+                "anticheat.client-injection.strict-new-motifs", false);
+        return strict && (f.contains("pipeline") || f.contains("native etrangere"));
     }
     /**
      * Réponse au défi d'intégrité.

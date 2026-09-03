@@ -93,11 +93,20 @@ public class PacketBuilder {
         return this;
     }
 
+    /**
+     * Ferme le paquet et le rend prêt pour le fil.
+     *
+     * <p>C'est ici que passe TOUT ce que le Core envoie au client moddé, donc
+     * ici que la charge utile est scellée par {@link WireCrypt} — chiffrée et
+     * authentifiée quand la couche est armée, rendue telle quelle sinon. Aucun
+     * appelant n'a à le savoir, exactement comme pour la permutation de
+     * l'identifiant faite dans {@link #create}.
+     */
     public byte[] buildRaw() {
         try {
             this.dos.flush();
         } catch (IOException iOException) {}
-        return this.baos.toByteArray();
+        return WireCrypt.seal(this.baos.toByteArray());
     }
 
     public byte[] build() {

@@ -118,6 +118,37 @@ public class RingManager {
         return cache.containsKey(uuid);
     }
 
+    /**
+     * Remplace les 8 slots d'un joueur (synchronisation inter-serveurs).
+     *
+     * <p>Écrit aussi le fichier local : le {@code RingLoginListener} relit le
+     * disque à MONITOR, donc APRÈS la synchronisation qui tourne à LOWEST. Sans
+     * cette écriture, il écraserait immédiatement ce qu'on vient d'appliquer par
+     * l'ancien contenu local — et les anneaux resteraient ceux du serveur d'où
+     * le joueur vient de partir.
+     */
+    public void setSlots(UUID uuid, ItemStack[] slots) {
+        ItemStack[] target = getSlots(uuid);
+        for (int i = 0; i < RING_SIZE; i++) {
+            target[i] = (slots != null && i < slots.length) ? slots[i] : null;
+        }
+        savePlayer(uuid);
+    }
+
+    /**
+     * Les slots d'un joueur pour un instantané, ou {@code null} si on ne peut
+     * pas répondre.
+     *
+     * <p>La nuance compte : {@link #getSlots} CRÉE un tableau vide quand le
+     * joueur n'est pas chargé. Un instantané pris après son déchargement
+     * enregistrerait donc huit slots vides et effacerait ses anneaux. Ici, un
+     * joueur non chargé renvoie {@code null}, que l'appelant traduit par
+     * « ne touche pas à ce qui est en base ».
+     */
+    public ItemStack[] snapshotSlots(UUID uuid) {
+        return cache.get(uuid);
+    }
+
     // ── Sauvegarde périodique ────────────────────────────────────────────────
 
     public void startAutoSave(int periodTicks) {

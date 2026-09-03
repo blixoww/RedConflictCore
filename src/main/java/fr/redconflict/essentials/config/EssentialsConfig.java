@@ -66,6 +66,23 @@ public class EssentialsConfig {
         return config.getInt("tpa.expire-seconds", 60);
     }
 
+    /**
+     * La commande est-elle ouverte sur ce serveur ?
+     *
+     * <p>Une seule liste plutôt qu'un booléen par commande : le besoin
+     * (« couper /spawn sur le Minage ») se repose à l'identique pour la
+     * suivante, et une clé par commande ferait trente clés pour une seule
+     * question. Les noms sont ceux de plugin.yml, sans la barre oblique.
+     */
+    public boolean commandEnabled(String command) {
+        for (String disabled : config.getStringList("disabled-commands")) {
+            if (disabled != null && disabled.equalsIgnoreCase(command)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Cooldown (en secondes) d'une commande, 0 = aucun. Clé : {@code cooldowns.<commande>}. */
     public int cooldownSeconds(String command) {
         return config.getInt("cooldowns." + command, 0);

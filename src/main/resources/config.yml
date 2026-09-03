@@ -83,12 +83,62 @@ worldborder:
 # Un anti-triche qui expulse des joueurs honnêtes fait plus de dégâts que le
 # tricheur qu'il attrape. Observe les alertes quelques jours sur TON serveur,
 # avec TA latence, puis resserre.
+# ══ Combat ═══════════════════════════════════════════════════════════════════
+combat:
+  # ── Recul (knockback) ────────────────────────────────────────────────────
+  # Ne s'applique qu'au recul d'un COUP AU CORPS À CORPS. Les flèches, les
+  # explosions, les plaques de lancement et la canne à pêche poussent par
+  # d'autres chemins et ne sont pas touchées.
+  #
+  # Le calcul vanilla additionne 0,4 de recul de base et 0,5 par niveau de
+  # poussée, où « niveau » vaut l'enchantement Knockback PLUS UN si l'attaquant
+  # court. Mais le sprint n'est pas un enchantement : le coup en sprint est le
+  # coup normal de la 1.8, celui qui fait exister le W-tap. Il suit donc
+  # 'horizontal', comme le recul de base ; seul l'enchantement suit 'enchant'.
+  #
+  #   recul = (0,4 + sprint x 0,5) x horizontal + niveau x 0,5 x enchant
+  #
+  # Ce que donnent les valeurs livrées, en part du recul vanilla correspondant :
+  #
+  #   coup à l'arrêt ....... 55 %      (0,40 -> 0,22)
+  #   coup en sprint ....... 55 %      (0,90 -> 0,50)
+  #   sprint + Knockback I . 41 %      (1,40 -> 0,57)
+  #   sprint + Knockback II  34 %      (1,90 -> 0,65)
+  #
+  # Autrement dit : tout le monde recule deux fois moins, et Knockback II ne
+  # pousse plus que 1,3 fois un coup nu au lieu de 2,1 fois.
+  #
+  # Pour serrer davantage, baisse 'horizontal' — mais teste en jeu à chaque
+  # cran : en dessous de 0.35 le recul cesse d'être lisible et les joueurs ont
+  # l'impression qu'il n'existe plus.
+  #
+  # 1.0 partout = comportement vanilla. Relu à chaque coup : /red reload suffit.
+  knockback:
+    enabled: true
+    # Recul horizontal d'un coup, sprint compris.
+    horizontal: 0.55
+    # Hauteur du soulèvement. À ne pas trop baisser : sans un minimum de
+    # verticalité, les combats se collent et plus personne ne se décroche.
+    vertical: 0.75
+    # Part conservée de la seule poussée d'ENCHANTEMENT.
+    enchant: 0.15
+
 anticheat:
   enabled: true
   # Action par défaut au franchissement d'un seuil. Surchargeable par contrôle.
   #   alert   → message au staff (permission staff.anticheat) + console
   #   kick    → expulsion
   #   command → exécute anticheat.<contrôle>.command avec %player%
+  #   ...     → toute autre valeur est prise pour la commande elle-même, ce qui
+  #             évite la clé séparée :
+  #                 action: "ban %player% perm AntiCheat (injection)"
+  #
+  # ⚠️ Une commande n'est PAS une alerte : le staff est prévenu ET la commande
+  #    part. Avant d'en poser une sur un contrôle, regarde-le se déclencher
+  #    quelques jours en 'alert'. Les contrôles nourris par le CLIENT
+  #    (client-report, client-injection, natives) sont ceux où un faux positif
+  #    est le plus coûteux : ils reposent sur ce que la machine du joueur
+  #    déclare, pas sur ce que le serveur mesure.
   action: alert
   # Un point de violation retiré toutes les N secondes. C'est ce qui distingue
   # le faux positif isolé (qui s'efface) de la triche (qui se répète).
@@ -117,10 +167,47 @@ anticheat:
     max-blocks-per-second: 11.0
     threshold: 12
 
-  # Suspension en l'air sans perte d'altitude.
+  # ── Vol ───────────────────────────────────────────────────────────────────────
+  # Le contrôle ne compte plus une durée en l'air : il vérifie une CHUTE.
+  #
+  # La gravité de la 1.8 est déterministe — dY = (dY - 0,08) x 0,98 à chaque
+  # tick. C'est la seule trajectoire verticale possible sans support. Le serveur
+  # échantillonne donc la position de chacun à chaque tick et la compare à cette
+  # courbe. L'ancien contrôle attendait quatre secondes sans perte d'altitude,
+  # donc ne se déclenchait jamais sur un vol qui redescend un peu — c'est-à-dire
+  # sur tous les vols réglés bas, les seuls qu'on utilise vraiment.
+  #
+  # Ne descendre AUCUN de ces compteurs sans regarder les alertes d'abord : ce
+  # sont des ticks, pas des secondes, et le réseau en mange régulièrement.
   fly:
     enabled: true
+    # Intervalle d'échantillonnage, en ticks. 1 = chaque tick, c'est le réglage
+    # juste : à 2, une chute sur deux est invisible et la prédiction se décale.
+    sample-ticks: 1
+    # Filet de sécurité hérité : rester en l'air sans jamais redescendre. C'est
+    # le seul contrôle qui tombe même quand la position est figée.
     max-airborne-ms: 4000
+    # Chute plus lente que la gravité, N ticks d'affilée. Un tick isolé arrive
+    # à cause du réseau ; huit de suite, non.
+    gravity-ticks: 8
+    # Tolérance sur la prédiction verticale, en blocs par tick.
+    gravity-epsilon: 0.005
+    # Montée continue sans support. Un saut monte 5 ticks, 8 avec Détente III
+    # (le contrôle ajoute lui-même 2 ticks par niveau de Détente actif).
+    ascend-ticks: 12
+    threshold: 6
+
+  # Vol stationnaire : l'altitude ne bouge plus du tout.
+  #
+  # Aucune position vanilla ne tient une altitude constante en l'air — pas même
+  # un tick, sauf au sommet exact d'un saut. Le compteur exige une SÉRIE, et
+  # seuls les échantillons « frais » (où quelque chose a bougé, ne serait-ce que
+  # la vue) sont comptés : un joueur qui décroche du réseau a la même position
+  # figée qu'un joueur qui vole sur place, et on ne sanctionne pas une coupure.
+  hover:
+    enabled: true
+    ticks: 10
+    epsilon: 0.005
     threshold: 6
 
   # Le client annonce toucher le sol alors qu'il n'y a rien sous lui : c'est ce
@@ -349,7 +436,116 @@ anticheat:
     # Proportion de diamant + émeraude au-delà de laquelle on alerte.
     # En génération 1.8 sous Y=60, un mineur honnête tourne autour de 1 %.
     max-rare-ratio: 0.045
+    # Mondes exclus de la statistique. Une mine RÉGÉNÉRÉE a la densité de
+    # minerais que l'administrateur lui a donnée, pas celle de la génération
+    # vanilla : tout le monde y dépasse le seuil, tricheur ou non. Y mesurer un
+    # ratio ne veut rien dire — d'où l'exclusion plutôt qu'un seuil plus haut.
+    disabled-worlds: []
     threshold: 1
+
+  # ── Minage trop rapide (fast break) ───────────────────────────────────────
+  # Le pendant qualitatif de « nuker », qui ne compte que des blocs par seconde.
+  #
+  # Casser UN bloc trop vite passe sous n'importe quel plafond de cadence :
+  # l'obsidienne en une seconde, un coffre à mains nues, de la pierre sans
+  # pioche. Le serveur connaît tout ce qui fixe la durée — le bloc, l'objet tenu,
+  # ses enchantements, les effets actifs — puisque c'est lui qui tient
+  # l'inventaire. Il recalcule donc la durée que le jeu impose entre le paquet
+  # « je commence à creuser » et le paquet « j'ai fini ».
+  #
+  # Le calcul penche systématiquement du côté du joueur : les bonus (Efficacité,
+  # Célérité) comptent, les malus (Fatigue, sous l'eau, en l'air) sont ignorés,
+  # et la durée retenue est la plus courte entre l'outil du début et celui de la
+  # fin. Descendre sous cette valeur ne s'explique par aucun réglage légitime.
+  fastbreak:
+    enabled: true
+    # Part de la durée attendue en dessous de laquelle on signale. 0.70 laisse
+    # 30 % de mou en plus de la marge de latence.
+    tolerance: 0.70
+    latency-margin-ms: 150
+    # En dessous de cette durée attendue, on ne juge pas : sur 200 ms, la gigue
+    # réseau pèse plus lourd que la triche.
+    min-expected-ms: 400
+    # Signaler une casse sans aucun paquet de début de minage. Un client vanilla
+    # n'en produit jamais, mais un rechargement de plugin ou une connexion en
+    # plein minage, si — d'où l'interrupteur séparé.
+    flag-missing-start: true
+    # Multiplicateur global, si le serveur accorde une vitesse de minage que
+    # l'API n'expose pas (objet custom, métier). 1.0 = calcul du jeu.
+    speed-bonus: 1.0
+    # Dureté des blocs custom, par identifiant numérique. Sans déclaration, un
+    # bloc absent de la table vanilla n'est pas jugé du tout — c'est le bon
+    # défaut : mieux vaut un angle mort qu'une accusation inventée.
+    # hardness:
+    #   198: 3.0   # rubis
+    #   199: 3.0   # cobalt
+    threshold: 8
+
+  # ── Anti chest-ESP ───────────────────────────────────────────────────
+  # Même principe que le masquage des joueurs, appliqué aux conteneurs.
+  #
+  # Un ESP de coffres n'émet aucun paquet : il dessine ce que le client a déjà
+  # reçu. Il n'y a donc rien à détecter — la seule parade est de ne pas envoyer
+  # la donnée. Le serveur envoie au joueur un bloc de remplacement (copié sur le
+  # mur voisin, pour ne pas se repérer) à la place des coffres hors de vue, et
+  # rend le vrai bloc dès qu'une ligne de vue s'ouvre.
+  #
+  # Un joueur honnête n'est jamais gêné : pour ouvrir un coffre il faut d'abord
+  # le viser, donc l'avoir en vue — un coffre masqué est un coffre qu'on ne
+  # pouvait pas atteindre.
+  #
+  # /!\ mask: false par défaut. Le balayage tourne (et le compteur avec), mais
+  # rien ne change à l'écran tant que tu n'as pas testé sur un serveur d'essai.
+  chest-esp:
+    enabled: true
+    # Le masquage lui-même. C'est LA défense ; le reste n'est qu'un compteur.
+    mask: false
+    # Signaler les conteneurs murés atteints sans jamais avoir eu de ligne de
+    # vue dessus : le geste du chercheur de planques.
+    detect: true
+    interval-ticks: 8
+    radius: 24.0
+    # En deçà, toujours visible : un coffre à trois blocs doit apparaître.
+    always-visible-radius: 5.0
+    hide-delay-ms: 1000
+    max-traces-per-pass: 1500
+    # Vide = la liste par défaut (coffres, fours, distributeurs, entonnoirs,
+    # alambics, balise).
+    types: []
+    disabled-worlds: []
+    threshold: 4
+
+  # ── Intégrité des bibliothèques natives (DLL) ────────────────────────────
+  # Le seul code du client que l'obfuscateur ne protège pas.
+  #
+  # L'attestation empreinte le jar, le rapport d'environnement inventorie les
+  # classes chargées — mais les .dll de LWJGL, OpenAL et JInput sont des fichiers
+  # posés à côté du jar. Remplacer l'un d'eux par une version instrumentée est le
+  # chemin le plus court pour exécuter du code arbitraire dans le processus du
+  # jeu sans toucher une seule classe.
+  #
+  # Le client envoie le nom, la taille et le SHA-256 de chaque fichier de son
+  # dossier de natives, puis les natives chargées qui ne viennent NI de ce
+  # dossier NI du runtime Java.
+  #
+  # /!\ COMMENCE EN learn: true. Les natives viennent de Mojang et varient selon
+  # le système et l'architecture : aucune liste écrite à la main ne serait juste.
+  # Le mode apprentissage n'accuse personne et journalise un bloc prêt à coller
+  # sous « allow ». Regarde quelques jours, colle, passe à false.
+  natives:
+    enabled: true
+    learn: true
+    max-files: 32
+    # Empreintes acceptées, par nom de fichier (plusieurs par fichier : garde
+    # l'ancienne le temps que tout le monde migre). Vide = aucune vérification.
+    allow: {}
+    # Signaler aussi un fichier ATTENDU mais absent. Bruyant en multi-OS.
+    flag-missing: false
+    # Fragments de chemin tolérés parmi les natives étrangères, si un pilote ou
+    # un antivirus injecte la sienne chez tout le monde.
+    ignore-paths: []
+    threshold: 1
+    action: alert
 
 
   # ── Masquage anti-ESP ──────────────────────────────────────────────────────
@@ -458,6 +654,18 @@ anticheat:
     enabled: true
     threshold: 1
     action: kick
+    # Deux motifs récents restent en ALERTE tant que cette clé vaut false :
+    # « pipeline reseau instrumente » (un handler Netty greffé sur la pile du
+    # client — la signature de l'enregistreur de paquets) et « native etrangere
+    # chargee » (une DLL chargée hors du dossier du jeu et du runtime Java).
+    #
+    # Ils sont aussi solides que les trois autres en théorie : un client vanilla
+    # n'ajoute aucun handler et ne charge aucune native étrangère. Mais ils n'ont
+    # encore jamais tourné sur le parc de machines des joueurs, et ce bloc
+    # expulse dès le premier signalement — un faux positif reviendrait à
+    # expulser un joueur honnête toutes les vingt secondes. Regarde-les remonter
+    # en alerte pendant quelques jours, puis passe cette clé à true.
+    strict-new-motifs: false
 
   # ── Ban matériel (HWID) ────────────────────────────────────────────────────
   # Le compte banni qui revient sous un pseudo neuf, depuis le même PC.

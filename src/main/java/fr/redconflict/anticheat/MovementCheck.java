@@ -20,7 +20,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Contrôles de déplacement : vitesse, cadence de paquets, vol, chute annulée.
+ * Contrôles de déplacement : vitesse, cadence de paquets, chute annulée.
+ *
+ * <p><b>Le vol n'est plus ici.</b> Il vivait dans ce fichier sous la forme d'un
+ * compteur de secondes passées en l'air, qui ne se déclenchait qu'au bout de
+ * quatre secondes sans perte d'altitude — donc jamais, dès que le vol
+ * redescendait un peu. Il est parti dans {@link FlyCheck}, qui échantillonne la
+ * position à chaque tick et la compare à la gravité du jeu.
  *
  * <p>Tout se joue sur le serveur, à partir des positions qu'il reçoit. Le client
  * ne peut donc pas les désactiver : il peut seulement rester dans les clous, ce
@@ -81,7 +87,6 @@ public class MovementCheck implements Listener {
 
             if (now - state.windowStart < WINDOW_MS) {
                 checkNoFall(player, state, now);
-                checkFly(player, to, state, now);
                 return;
             }
 
@@ -228,43 +233,6 @@ public class MovementCheck implements Listener {
         }
     }
 
-    /**
-     * Maintien ou gain d'altitude prolongé sans support.
-     *
-     * <p>Volontairement peu sensible : les projectiles, les bulles d'eau, les
-     * bordures de bloc et le knockback produisent tous des suspensions courtes.
-     * Seule une suspension qui dure est retenue.
-     */
-    private void checkFly(Player player, Location to, State state, long now) {
-        if (!enabled("fly") || now - state.graceUntil < 0
-                || player.isInsideVehicle() || player.isFlying() || player.getAllowFlight()) {
-            state.airborneSince = 0;
-            return;
-        }
-        if (player.isOnGround() || to.getBlock().isLiquid() || isClimbable(to)) {
-            state.airborneSince = 0;
-            state.airborneY = to.getY();
-            return;
-        }
-        if (state.airborneSince == 0) {
-            state.airborneSince = now;
-            state.airborneY = to.getY();
-            return;
-        }
-        long airborne = now - state.airborneSince;
-        long max = plugin.getConfig().getLong("anticheat.fly.max-airborne-ms", 4000L);
-        // Une vraie chute perd de l'altitude : si le joueur descend, il tombe.
-        if (to.getY() < state.airborneY - 0.5) {
-            state.airborneSince = now;
-            state.airborneY = to.getY();
-            return;
-        }
-        if (airborne > max) {
-            state.airborneSince = now;
-            violations.flag(player, Check.FLY, (airborne / 1000) + " s en l'air sans descendre");
-        }
-    }
-
     private static boolean isClimbable(Location location) {
         Material type = location.getBlock().getType();
         return type == Material.LADDER || type == Material.VINE || type == Material.WEB;
@@ -300,7 +268,6 @@ public class MovementCheck implements Listener {
         State state = states.computeIfAbsent(player.getUniqueId(), id -> new State());
         synchronized (state) {
             state.graceUntil = System.currentTimeMillis() + GRACE_MS;
-            state.airborneSince = 0;
         }
     }
 
@@ -317,7 +284,5 @@ public class MovementCheck implements Listener {
         private int packets;
         private double distance;
         private long graceUntil;
-        private long airborneSince;
-        private double airborneY;
     }
 }

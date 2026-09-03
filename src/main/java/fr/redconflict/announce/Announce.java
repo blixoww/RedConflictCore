@@ -1,5 +1,7 @@
 package fr.redconflict.announce;
 
+import fr.redconflict.core.text.ChatFont;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +21,11 @@ import java.util.List;
  *
  *   ────────────────────────────────────────────────
  * </pre>
+ *
+ * <p>La mesure du texte est celle de {@link ChatFont} : la table de largeurs de
+ * la police vivait ici en double, et deux copies d'une même table finissent
+ * toujours par diverger — celle qui se trompe étant, par construction, celle
+ * qu'on ne relit jamais.
  *
  * <p>Le trait est un texte barré ({@code §m}) appliqué à des espaces : Minecraft dessine alors
  * une ligne continue (pas de tirets « à trous »). Sa largeur est calibrée en pixels pour tenir
@@ -68,31 +75,11 @@ public final class Announce {
 
     /** Préfixe un texte d'assez d'espaces pour le centrer sur le cadre (centrage au pixel). */
     private static String center(String text) {
-        int half = pixelWidth(text) / 2;
+        int half = ChatFont.width(text) / 2;
         int pad = CENTER_PX - half;
         StringBuilder sb = new StringBuilder();
         for (int w = 0; w < pad; w += SPACE_PX) sb.append(' ');
         return sb.append(text).toString();
-    }
-
-    /** Largeur d'affichage d'un texte en pixels (codes § ignorés, gras pris en compte). */
-    private static int pixelWidth(String s) {
-        int px = 0;
-        boolean bold = false;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '§' && i + 1 < s.length()) {
-                char code = Character.toLowerCase(s.charAt(++i));
-                if (code == 'l') bold = true;
-                else if (code == 'r' || (code >= '0' && code <= '9')
-                        || (code >= 'a' && code <= 'f')) bold = false; // couleur/reset coupe le gras
-                continue;
-            }
-            int w = charWidth(c);
-            if (w == 0) continue;
-            px += w + 1 + (bold ? 1 : 0); // +1 d'espacement, +1 de plus en gras
-        }
-        return px;
     }
 
     private static String spaces(int n) {
@@ -107,8 +94,8 @@ public final class Announce {
         StringBuilder line = new StringBuilder();
         for (String word : message.split("\\s+")) {
             if (word.isEmpty()) continue;
-            int projected = pixelWidth(line.toString())
-                    + (line.length() == 0 ? 0 : SPACE_PX) + pixelWidth(word);
+            int projected = ChatFont.width(line.toString())
+                    + (line.length() == 0 ? 0 : SPACE_PX) + ChatFont.width(word);
             if (line.length() > 0 && projected > maxPx) {
                 out.add(line.toString());
                 line.setLength(0);
@@ -121,21 +108,4 @@ public final class Announce {
         return out;
     }
 
-    /**
-     * Largeur du glyphe (hors espacement) dans la police par défaut de Minecraft 1.8.
-     * Valeurs issues de la table standard {@code DefaultFontInfo}. Inconnu → 5 (largeur courante).
-     */
-    private static int charWidth(char c) {
-        switch (c) {
-            case ' ': return 3;
-            case '!': case '\'': case ',': case '.': case ':': case ';':
-            case 'i': case '|': return 1;
-            case '`': case 'l': return 2;
-            case '"': case '(': case ')': case '*': case 'I': case '[': case ']':
-            case 't': case '{': case '}': case '<': case '>': return 3;
-            case 'f': case 'k': return 4;
-            case '@': case '~': return 6;
-            default: return 5;
-        }
-    }
 }

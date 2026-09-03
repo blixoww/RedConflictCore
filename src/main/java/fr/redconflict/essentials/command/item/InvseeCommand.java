@@ -8,9 +8,14 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
- * /invsee &lt;joueur&gt; — consulte l'inventaire d'un autre joueur (staff).
- * Lecture seule : les clics sont annulés par {@code InvseeListener} tant que
- * la session est ouverte.
+ * /invsee &lt;joueur&gt; — ouvre l'inventaire d'un autre joueur (staff).
+ *
+ * <p><b>Modifiable</b> : le staff doit pouvoir retirer un objet dupé ou rendre
+ * un objet perdu, pas seulement regarder. Les clics ne sont plus annulés.
+ *
+ * <p>{@code InvseeListener} reste indispensable pour autant : il ferme la
+ * fenêtre quand l'observé se déconnecte. Un inventaire modifiable ouvert sur un
+ * joueur parti est un duplicateur d'objets.
  */
 public class InvseeCommand extends EssCommand {
 
@@ -37,7 +42,8 @@ public class InvseeCommand extends EssCommand {
 
         sessions.open(player.getUniqueId(), target.getUniqueId());
         player.openInventory(target.getInventory());
-        player.sendMessage(Text.info("Inventaire de §f" + target.getName() + " §7(lecture seule)."));
+        player.sendMessage(Text.info("Inventaire de §f" + target.getName()
+                + " §7— modifiable, chaque clic s'applique immédiatement."));
         return true;
     }
 }

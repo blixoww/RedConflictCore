@@ -1,15 +1,28 @@
 package fr.redconflict.trade;
 
 import fr.redconflict.RedConflictCore;
+import fr.redconflict.packets.PacketBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.List;
 
+/**
+ * Paquets d'échange serveur -> client.
+ *
+ * <p><b>Ce fichier écrivait son propre protocole.</b> Il recopiait
+ * {@code writeVarInt}, {@code writeString} et l'en-tête de paquet dans un
+ * {@code DataOutputStream} au lieu de passer par {@link PacketBuilder} — et
+ * c'est précisément l'en-tête qui posait problème : {@code PacketBuilder.create}
+ * est le seul endroit où l'identifiant est traduit pour le fil par
+ * {@code WireIds}. Écrit à la main, l'identifiant partait en clair, alors que le
+ * client dépermute tout ce qu'il reçoit : la fenêtre d'échange ne recevait donc
+ * plus rien depuis l'activation du brouillage.
+ *
+ * <p>Deuxième implémentation d'un protocole = deuxième occasion de diverger.
+ * Tout passe désormais par le point de sortie commun.
+ */
 public final class TradePacketSender {
 
     public static final String CHANNEL_S2C = "CUSTOM:TRADE_S2C";
@@ -22,12 +35,10 @@ public final class TradePacketSender {
     private TradePacketSender() {}
 
     public static void sendOpen(Player player, String partnerName, boolean isPlayerA) {
-        byte[] payload = build(out -> {
-            writeVarInt(out, TRADE_OPEN);
-            writeString(out, partnerName);
-            out.writeBoolean(isPlayerA);
-        });
-        send(player, payload);
+        send(player, PacketBuilder.create(TRADE_OPEN)
+                .writeString(partnerName)
+                .writeBoolean(isPlayerA)
+                .build());
     }
 
     public static void sendUpdate(Player player, List<ItemStack> myOffer, List<ItemStack> partnerOffer,
@@ -35,23 +46,19 @@ public final class TradePacketSender {
                                   long myMoney, long partnerMoney,
                                   int  myPB,    int  partnerPB,
                                   ItemStack myCursor) {
-        byte[] payload = build(out -> {
-            writeVarInt(out, TRADE_UPDATE);
-            out.writeBoolean(myConfirmed);
-            out.writeBoolean(partnerConfirmed);
-            writeVarInt(out, myOffer.size());
-            for (ItemStack item : myOffer) writeItem(out, item);
-            writeVarInt(out, partnerOffer.size());
-            for (ItemStack item : partnerOffer) writeItem(out, item);
-            out.writeLong(myMoney);
-            out.writeLong(partnerMoney);
-            // PB + curseur ajoutés à la fin (lecture try/catch côté client)
-            writeVarInt(out, Math.max(0, myPB));
-            writeVarInt(out, Math.max(0, partnerPB));
-            // Curseur propre au joueur (item « porté »). null = item vide (0xFFFF).
-            writeItem(out, myCursor);
-        });
-        send(player, payload);
+        PacketBuilder packet = PacketBuilder.create(TRADE_UPDATE)
+                .writeBoolean(myConfirmed)
+                .writeBoolean(partnerConfirmed)
+                .writeVarInt(myOffer.size());
+        for (ItemStack item : myOffer) writeItem(packet, item);
+        packet.writeVarInt(partnerOffer.size());
+        for (ItemStack item : partnerOffer) writeItem(packet, item);
+        packet.writeLong(myMoney).writeLong(partnerMoney);
+        // PB + curseur ajoutés à la fin (lecture try/catch côté client)
+        packet.writeVarInt(Math.max(0, myPB)).writeVarInt(Math.max(0, partnerPB));
+        // Curseur propre au joueur (item « porté »). null = item vide (0xFFFF).
+        writeItem(packet, myCursor);
+        send(player, packet.build());
     }
 
     /** Overload sans curseur. */
@@ -72,11 +79,9 @@ public final class TradePacketSender {
     }
 
     public static void sendClose(Player player, boolean success) {
-        byte[] payload = build(out -> {
-            writeVarInt(out, TRADE_CLOSE);
-            out.writeBoolean(success);
-        });
-        send(player, payload);
+        send(player, PacketBuilder.create(TRADE_CLOSE)
+                .writeBoolean(success)
+                .build());
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -86,35 +91,10 @@ public final class TradePacketSender {
         player.sendPluginMessage(RedConflictCore.getInstance(), CHANNEL_S2C, payload);
     }
 
-    private static byte[] build(CheckedConsumer<DataOutputStream> writer) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             DataOutputStream dos = new DataOutputStream(baos)) {
-            writer.accept(dos);
-            dos.flush();
-            return baos.toByteArray();
-        } catch (Exception e) {
-            return new byte[0];
-        }
-    }
-
-    private static void writeVarInt(DataOutputStream out, int value) throws IOException {
-        while ((value & 0xFFFFFF80) != 0) {
-            out.writeByte(value & 0x7F | 0x80);
-            value >>>= 7;
-        }
-        out.writeByte(value & 0x7F);
-    }
-
-    private static void writeString(DataOutputStream out, String s) throws IOException {
-        byte[] bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        writeVarInt(out, bytes.length);
-        out.write(bytes);
-    }
-
-    private static void writeItem(DataOutputStream out, ItemStack item) throws IOException {
+    /** Un objet : sa longueur, puis ses octets NMS bruts. */
+    private static void writeItem(PacketBuilder packet, ItemStack item) {
         byte[] bytes = serializeItemNms(item);
-        writeVarInt(out, bytes.length);
-        out.write(bytes);
+        packet.writeVarInt(bytes.length).writeBytes(bytes);
     }
 
     private static byte[] serializeItemNms(ItemStack item) {
@@ -140,10 +120,5 @@ public final class TradePacketSender {
         } catch (Exception e) {
             return new byte[]{ (byte)0xFF, (byte)0xFF };
         }
-    }
-
-    @FunctionalInterface
-    interface CheckedConsumer<T> {
-        void accept(T t) throws Exception;
     }
 }

@@ -16,6 +16,7 @@ public final class Messages {
     public static final String ERR_PLAYER_NOT_FOUND = Text.error("Joueur introuvable ou hors ligne.");
     public static final String ERR_INVALID_NUMBER   = Text.error("Nombre invalide.");
     public static final String ERR_INTERNAL         = Text.error("Erreur interne — contactez un administrateur.");
+    public static final String ERR_DISABLED         = Text.error("Cette commande est désactivée sur ce serveur.");
     /** %s = temps restant. */
     public static final String ERR_COOLDOWN         = Text.error("Vous devez attendre §f%s §cavant de réutiliser cette commande.");
     public static final String ERR_NO_PERM_OTHERS   = Text.error("Vous n'avez pas la permission de cibler un autre joueur.");

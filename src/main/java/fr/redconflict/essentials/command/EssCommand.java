@@ -50,6 +50,14 @@ public abstract class EssCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // Commande coupée par la configuration (essentials.yml, disabled-commands).
+        // Vérifié avant tout le reste — y compris le cooldown — pour qu'une
+        // commande désactivée n'ait aucun effet observable, pas même un compteur.
+        if (!env.getConfig().commandEnabled(name)) {
+            sender.sendMessage(Messages.ERR_DISABLED);
+            return true;
+        }
+
         if (sender instanceof Player && env.getConfig().cooldownSeconds(name) > 0
                 && !sender.hasPermission(COOLDOWN_BYPASS)) {
             long left = env.getCooldowns().remaining(((Player) sender).getUniqueId(), name);

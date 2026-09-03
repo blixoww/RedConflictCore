@@ -139,10 +139,19 @@ public class ViolationTracker {
                 "anticheat." + check.key() + ".threshold", 8));
     }
 
+    /**
+     * L'action configurée pour ce contrôle, telle qu'écrite.
+     *
+     * <p>Rendue SANS passer en minuscules, contrairement à la première version :
+     * quand la valeur est une commande, elle contient un motif de bannissement
+     * qui s'affichera au joueur, et « AntiCheat » ne doit pas devenir
+     * « anticheat » en chemin. La comparaison aux mots-clés se fait donc sans
+     * tenir compte de la casse, là où elle a lieu.
+     */
     private String action(Check check) {
         String global = plugin.getConfig().getString("anticheat.action", "alert");
-        return plugin.getConfig().getString("anticheat." + check.key() + ".action", global)
-                .toLowerCase(java.util.Locale.ROOT);
+        String value = plugin.getConfig().getString("anticheat." + check.key() + ".action", global);
+        return value == null ? "alert" : value.trim();
     }
 
     private void announce(Player player, Check check, int level, String detail) {
@@ -160,26 +169,44 @@ public class ViolationTracker {
     /**
      * L'action est exécutée sur le thread principal : {@code flag} peut être
      * appelé depuis un canal de plugin, qui n'y est pas.
+     *
+     * <p><b>Trois mots-clés, et tout le reste est une commande.</b> La forme
+     * d'origine exigeait {@code action: command} PLUS une clé {@code command:}
+     * séparée ; écrire directement {@code action: "ban %player% ..."} — ce que
+     * tout le monde essaie d'abord — ne correspondait à aucune branche et ne
+     * faisait donc <em>rien du tout</em>, en silence. Un anti-triche qu'on croit
+     * armé et qui ne l'est pas est pire que pas d'anti-triche : la valeur est
+     * désormais prise pour ce qu'elle est.
      */
     private void applyAction(Player player, Check check) {
-        String action = action(check);
-        if ("alert".equals(action)) {
+        final String action = action(check);
+        if (action.isEmpty() || "alert".equalsIgnoreCase(action)) {
             return;
         }
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!player.isOnline()) {
                 return;
             }
-            if ("kick".equals(action)) {
+            if ("kick".equalsIgnoreCase(action)) {
                 player.kickPlayer("§cComportement anormal détecté §8(" + check.label() + ")"
                         + "\n§7Si tu penses que c'est une erreur, contacte le staff.");
-            } else if ("command".equals(action)) {
-                String command = plugin.getConfig().getString(
-                        "anticheat." + check.key() + ".command", "").replace("%player%", player.getName());
-                if (!command.isEmpty()) {
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-                }
+                return;
             }
+            // « command » prend la commande dans sa propre clé ; toute autre
+            // valeur EST la commande.
+            String command = "command".equalsIgnoreCase(action)
+                    ? plugin.getConfig().getString("anticheat." + check.key() + ".command", "")
+                    : action;
+            command = command.trim().replace("%player%", player.getName());
+            if (command.isEmpty()) {
+                LOG.warning("[AC] " + check.key() + " : action 'command' sans clé 'command' — "
+                        + "aucune sanction appliquée.");
+                return;
+            }
+            if (command.startsWith("/")) {
+                command = command.substring(1); // la console n'attend pas la barre
+            }
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
         });
     }
 

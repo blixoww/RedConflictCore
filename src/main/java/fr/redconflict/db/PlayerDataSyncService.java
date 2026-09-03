@@ -43,7 +43,34 @@ public class PlayerDataSyncService {
         d.food        = p.getFoodLevel();
         d.saturation  = p.getSaturation();
         d.effects     = PotionEffectCodec.encode(p.getActivePotionEffects());
+        d.rings       = ringSlots(p);
         return d;
+    }
+
+    /**
+     * Les anneaux du joueur, encodés — ou {@code null} si on ne peut pas répondre.
+     *
+     * <p>Les anneaux vivent dans leur propre module et dans leurs propres
+     * fichiers, mais ils font partie de ce que le joueur emporte : sans eux,
+     * passer sur le Minage revenait à arriver les doigts nus, avec les anneaux
+     * du serveur d'en face. Ils voyagent donc avec l'inventaire, par la même
+     * table et le même relais.
+     *
+     * <p>Le module peut être absent (serveur sans anneaux) ou le joueur déjà
+     * déchargé : dans les deux cas on renvoie {@code null}, qui signifie « ne
+     * touche pas à ce qui est en base » et surtout pas « huit slots vides ».
+     */
+    private static byte[] ringSlots(Player p) {
+        try {
+            fr.redconflict.ring.RingManager rings = fr.redconflict.ring.RingEffects.getManager();
+            if (rings == null) {
+                return null;
+            }
+            org.bukkit.inventory.ItemStack[] slots = rings.snapshotSlots(p.getUniqueId());
+            return slots == null ? null : ItemArrayCodec.encode(slots);
+        } catch (Throwable ignored) {
+            return null; // module anneaux absent ou non initialisé
+        }
     }
 
     /** Encode et sauvegarde l'état complet du joueur. */
@@ -94,8 +121,30 @@ public class PlayerDataSyncService {
             p.addPotionEffect(e, true);
         }
 
+        // ── Anneaux ────────────────────────────────────────────────────────────────
+        // Une colonne nulle vient d'une ligne écrite avant l'ajout de la
+        // colonne : on garde alors les anneaux locaux plutôt que de les effacer.
+        applyRings(p, d.rings);
+
         p.updateInventory();
         return true;
+    }
+
+    /** Pose les anneaux reçus, et écrit le fichier local pour que le module les relise. */
+    private static void applyRings(Player p, byte[] encoded) {
+        if (encoded == null) {
+            return;
+        }
+        try {
+            fr.redconflict.ring.RingManager rings = fr.redconflict.ring.RingEffects.getManager();
+            if (rings == null) {
+                return;
+            }
+            rings.setSlots(p.getUniqueId(), normalize(
+                    ItemArrayCodec.decode(encoded), fr.redconflict.ring.RingManager.RING_SIZE));
+        } catch (Throwable ignored) {
+            // Module anneaux absent : l'inventaire, lui, est déjà appliqué.
+        }
     }
 
     /**

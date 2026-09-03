@@ -342,7 +342,7 @@ commands:
     usage: /hat
     permission: redconflict.hat
   invsee:
-    description: Consulte l'inventaire d'un joueur (staff, lecture seule)
+    description: Ouvre l'inventaire d'un joueur, modifiable (staff)
     usage: /invsee <joueur>
     permission: redconflict.invsee
   # ── Module Essentials — joueur / statut ─────────────────────────────────

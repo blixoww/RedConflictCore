@@ -14,6 +14,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -33,6 +34,13 @@ public class CombatLogListener implements Listener {
         this.sender = sender;
     }
 
+    /**
+     * Zone sans PvP : le coup est refusé.
+     *
+     * <p>Reste à la priorité normale, où une annulation a encore du sens : à
+     * MONITOR, les plugins qui liront l'événement après nous auraient déjà
+     * travaillé sur des dégâts qu'on s'apprêtait à supprimer.
+     */
     @EventHandler
     public void onDamagePlayer(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
@@ -43,10 +51,71 @@ public class CombatLogListener implements Listener {
 
         if (wgPresent && (!hasPvP(victim) || !hasPvP(attacker))) {
             event.setCancelled(true);
-            return;
         }
+    }
+
+    /**
+     * Pose le Combat Tag — mais seulement pour un coup qui compte.
+     *
+     * <p><b>Deux raisons de ne pas taguer, et l'ancienne version ignorait les
+     * deux.</b>
+     *
+     * <p><b>1. Le coup n'a pas eu lieu.</b> Ce contrôle tournait à la priorité
+     * normale, donc AVANT les protections : RedFaction annule le friendly fire
+     * à HIGH, la SafeZone aussi. Le tag était donc posé sur des dégâts qui
+     * n'arrivaient jamais — deux joueurs de la même faction en SafeZone se
+     * retrouvaient en combat pour un coup qu'aucun des deux n'avait reçu.
+     * Déplacé en MONITOR avec {@code ignoreCancelled}, il ne voit plus que les
+     * coups qui ont vraiment porté, quelle que soit la raison du refus et quel
+     * que soit le plugin qui l'a prononcé.
+     *
+     * <p><b>2. Le coup a porté, mais entre gens du même camp.</b> Un allé ou une
+     * trêve ne sont annulés par personne — le friendly fire n'est coupé que
+     * pour la MÊME faction, et seulement si la configuration le dit. Sans le
+     * test de relation ci-dessous, se taper entre alliés pendant un entraînement
+     * empêchait tout le monde de se déconnecter pendant trente secondes.
+     *
+     * <p>On ne lève jamais un tag existant : quelqu'un qui touche un allié en
+     * plein combat contre un ennemi reste en combat, comme il se doit.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onCombatTag(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player victim = (Player) event.getEntity();
+
+        Player attacker = resolveAttacker(event.getDamager());
+        if (attacker == null || attacker.equals(victim)) return;
+
+        if (sameSide(attacker, victim)) return;
+
         tag(victim);
         tag(attacker);
+    }
+
+    /**
+     * Les deux joueurs sont-ils du même bord ? (même faction, alliés ou trêve)
+     *
+     * <p>Isolée dans sa propre méthode, et gardée par {@code FactionHook} : sans
+     * RedFaction dans le classpath — le Minage — la simple exécution d'une
+     * méthode qui manipule un type {@code fr.redfaction.*} lèverait une
+     * {@code NoClassDefFoundError}. Le hook coupé, cette méthode retourne avant
+     * d'avoir à charger quoi que ce soit.
+     *
+     * <p>Deux joueurs sans faction sont NEUTRAL, donc pas du même bord : ils se
+     * taguent normalement.
+     */
+    private static boolean sameSide(Player attacker, Player victim) {
+        if (!fr.redconflict.faction.FactionHook.isEnabled()) return false;
+        try {
+            if (!fr.redfaction.api.RedFactionAPI.isAvailable()) return false;
+            fr.redfaction.entity.Relation relation =
+                    fr.redfaction.api.RedFactionAPI.get().getRelation(attacker, victim);
+            return relation == fr.redfaction.entity.Relation.SELF
+                    || relation == fr.redfaction.entity.Relation.ALLY
+                    || relation == fr.redfaction.entity.Relation.TRUCE;
+        } catch (Throwable ignored) {
+            return false; // API indisponible : on ne change rien au comportement
+        }
     }
 
     /**

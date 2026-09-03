@@ -223,6 +223,7 @@ public class RedConflictCore extends JavaPlugin {
         modules.install(new FriendModule(this));
         modules.install(new LotoModule(this, features));
         modules.install(new AutoMessageModule(this));
+        modules.install(new fr.redconflict.combat.KnockbackModule(this));
         modules.install(new ClearLaggModule(this));
 
         // reload, état des modules, import EssentialsX.

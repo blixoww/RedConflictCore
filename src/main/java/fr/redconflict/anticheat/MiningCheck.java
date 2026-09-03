@@ -52,11 +52,13 @@ public class MiningCheck implements Listener {
 
     private final Plugin plugin;
     private final ViolationTracker violations;
+    private final BreakBurst bursts;
     private final Map<UUID, State> states = new ConcurrentHashMap<UUID, State>();
 
-    public MiningCheck(Plugin plugin, ViolationTracker violations) {
+    public MiningCheck(Plugin plugin, ViolationTracker violations, BreakBurst bursts) {
         this.plugin = plugin;
         this.violations = violations;
+        this.bursts = bursts;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -72,8 +74,17 @@ public class MiningCheck implements Listener {
         Block block = event.getBlock();
         State state = states.computeIfAbsent(player.getUniqueId(), id -> new State());
 
-        checkDistance(player, block);
-        checkRate(player, state);
+        // Un outil de zone (marteau 3×3) produit neuf casses pour un seul coup.
+        // La cadence et la distance jugent le GESTE : elles ne comptent que le
+        // premier bloc de la volée. La statistique X-ray, elle, juge le
+        // RÉSULTAT et doit compter les neuf — c'est justement parce que les huit
+        // blocs voisins lui étaient invisibles qu'elle voyait des mineurs
+        // honnêtes ne casser que du minerai.
+        boolean continuation = bursts.isContinuation(event);
+        if (!continuation) {
+            checkDistance(player, block);
+            checkRate(player, state);
+        }
         checkXray(player, block, state);
     }
 
@@ -134,6 +145,13 @@ public class MiningCheck implements Listener {
      */
     private void checkXray(Player player, Block block, State state) {
         if (!enabled("xray")) {
+            return;
+        }
+        // Mondes où la statistique n'a aucun sens : une mine régénérée a une
+        // densité de minerais choisie par l'administrateur, pas par la
+        // génération vanilla — tout le monde y dépasserait le seuil.
+        if (plugin.getConfig().getStringList("anticheat.xray.disabled-worlds")
+                .contains(block.getWorld().getName())) {
             return;
         }
         if (block.getY() > plugin.getConfig().getInt("anticheat.xray.max-y", 60)) {
