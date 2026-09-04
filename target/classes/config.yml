@@ -122,6 +122,24 @@ combat:
     vertical: 0.75
     # Part conservée de la seule poussée d'ENCHANTEMENT.
     enchant: 0.15
+    # Recul garanti à la victime qui FONCE dans le coup.
+    #
+    # Le moteur divise la vitesse de la victime par deux avant d'ajouter la
+    # poussée : son élan se retranche donc du recul quand elle allait vers son
+    # attaquant (environ 0,14 en sprint). En vanilla, 0,4 de poussée l'absorbe
+    # sans qu'on le voie ; réduite à 0,22, elle n'en couvre plus que la moitié
+    # et celui qui charge ne décolle plus — il reste collé sous les coups.
+    #
+    # Cette valeur est la part du recul d'un coup PRIS À L'ARRÊT qu'on garantit
+    # malgré l'élan, et seulement dans l'axe qui éloigne de l'attaquant :
+    #
+    #   1.0 → celui qui charge repart comme s'il était immobile (recommandé)
+    #   0.8 → il repart un peu moins loin : l'agressivité paie encore un peu
+    #   0   → arithmétique vanilla, l'élan annule le recul
+    #
+    # On n'ajoute jamais que ce qui manque : le joueur qui reculait déjà garde
+    # le bonus de son propre élan, et son déplacement latéral n'est pas touché.
+    minimum: 1.0
 
 anticheat:
   enabled: true

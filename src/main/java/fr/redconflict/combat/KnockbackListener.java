@@ -64,6 +64,22 @@ import java.util.concurrent.ConcurrentHashMap;
  * reste 30 % de plus qu'un sprint nu. L'enchantement pousse donc toujours
  * davantage, mais il ne décide plus du combat à lui seul — et le sprint, lui,
  * garde exactement le même poids relatif qu'en vanilla.
+ *
+ * <h2>Foncer dans le coup ne doit pas annuler le recul</h2>
+ *
+ * <p>Avant d'ajouter sa poussée, le moteur divise par deux la vitesse de la
+ * victime ({@code motX /= 2} dans {@code EntityLiving.a}). Ce qui lui restait
+ * d'élan se retranche donc du recul lorsqu'elle allait VERS son attaquant —
+ * environ 0,14 pour un sprint. En vanilla, la poussée de 0,4 l'absorbe sans
+ * qu'on le remarque ; ramenée à 0,22, elle n'en couvre plus que la moitié : le
+ * joueur qui charge repart à peine et reste collé sous les coups, soit
+ * exactement l'inverse de ce qu'on cherchait en réduisant le recul.
+ *
+ * <p>On garantit donc, dans le seul axe qui éloigne de l'attaquant, le recul
+ * qu'aurait reçu la même victime immobile ({@code minimum} x la poussée du
+ * coup). On n'ajoute que ce qui manque, et rien d'autre : celui qui reculait
+ * déjà garde son élan en prime, le déplacement latéral n'est pas touché, et
+ * {@code minimum: 0} rend au moteur son arithmétique d'origine.
  */
 public class KnockbackListener implements Listener {
 
@@ -110,10 +126,16 @@ public class KnockbackListener implements Listener {
         }
         Player victim = (Player) event.getEntity();
         Entity damager = event.getDamager();
+        int level = knockbackLevel(damager);
+        boolean sprinting = isSprinting(damager);
         // La vélocité d'AVANT le recul : le coup n'est pas encore appliqué quand
-        // cet événement part. Elle sert de témoin — voir onVelocity.
+        // cet événement part. Elle sert de témoin — voir onVelocity. La position
+        // relative, elle, donne l'axe du recul : une fois le coup passé, les deux
+        // joueurs auront bougé et l'axe ne serait plus le bon.
         hits.put(victim.getUniqueId(), new Hit(System.currentTimeMillis(),
-                horizontalScale(knockbackLevel(damager), isSprinting(damager)),
+                horizontalScale(level, sprinting),
+                push(level, sprinting),
+                away(damager, victim),
                 victim.getVelocity()));
     }
 
@@ -142,10 +164,23 @@ public class KnockbackListener implements Listener {
             return;
         }
 
-        event.setVelocity(new Vector(
-                velocity.getX() * hit.horizontal,
-                velocity.getY() * vertical(),
-                velocity.getZ() * hit.horizontal));
+        double x = velocity.getX() * hit.horizontal;
+        double z = velocity.getZ() * hit.horizontal;
+
+        // L'élan que la victime avait vers son attaquant a déjà mangé une part du
+        // recul (voir l'en-tête). On la lui rend, et rien de plus : seulement dans
+        // l'axe qui éloigne, seulement jusqu'au recul d'un coup pris à l'arrêt.
+        if (hit.away != null) {
+            double floor = hit.push * minimum();
+            double along = x * hit.away.getX() + z * hit.away.getZ();
+            if (along < floor) {
+                double missing = floor - along;
+                x += hit.away.getX() * missing;
+                z += hit.away.getZ() * missing;
+            }
+        }
+
+        event.setVelocity(new Vector(x, velocity.getY() * vertical(), z));
     }
 
     @EventHandler
@@ -171,6 +206,37 @@ public class KnockbackListener implements Listener {
     }
 
     /**
+     * Direction horizontale qui éloigne la victime de son attaquant, normalisée.
+     *
+     * <p>C'est l'axe du recul de base : le moteur pousse la victime selon
+     * {@code victime - attaquant}, à plat. {@code null} quand les deux occupent
+     * la même colonne au dixième de millimètre près — le moteur tire alors une
+     * direction au hasard, qu'on ne saurait pas reproduire, et mieux vaut ne rien
+     * garantir que de pousser dans une direction inventée.
+     */
+    private static Vector away(Entity damager, Entity victim) {
+        if (!victim.getWorld().equals(damager.getWorld())) {
+            return null;
+        }
+        double dx = victim.getLocation().getX() - damager.getLocation().getX();
+        double dz = victim.getLocation().getZ() - damager.getLocation().getZ();
+        double length = Math.sqrt(dx * dx + dz * dz);
+        return length < 1.0E-4 ? null : new Vector(dx / length, 0.0, dz / length);
+    }
+
+    /**
+     * Recul horizontal, en unités de vitesse, que ce coup doit produire sur une
+     * victime immobile : le numérateur de {@link #horizontalScale}, et le
+     * plancher que {@link #onVelocity} garantit à celle qui fonce dedans.
+     */
+    private double push(int level, boolean sprinting) {
+        double base = Math.max(0, plugin.getConfig().getDouble("combat.knockback.horizontal", 0.55));
+        double enchant = Math.max(0, plugin.getConfig().getDouble("combat.knockback.enchant", 0.15));
+        double sprintPush = sprinting ? LEVEL_PUSH : 0.0;
+        return (BASE_PUSH + sprintPush) * base + level * LEVEL_PUSH * enchant;
+    }
+
+    /**
      * Facteur à appliquer au recul horizontal de ce coup.
      *
      * <p><b>Le sprint n'est PAS un enchantement, et les confondre supprime le
@@ -191,17 +257,22 @@ public class KnockbackListener implements Listener {
      * </pre>
      */
     private double horizontalScale(int level, boolean sprinting) {
-        double base = Math.max(0, plugin.getConfig().getDouble("combat.knockback.horizontal", 0.55));
-        double enchant = Math.max(0, plugin.getConfig().getDouble("combat.knockback.enchant", 0.15));
-
-        double sprintPush = sprinting ? LEVEL_PUSH : 0.0;
-        double vanilla = BASE_PUSH + sprintPush + level * LEVEL_PUSH;
-        double wanted = (BASE_PUSH + sprintPush) * base + level * LEVEL_PUSH * enchant;
-        return vanilla <= 0 ? 1.0 : wanted / vanilla;
+        double vanilla = BASE_PUSH + (sprinting ? LEVEL_PUSH : 0.0) + level * LEVEL_PUSH;
+        return vanilla <= 0 ? 1.0 : push(level, sprinting) / vanilla;
     }
 
     private double vertical() {
         return Math.max(0, plugin.getConfig().getDouble("combat.knockback.vertical", 0.75));
+    }
+
+    /**
+     * Part du recul d'un coup garantie même quand la victime fonce dedans.
+     *
+     * <p>{@code 1.0} : celui qui charge repart comme s'il avait été à l'arrêt.
+     * {@code 0} : on laisse le moteur retrancher l'élan, comme en vanilla.
+     */
+    private double minimum() {
+        return Math.max(0, plugin.getConfig().getDouble("combat.knockback.minimum", 1.0));
     }
 
     private boolean enabled() {
@@ -239,15 +310,19 @@ public class KnockbackListener implements Listener {
                 + "entity.motZ) à l'événement, puis reconstruire le serveur.");
     }
 
-    /** Un coup reçu : quand, de quel facteur, et la motion qui précédait. */
+    /** Un coup reçu : quand, de quel facteur, vers où, et la motion qui précédait. */
     private static final class Hit {
         private final long at;
         private final double horizontal;
+        private final double push;
+        private final Vector away;
         private final Vector before;
 
-        private Hit(long at, double horizontal, Vector before) {
+        private Hit(long at, double horizontal, double push, Vector away, Vector before) {
             this.at = at;
             this.horizontal = horizontal;
+            this.push = push;
+            this.away = away;
             this.before = before;
         }
     }

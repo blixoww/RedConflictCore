@@ -28,10 +28,12 @@ public class KnockbackModule implements Module {
         plugin.getServer().getPluginManager().registerEvents(new KnockbackListener(plugin), plugin);
         if (plugin.getConfig().getBoolean("combat.knockback.enabled", true)) {
             plugin.getLogger().info(String.format(
-                    "[Combat] Recul réduit — horizontal %.2f, vertical %.2f, enchantement %.2f.",
+                    "[Combat] Recul réduit — horizontal %.2f, vertical %.2f, enchantement %.2f, "
+                            + "garanti à la charge %.2f.",
                     plugin.getConfig().getDouble("combat.knockback.horizontal", 0.55),
                     plugin.getConfig().getDouble("combat.knockback.vertical", 0.75),
-                    plugin.getConfig().getDouble("combat.knockback.enchant", 0.15)));
+                    plugin.getConfig().getDouble("combat.knockback.enchant", 0.15),
+                    plugin.getConfig().getDouble("combat.knockback.minimum", 1.0)));
         }
     }
 }
