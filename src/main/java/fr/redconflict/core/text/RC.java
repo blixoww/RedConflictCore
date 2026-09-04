@@ -67,6 +67,8 @@ public final class RC {
     public static final String BXP_INV_FULL    = "§cInventaire plein ! Faites de la place d'abord.";
     public static final String BXP_SUCCESS     = "§aVous avez embouteillé §e%d niveaux §adans une bouteille d'XP.";
     public static final String BXP_RESTORED    = "§aVous avez récupéré §e%d niveaux §adepuis la bouteille.";
+    public static final String BXP_MIN_AMOUNT  = "§cIl faut embouteiller au moins §f%d niveaux §cà la fois.";
+    public static final String BXP_ONLY_HAVE   = "§cVous n'avez que §f%d niveaux §cà embouteiller.";
 
     // Trade
     public static final String TRADE_USAGE     = PRE + "§eUsage §f: /trade <joueur> §8| §f/trade accept §8| §f/trade deny";

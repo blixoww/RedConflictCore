@@ -53,7 +53,7 @@ public class CommandsCommand extends CoreCommand {
             "  §8| §f/repairall §8— §7Réparer tous vos items §8(cooldown 24h)",
             "  §8| §f/cobble §8— §7Filtrer la cobblestone automatiquement",
             "  §8| §f/furnace §7<this|all> §8— §7Cuire des items sans four",
-            "  §8| §f/bottlexp §8— §7Embouteiller vos niveaux d'XP",
+            "  §8| §f/bottlexp [niveaux] §8— §7Embouteiller vos niveaux d'XP",
             "  §8| §f/poubelle §8— §7Poubelle virtuelle",
             "  §8| §f/vision §8— §7Vision nocturne",
             "  §8| §f/guide §8— §7Ouvrir le guide de craft",

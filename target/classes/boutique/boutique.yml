@@ -281,6 +281,22 @@ boutique:
       prix_monnaie: 40000
       prix_pb: 160
       commande: "mspa %player% add BLAZE 1"
+    - id: "enderman"
+      nom: "&5Spawner Enderman"
+      mob: "ENDERMAN"
+      description:
+        - "&7Un spawner d'Enderman"
+      prix_monnaie: 55000
+      prix_pb: 220
+      commande: "mspa %player% add ENDERMAN 1"
+    - id: "iron-golem"
+      nom: "&bSpawner Golem de Fer"
+      mob: "IRON_GOLEM"
+      description:
+        - "&7Un spawner de Golem de Fer"
+      prix_monnaie: 70000
+      prix_pb: 280
+      commande: "mspa %player% add IRON_GOLEM 1"
 
   packs:
     - id: "starter"

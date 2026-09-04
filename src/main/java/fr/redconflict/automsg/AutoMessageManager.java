@@ -97,7 +97,7 @@ public class AutoMessageManager {
                     line("/repairall", "Tout réparer §8(24h)"),
                     line("/cobble", "Filtrer la cobble"),
                     line("/furnace", "Cuire sans four"),
-                    line("/bottlexp", "Embouteiller l'XP"))
+                    line("/bottlexp [niveaux]", "Embouteiller l'XP"))
     );
 
     // ── Logique ───────────────────────────────────────────────────────────────

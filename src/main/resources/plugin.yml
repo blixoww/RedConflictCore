@@ -71,6 +71,7 @@ commands:
     permission: shop.admin
   bottlexp:
     description: Embouteille tes niveaux d'XP (min 10)
+    usage: /bottlexp [niveaux]
     aliases: [bxp, bottle]
   trade:
     description: Échange sécurisé d'items avec un joueur
