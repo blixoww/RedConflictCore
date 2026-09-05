@@ -141,6 +141,44 @@ combat:
     # le bonus de son propre élan, et son déplacement latéral n'est pas touché.
     minimum: 1.0
 
+  # ── Boost à l'arc (« punch ») ────────────────────────────────────────────
+  # Se propulser avec sa propre flèche : on tire en cloche, on court dessous,
+  # elle retombe sur soi et l'on part dans la direction où elle volait.
+  #
+  # En vanilla, deux poussées se superposent sur un tir sur soi : celle de Punch
+  # (0,6 par niveau, dans l'axe de la flèche — le boost voulu) et le recul des
+  # dégâts. Ce dernier pousse selon « victime moins attaquant », or c'est le même
+  # joueur : l'écart est nul et le moteur tire une direction AU HASARD. D'où un
+  # boost qui ne sort jamais deux fois pareil, et nul sans l'enchantement.
+  #
+  # Ici, un tir sur soi REMPLACE la vélocité au lieu de l'additionner : plus de
+  # hasard, la visée décide. Une flèche d'un AUTRE joueur n'est pas touchée.
+  #
+  #   poussée = horizontal + per-punch x niveau de Punch     (plafonnée par max)
+  #
+  # Ce que donnent les valeurs livrées :
+  #
+  #   arc nu ......... 0,35   un bond, de quoi se décrocher
+  #   Punch I ........ 0,95   un vrai déplacement
+  #   Punch II ....... 1,55   le boost de PvP faction
+  #
+  # Repère : le recul d'un coup vanilla vaut 0,4 et un joueur qui court avance
+  # de 0,28 par tick. Monter 'per-punch' au-dessus de 0,8 envoie les joueurs
+  # au-dessus des murs de faction — à tester avant de publier.
+  #
+  # Relu à chaque tir : /red reload suffit.
+  bow-boost:
+    enabled: true
+    # Socle, même sans l'enchantement Punch.
+    horizontal: 0.35
+    # Ajout par niveau de Punch.
+    per-punch: 0.60
+    # Hauteur donnée au départ, pour sortir du sol au lieu de le raser.
+    # 0.42 = exactement un saut. Jamais réduite si le joueur montait déjà.
+    vertical: 0.40
+    # Plafond de la poussée horizontale, garde-fou contre un Punch V trafiqué.
+    max: 2.0
+
 anticheat:
   enabled: true
   # Action par défaut au franchissement d'un seuil. Surchargeable par contrôle.
