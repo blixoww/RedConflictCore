@@ -127,7 +127,10 @@ public final class RewardDispatcher {
             int level;
             try { level = Integer.parseInt(t[i + 1]); } catch (NumberFormatException e) { continue; }
             Enchantment ench = resolveEnchant(t[i]);
-            if (ench != null) item.addUnsafeEnchantment(ench, level);
+            // Sur un livre, l'enchantement se range dans StoredEnchantments et
+            // nulle part ailleurs : posé comme sur un équipement, il produit un
+            // livre d'apparence normale que l'enclume refuse. Voir EnchantUtils.
+            if (ench != null) fr.redconflict.hdv.EnchantUtils.apply(item, ench, level);
             else plugin.getLogger().warning("[Boutique] give : enchant inconnu '" + t[i] + "' (" + command + ")");
         }
 

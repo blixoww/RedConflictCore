@@ -8,12 +8,14 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.*;
 
 /**
- * Utilitaire pour les livres enchantés dans l'HDV.
+ * Utilitaire pour les livres enchantés.
  *
  * - Traduction des noms d'enchantements en français
  * - Extraction des enchantements d'un livre (EnchantmentStorageMeta)
  * - Génération du nom d'affichage : "Livre Enchanté" + liste des enchantements
  * - Recherche par nom d'enchantement dans le filtre HDV
+ * - Pose des enchantements d'un livre (voir {@link #apply}) : sur un livre, ils
+ *   vont dans {@code StoredEnchantments}, jamais dans {@code ench}.
  */
 public class EnchantUtils {
 
@@ -80,6 +82,35 @@ public class EnchantUtils {
         if (item == null) return false;
         if (item.getType().name().equals("ENCHANTED_BOOK")) return true;
         return false;
+    }
+
+    /**
+     * Pose un enchantement sur un item, au bon endroit.
+     *
+     * <p><b>Un livre ne porte pas ses enchantements comme le reste.</b> Sur
+     * n'importe quel item, {@code addUnsafeEnchantment} écrit la balise
+     * {@code ench} — l'enchantement agit sur l'objet lui-même. Sur un livre, il
+     * doit aller dans {@code StoredEnchantments} : c'est le seul endroit où
+     * l'enclume va le chercher pour le transférer à un équipement.
+     *
+     * <p>Un livre enchanté par {@code ench} <b>ressemble</b> pourtant à un livre
+     * normal : l'info-bulle affiche l'enchantement et l'objet brille. Mais
+     * l'enclume le refuse (croix rouge, aucun résultat), et un simple renommage
+     * l'efface — l'enclume réécrit les enchantements depuis
+     * {@code StoredEnchantments}, qui est vide, et supprime {@code ench} au
+     * passage.
+     */
+    public static void apply(ItemStack item, Enchantment enchantment, int level) {
+        if (item == null || enchantment == null) return;
+        if (isEnchantedBook(item)) {
+            ItemMeta meta = item.getItemMeta();
+            if (meta instanceof EnchantmentStorageMeta) {
+                ((EnchantmentStorageMeta) meta).addStoredEnchant(enchantment, level, true);
+                item.setItemMeta(meta);
+                return;
+            }
+        }
+        item.addUnsafeEnchantment(enchantment, level);
     }
 
     /**

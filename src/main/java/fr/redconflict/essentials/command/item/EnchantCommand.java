@@ -72,7 +72,9 @@ public class EnchantCommand extends EssCommand {
             return false;
         }
 
-        hand.addUnsafeEnchantment(enchantment, level);
+        // Livre en main : l'enchantement va dans StoredEnchantments, sinon on
+        // fabrique un livre que l'enclume refusera (voir EnchantUtils.apply).
+        fr.redconflict.hdv.EnchantUtils.apply(hand, enchantment, level);
         player.sendMessage(Text.success("Enchantement §f" + args[0].toLowerCase()
                 + " " + level + " §aappliqué."));
         return true;

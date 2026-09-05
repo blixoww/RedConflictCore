@@ -328,6 +328,7 @@ fr\redconflict\useful\MsgSpyCommand.class
 fr\redconflict\combat\KnockbackListener.class
 fr\redconflict\essentials\command\teleport\WarpCommand.class
 fr\redconflict\shop\ShopDatabase.class
+fr\redconflict\listeners\ModdedArmorFallListener.class
 fr\redconflict\worldborder\WorldBorderListener.class
 fr\redconflict\bottlexp\BottleXpListener.class
 fr\redconflict\anticheat\AimCheck$Track.class

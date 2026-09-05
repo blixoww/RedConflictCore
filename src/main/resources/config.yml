@@ -922,6 +922,43 @@ bounty:
   # Mettre à 0 pour désactiver cette protection.
   faction-leave-days: 7
 
+gameplay:
+  # ── Amorti de chute des armures ──────────────────────────────────────────
+  # Les dégâts de chute IGNORENT l'armure, en vanilla comme dans le fork : une
+  # armure ruby complète encaisse une chute exactement comme un joueur nu, seuls
+  # Protection et Chute Amortie comptent. Défendable quand la meilleure armure
+  # vaut 20 points de protection ; beaucoup moins avec des paliers moddés qui
+  # montent à 25.
+  #
+  # Ce bloc rend une part des dégâts de chute à l'armure portée. La clé est le
+  # PRÉFIXE du matériau de la pièce (RUBY_CHESTPLATE -> ruby), donc ajouter une
+  # armure — moddée ou vanilla — ne demande aucune ligne de code : il suffit
+  # d'une ligne ici. Les valeurs s'additionnent sur les quatre pièces.
+  #
+  # Ce que donnent les valeurs livrées, en panoplie complète :
+  #
+  #   acier ...... 24 % de dégâts de chute en moins
+  #   émeraude ... 32 %
+  #   ruby ....... 40 %
+  #   cobalt ..... 48 %
+  #
+  # La protection magique (Protection, Chute Amortie) et la potion de Chute
+  # Amortie continuent de s'appliquer PAR-DESSUS. La durabilité n'est pas
+  # touchée : une chute n'use pas l'armure, comme en vanilla.
+  #
+  # Relu à chaud : /red reload suffit.
+  fall-armor:
+    enabled: true
+    # Part absorbée par pièce portée.
+    per-piece:
+      steel: 0.06
+      emerald: 0.08
+      ruby: 0.10
+      cobalt: 0.12
+    # Plafond, toutes pièces confondues. Au-delà de 0.7 une chute de très haut
+    # cesse d'être dangereuse : c'est le garde-fou à ne pas monter à la légère.
+    max: 0.60
+
 commands:
   # Commandes TOUJOURS désactivées pour les non-op (sans le "/" devant)
   always-disabled:

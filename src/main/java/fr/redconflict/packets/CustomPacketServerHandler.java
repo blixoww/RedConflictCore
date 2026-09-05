@@ -26,6 +26,12 @@ import java.util.Map;
  */
 public class CustomPacketServerHandler implements PluginMessageListener {
 
+    /** Ping applicatif du client : on lui renvoie son horodatage tel quel. */
+    private static final int PACKET_PING = 0x00;
+
+    /** Réponse au ping applicatif (voir {@link #handlePing}). */
+    private static final int PACKET_PONG = 0x01;
+
     /** Jet d'objet custom (ids 432-470) : le client 1.8.9 ne sait pas les lâcher. */
     private static final int PACKET_CUSTOM_ITEM_DROP = 96;
 
@@ -82,7 +88,9 @@ public class CustomPacketServerHandler implements PluginMessageListener {
         try {
             PacketReader reader = new PacketReader(message);
             int packetId = reader.readPacketId();
-            if (packetId == PACKET_CUSTOM_ITEM_DROP) {
+            if (packetId == PACKET_PING) {
+                handlePing(player, reader);
+            } else if (packetId == PACKET_CUSTOM_ITEM_DROP) {
                 handleCustomDrop(player, reader);
             } else if (packetId == PACKET_CLIENT_REPORT) {
                 handleClientReport(player, reader);
@@ -96,6 +104,30 @@ public class CustomPacketServerHandler implements PluginMessageListener {
         } catch (Exception ignored) {
             // Paquet malformé : déjà compté par le garde, rien de plus à faire.
         }
+    }
+
+    /**
+     * Ping applicatif : le client envoie son horodatage, on le lui renvoie tel
+     * quel et il fait la différence.
+     *
+     * <p><b>Pourquoi ne pas laisser le client lire la liste des joueurs.</b> La
+     * latence qui y figure est celle que le serveur calcule sur ses keep-alive,
+     * et elle n'est diffusée que toutes les 30 secondes (UPDATE_LATENCY). Le
+     * widget « Ping » du client affichait donc la même valeur pendant une
+     * demi-minute, et 0 avant la première diffusion. Cet aller-retour-ci coûte
+     * seize octets par seconde et par joueur, et donne la latence réellement
+     * ressentie.
+     *
+     * <p>On ne stocke rien et on ne fait confiance à rien : l'horodatage est un
+     * nombre opaque, seul le client sait ce qu'il vaut. Le débit est déjà
+     * plafonné par {@link ChannelGuard}.
+     */
+    private void handlePing(Player player, PacketReader reader) throws Exception {
+        long sentAt = reader.readLong();
+        byte[] packet = PacketBuilder.create(PACKET_PONG)
+                .writeLong(sentAt)
+                .buildRaw();
+        player.sendPluginMessage(plugin, "CUSTOM:S2C", packet);
     }
 
     /**
