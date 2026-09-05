@@ -3,6 +3,9 @@ package fr.redconflict.useful;
 import fr.redconflict.RedConflictCore;
 import fr.redconflict.core.economy.VaultEconomy;
 import fr.redconflict.data.PlayerDatabase;
+import fr.redconflict.network.GlobalPlayerList;
+import fr.redconflict.network.NetworkPlayer;
+import fr.redconflict.network.TabSorting;
 import fr.redconflict.staff.StaffManager;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.economy.Economy;
@@ -12,6 +15,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.scoreboard.*;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class PlayerListManager {
@@ -19,7 +27,20 @@ public class PlayerListManager {
     private final RedConflictCore plugin;
     private final StaffManager mgr = StaffManager.get();
 
-    public PlayerListManager(RedConflictCore plugin) { this.plugin = plugin; }
+    /** Alerte unique quand Vault ne répond pas : sinon la panne est muette. */
+    private boolean vaultChatWarned = false;
+
+    /**
+     * Tab-list partagé avec les autres serveurs de la grappe, ou {@code null} si le
+     * module n'a pas démarré (base H2 absente, option coupée). Dans ce cas tout ce
+     * qui suit se comporte comme avant : un tab strictement local.
+     */
+    private final GlobalPlayerList global;
+
+    public PlayerListManager(RedConflictCore plugin) {
+        this.plugin = plugin;
+        this.global = plugin.getGlobalPlayerList();
+    }
 
     public void start() {
         Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
@@ -35,14 +56,33 @@ public class PlayerListManager {
             if (rsp != null) vaultChat = rsp.getProvider();
         } catch (Exception ignored) {}
 
+        warnIfNoVaultChat(vaultChat);
+
+        boolean shared = isShared();
+        List<NetworkPlayer> localRows = shared ? new ArrayList<NetworkPlayer>() : null;
+        Set<UUID> localOnline = shared ? new HashSet<UUID>() : Collections.<UUID>emptySet();
+
         // Nom affiché dans le tab : une passe par joueur, pas une par spectateur.
         // setPlayerListName diffuse déjà le paquet à tous ceux qui voient le
         // joueur ; le refaire dans la boucle des viewers multiplierait l'envoi
         // par le nombre de connectés.
         for (Player p : Bukkit.getOnlinePlayers()) {
-            applyTabName(p, rankPrefix(p, vaultChat));
+            String prefix = rankPrefix(p, vaultChat);
+            applyTabName(p, prefix);
+            if (shared) {
+                localOnline.add(p.getUniqueId());
+                localRows.add(describe(p, prefix));
+            }
         }
         purgeOfflineTabNames();
+
+        if (shared) {
+            // Ce qu'on publie est exactement ce qu'on affiche — même ligne, même
+            // rang de tri. C'est ce qui fait que le Minage et le Faction montrent
+            // le même tab, et pas deux listes qui se ressemblent.
+            global.publishLocal(localRows);
+            global.beginTick(localOnline);
+        }
 
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             Scoreboard board = viewer.getScoreboard();
@@ -50,9 +90,50 @@ public class PlayerListManager {
                 board = Bukkit.getScoreboardManager().getNewScoreboard();
                 viewer.setScoreboard(board);
             }
+            // Avant setupTeams : les joueurs distants entrent dans des teams que
+            // le balayage des teams vides, en fin de setupTeams, doit voir peuplées.
+            if (shared) global.render(viewer, board, mgr.isStaff(viewer), localOnline);
             setupTeams(board, viewer, vaultChat);
             sendTabHeader(viewer);
         }
+    }
+
+    /** {@code true} si le tab-list partagé de la grappe est opérationnel. */
+    private boolean isShared() {
+        return global != null && global.isEnabled();
+    }
+
+    /**
+     * Décrit un joueur local pour la table de présence : la ligne que CE serveur
+     * affiche, le rang qui la trie, et le fait qu'elle soit réservée au staff.
+     */
+    private NetworkPlayer describe(Player p, String fullPrefix) {
+        UUID id = p.getUniqueId();
+        boolean hidden = mgr.isVanished(id) || mgr.isInStaffMode(id);
+        String sortKey = hidden ? TabSorting.VANISH
+                : mgr.isStaff(p) ? TabSorting.STAFF : TabSorting.PLAYER;
+        return global.describe(p, tabLine(p, fullPrefix), sortKey, hidden);
+    }
+
+    /**
+     * Les grades passent tous par Vault : LuckPerms n'expose ses préfixes aux
+     * autres plugins que par ce pont. Sans lui, {@link #rankPrefix} rend "" et
+     * plus aucun grade ne s'affiche — sans la moindre erreur dans la console.
+     * On le dit une fois, au premier tick où le service manque.
+     */
+    private void warnIfNoVaultChat(Chat vaultChat) {
+        if (vaultChat != null || vaultChatWarned) {
+            return;
+        }
+        vaultChatWarned = true;
+        boolean luckPerms = Bukkit.getPluginManager().getPlugin("LuckPerms") != null;
+        plugin.getLogger().warning("[Tab] Aucun fournisseur Vault Chat : les grades ne s'afficheront "
+                + "ni dans le tab, ni au-dessus des têtes, ni dans le profil du client. "
+                + (luckPerms
+                    ? "LuckPerms est bien là, mais il ne parle aux autres plugins qu'à travers Vault : "
+                      + "installe Vault sur ce serveur."
+                    : "Ni Vault ni LuckPerms ne sont chargés sur ce serveur.")
+                + " Si ce serveur n'est pas censé afficher de grade, ignore ce message.");
     }
 
     /**
@@ -92,14 +173,14 @@ public class PlayerListManager {
 
             // Préfixe de tri (pour l'ordre dans le tab)
             String sortPrefix;
-            if (isVanished || isStaffMode) sortPrefix = "00_";
-            else if (isStaff)              sortPrefix = "10_";
-            else                           sortPrefix = "20_";
+            if (isVanished || isStaffMode) sortPrefix = TabSorting.VANISH;
+            else if (isStaff)              sortPrefix = TabSorting.STAFF;
+            else                           sortPrefix = TabSorting.PLAYER;
 
             String lpPrefix = rankPrefix(p, vaultChat);
 
             // Le nom de la team doit être unique par joueur et <= 16 chars.
-            String teamName = teamName(sortPrefix, p.getName());
+            String teamName = TabSorting.teamName(sortPrefix, p.getName());
 
             // Ici, la limite de 16 est incontournable : elle vient du paquet
             // scoreboard. Ce préfixe-là ne sert plus qu'au nom au-dessus de la
@@ -153,15 +234,29 @@ public class PlayerListManager {
      * paquet à tous les joueurs qui voient celui-ci, et la boucle tourne toutes
      * les deux secondes.
      */
+    /**
+     * La ligne que ce joueur occupe dans le tab : préfixe de grade nettoyé + pseudo.
+     *
+     * <p>Un seul calcul pour deux usages — ce que le client local affiche, et ce que
+     * les autres serveurs de la grappe recopient dans leur propre tab. Les faire
+     * diverger, c'est afficher deux grades différents pour le même joueur selon le
+     * serveur d'où on le regarde.
+     *
+     * <p>L'anonymat retire le grade : le joueur ressort sous son seul pseudo, ici
+     * comme chez le voisin.
+     */
+    private String tabLine(Player p, String fullPrefix) {
+        fr.redconflict.annonyme.AnonymeManager anon = plugin.getAnonymeManager();
+        boolean anonymous = anon != null && anon.isAnonymous(p);
+        String prefix = anonymous ? "" : trimTrailingCodes(fullPrefix);
+        return prefix + p.getName();
+    }
+
     private void applyTabName(Player p, String fullPrefix) {
         UUID id = p.getUniqueId();
 
-        // L'anonymat retire le grade du tab : on laisse la team faire, sans nom custom.
-        fr.redconflict.annonyme.AnonymeManager anon = plugin.getAnonymeManager();
-        boolean anonymous = anon != null && anon.isAnonymous(p);
-
-        String prefix = anonymous ? "" : trimTrailingCodes(fullPrefix);
-        if (prefix.isEmpty()) {
+        String wanted = tabLine(p, fullPrefix);
+        if (wanted.equals(p.getName())) {
             // Sans préfixe, le nom custom vaudrait le pseudo nu : autant ne rien
             // poser du tout, sinon CraftPlayer remet listName à null et on
             // rediffuserait le paquet à chaque tour.
@@ -169,7 +264,6 @@ public class PlayerListManager {
             return;
         }
 
-        String wanted = prefix + p.getName();
         // getPlayerListName() renvoie le pseudo nu quand rien n'est posé : c'est
         // le cas d'une reconnexion, où notre cache est en avance sur le serveur.
         boolean unset = p.getName().equals(p.getPlayerListName());
@@ -323,30 +417,25 @@ public class PlayerListManager {
     }
 
     /**
-     * Nom de team unique et court.
+     * En-tête et pied du tab.
      *
-     * <p>Tronquer {@code sortPrefix + pseudo} à 16 caractères faisait collisionner
-     * deux joueurs dont les noms partagent leurs 13 premières lettres : ils
-     * atterrissaient dans la même team, donc avec le même préfixe. On remplace la
-     * fin par une empreinte du nom complet quand il faut couper.
+     * <p>Le compteur est celui de la GRAPPE, pas de ce serveur : un joueur du Minage
+     * compte pour le Faction et réciproquement. Sans ça, deux amis connectés chacun
+     * sur un serveur lisaient « 1 joueur en ligne » alors qu'ils jouaient ensemble.
+     * Le pied de tab, lui, reste strictement personnel (monnaie, PB, K/D).
      */
-    private static String teamName(String sortPrefix, String playerName) {
-        String full = sortPrefix + playerName;
-        if (full.length() <= 16) {
-            return full;
-        }
-        String hash = Integer.toHexString(playerName.hashCode());
-        int keep = 16 - sortPrefix.length() - hash.length();
-        if (keep < 0) {
-            keep = 0;
-        }
-        return sortPrefix + playerName.substring(0, Math.min(keep, playerName.length())) + hash;
-    }
     private void sendTabHeader(Player p) {
         try {
-            int online = countVisible(p);
-            int max    = Bukkit.getMaxPlayers();
+            boolean shared  = isShared();
+            boolean isStaff = mgr.isStaff(p);
+            int here   = countVisible(p);
+            int online = here + (shared ? global.remoteCount(isStaff) : 0);
+            int max    = shared ? global.slots() : Bukkit.getMaxPlayers();
             String header = "\n\u00a7c\u00a7lRedConflict\n\u00a77Joueurs \u00a78: \u00a7f" + online + " \u00a78/ \u00a77" + max + "\n";
+
+            // Répartition par serveur — n'apparaît que si un autre serveur publie.
+            String breakdown = shared ? global.breakdownLine(here, isStaff) : "";
+            if (!breakdown.isEmpty()) header += breakdown + "\n";
 
             // Monnaie
             Economy eco = VaultEconomy.get();

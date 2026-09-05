@@ -565,6 +565,30 @@ anticheat:
     threshold: 1
     action: alert
 
+  # ── Modules injectes dans le processus du client ──────────────────
+  # Le client enumere les DLL REELLEMENT mappees dans son processus (Toolhelp32)
+  # et remonte celles qui ne viennent pas des dossiers attendus (Windows, runtime
+  # Java, natives du jeu, dossier du jeu).
+  #
+  # Pourquoi c'est distinct des "natives" ci-dessus : NativeScan lit la liste que
+  # tient la JVM (System.loadLibrary). Une DLL injectee de l'exterieur
+  # (CreateRemoteThread + LoadLibraryA, la technique des injecteurs tout faits)
+  # est mappee par Windows SANS passer par la JVM : elle n'apparait nulle part
+  # ailleurs. C'est le seul releve qui la voit.
+  #
+  # ATTENTION, liste structurellement BRUYANTE : overlay Discord/Steam, RivaTuner,
+  # MSI Afterburner, Nahimic, shims d'antivirus, pilotes GPU s'y retrouvent tous,
+  # legitimement. C'est donc de la PURE TELEMETRIE : une ligne d'info a lire a
+  # l'oeil, jamais une sanction automatique.
+  #
+  # Le seul signal ACTIONNABLE de ce releve (une DLL chargee depuis %TEMP% hors
+  # JNA, sans faux positif connu) n'est pas ici : il est deja porte cote client
+  # par l'attestation, silencieusement.
+  modules:
+    enabled: true
+    # Journaliser en info staff les modules non reconnus (hors dossiers attendus),
+    # pour garder un oeil sur ce que voient les postes joueurs. Aucune sanction.
+    log-unknown: true
 
   # ── Masquage anti-ESP ──────────────────────────────────────────────────────
   # Le serveur cesse d'envoyer les joueurs que le spectateur ne peut pas voir.
@@ -1070,6 +1094,54 @@ database:
     # En cas de crash serveur, borne la perte au pire à cet intervalle. 0 = désactivé.
     # Snapshot sur le thread principal + écriture base asynchrone → aucun lag pour les joueurs.
     autosave-minutes: 3
+
+# ── Grappe : tab-list et compteur partagés ────────────────────────────────────
+# Faction et Minage affichent le MÊME tab et le MÊME total de connectés.
+#
+# Comment : chaque serveur publie ses joueurs dans la table `player_presence` de
+# la base H2 déjà commune à la grappe (celle de l'inventaire cross-serveur), lit
+# ceux des autres, et les ajoute au tab de ses propres joueurs. Aucun plugin
+# proxy à installer, aucun port à ouvrir.
+#
+# Rien à activer sur un seul serveur ici, contrairement au pont site : chaque
+# serveur n'écrit que ses propres lignes, et le HUB (sans RedConflictCore) ne
+# participe pas.
+network:
+  tablist:
+    # false = tab strictement local, comme avant.
+    enabled: true
+    # Cadence de publication ET de relecture, en secondes. C'est le délai au pire
+    # avant qu'une arrivée ou un départ sur l'autre serveur se voie ici.
+    refresh-seconds: 2
+    # Au-delà de ce silence, un serveur est considéré éteint et ses joueurs
+    # quittent le tab des autres. Doit rester bien au-dessus de refresh-seconds :
+    # trop court, un simple hoquet ferait clignoter la moitié du tab.
+    stale-seconds: 10
+    # Recopier la texture de skin des joueurs distants. false = têtes par défaut
+    # pour eux. Sans effet si les profils ne portent pas de skin.
+    skins: true
+    # Étiquette accolée aux joueurs des AUTRES serveurs. {tag} = network.servers.<id>.tag.
+    # Mettre "" pour ne rien distinguer.
+    remote-suffix: " &8[{tag}&8]"
+    # Ligne « Faction : 5 | Minage : 3 » sous le compteur de l'en-tête.
+    # N'apparaît que si un autre serveur publie.
+    breakdown: true
+  # Places affichées dans l'en-tête du tab. 0 = max-players de CE serveur, ce qui
+  # est trompeur dès que le total, lui, couvre toute la grappe : y mettre plutôt
+  # la capacité annoncée du réseau.
+  max-players: 0
+  # Étiquettes par database.server-id. Un serveur absent d'ici s'affiche sous son
+  # identifiant, capitalisé.
+  servers:
+    faction:
+      name: "&cFaction"
+      tag: "&cF"
+    minage:
+      name: "&eMinage"
+      tag: "&eM"
+    hub:
+      name: "&9Hub"
+      tag: "&9H"
 
 # ── Pont vers le site (Azuriom) ───────────────────────────────────────────────
 # Une seule connexion partagée, qui sert à quatre choses :

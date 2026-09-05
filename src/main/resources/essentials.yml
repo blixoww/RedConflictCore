@@ -76,3 +76,15 @@ economy:
   enabled: true
   starting-balance: 0.0
   currency-symbol: "$"
+
+chat:
+  # true = le Core met en forme le chat public.
+  # Sans effet sur le serveur Faction : RedFaction annule l'événement et
+  # compose sa propre ligne (chat.global_format de sa config).
+  format-enabled: true
+  # {prefix}  = préfixe du grade, lu via le hook Vault Chat de LuckPerms.
+  #             Source fiable : ce hook existe dès l'activation, contrairement
+  #             à %luckperms_prefix% qui exige l'expansion PlaceholderAPI.
+  # {player} {message} + placeholders PlaceholderAPI si l'on en veut d'autres.
+  # Un placeholder non résolu est effacé, pas affiché tel quel.
+  format: "{prefix}{player} &8» &f{message}"

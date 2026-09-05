@@ -130,10 +130,15 @@ public class CustomPacketServerHandler implements PluginMessageListener {
         // native étrangère. Le garde de canal a déjà plafonné la taille totale.
         String files = reader.readString(4096);
         String foreign = reader.isReadable() ? reader.readString(1024) : "";
+        // Troisieme champ, optionnel : les modules reellement mappes dans le
+        // processus (ProcessModuleScan). Absent d'un ancien client — d'ou le
+        // garde isReadable, comme pour foreign. Il voit une DLL injectee par
+        // CreateRemoteThread + LoadLibraryA, que foreign ne peut pas voir.
+        String modules = reader.isReadable() ? reader.readString(1024) : "";
         fr.redconflict.anticheat.NativeGuard guard = plugin.getAntiCheat() == null
                 ? null : plugin.getAntiCheat().getNativeGuard();
         if (guard != null) {
-            guard.handleReport(player, files, foreign);
+            guard.handleReport(player, files, foreign, modules);
         }
     }
 

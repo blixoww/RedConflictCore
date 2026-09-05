@@ -29,7 +29,6 @@ fr\redconflict\bounty\KillstreakManager.class
 fr\redconflict\boutique\BoutiqueClientServerHandler.class
 fr\redconflict\ring\RingEffectListener.class
 fr\redconflict\hdv\HdvManager.class
-fr\redconflict\site\EntitlementService$1.class
 fr\redconflict\db\PotionEffectCodec.class
 fr\redconflict\repair\RepairItems.class
 fr\redconflict\essentials\service\EconomyService.class
@@ -67,6 +66,7 @@ fr\redconflict\useful\PlayerListManager$1.class
 fr\redconflict\essentials\service\InvseeSessions.class
 fr\redconflict\db\PlayerDataSyncService.class
 fr\redconflict\ping\PingServerHandler.class
+fr\redconflict\network\TabInjector.class
 fr\redconflict\staff\StaffItems.class
 fr\redconflict\loto\LotoManager$7.class
 fr\redconflict\essentials\command\social\ListCommand.class
@@ -165,6 +165,7 @@ fr\redconflict\site\OrderRetry$2.class
 fr\redconflict\boutique\BoutiqueAnnonce.class
 fr\redconflict\staff\StaffListener$2.class
 fr\redconflict\job\JobDatabase$1.class
+fr\redconflict\network\GlobalPlayerList.class
 fr\redconflict\essentials\listener\BackDeathListener.class
 fr\redconflict\anticheat\BreakBurst$1.class
 fr\redconflict\essentials\listener\GodListener.class
@@ -226,6 +227,7 @@ fr\redconflict\essentials\repository\AccountRepository.class
 fr\redconflict\essentials\repository\SeenRepository.class
 fr\redconflict\essentials\listener\WeatherLockListener.class
 fr\redconflict\anticheat\ContainerCulling$Track.class
+fr\redconflict\essentials\listener\ChatFormatListener.class
 fr\redconflict\backup\BackupModule.class
 fr\redconflict\essentials\repository\PlayerStateRepository.class
 fr\redconflict\profil\ProfilCommand.class
@@ -244,6 +246,7 @@ fr\redconflict\job\JobArtisanListener.class
 fr\redconflict\vote\VoteRewards.class
 fr\redconflict\anticheat\CombatCheck$1.class
 fr\redconflict\vote\VoteStorage.class
+fr\redconflict\network\TabSorting.class
 fr\redconflict\anticheat\ContainerCulling$1.class
 fr\redconflict\bounty\KillstreakManager$ThresholdListener.class
 fr\redconflict\essentials\model\SeenRecord.class
@@ -278,6 +281,7 @@ fr\redconflict\job\JobConfig$XpSourceEntry.class
 fr\redconflict\boutique\PBShopModule.class
 fr\redconflict\site\SiteBridgeModule$1.class
 fr\redconflict\essentials\command\CommandEnvironment.class
+fr\redconflict\network\NetworkPlayer.class
 fr\redconflict\useful\UtilityModule.class
 fr\redconflict\job\JobConfig$LevelReward.class
 fr\redconflict\essentials\command\economy\PayCommand.class
@@ -285,6 +289,7 @@ fr\redconflict\anticheat\FlyCheck$State.class
 fr\redconflict\staff\StaffDatabase.class
 fr\redconflict\essentials\command\player\KillCommand.class
 fr\redconflict\rtp\RtpService$Preparation.class
+fr\redconflict\network\NetworkModule.class
 fr\redconflict\essentials\command\item\GiveCommand.class
 fr\redconflict\useful\CommandsCommand.class
 fr\redconflict\automsg\AutoMessageManager.class
@@ -306,6 +311,7 @@ fr\redconflict\anticheat\HoneypotCheck.class
 fr\redconflict\staff\StaffModule.class
 fr\redconflict\essentials\economy\CoreEconomyProvider.class
 fr\redconflict\essentials\command\player\FeedCommand.class
+fr\redconflict\network\TabInjector$Remote.class
 fr\redconflict\pb\PBLedger.class
 fr\redconflict\shop\ShopDatabase$ShopEventRow.class
 fr\redconflict\trade\TradePacketSender.class
@@ -360,6 +366,7 @@ fr\redconflict\site\SiteDatabase.class
 fr\redconflict\hdv\HdvDatabase.class
 fr\redconflict\staff\commands\BanCommand.class
 fr\redconflict\essentials\command\player\PotionCommand.class
+fr\redconflict\network\PresenceRepository.class
 fr\redconflict\essentials\service\SpawnService.class
 fr\redconflict\lagswitch\LagSwitchState.class
 fr\redconflict\backup\BackupCommand.class
@@ -482,11 +489,13 @@ fr\redconflict\anticheat\ChannelGuard.class
 fr\redconflict\essentials\command\teleport\TopCommand.class
 fr\redconflict\essentials\economy\EssentialsImporter$1.class
 fr\redconflict\useful\BaltopCommand$BaltopEntry.class
+fr\redconflict\network\GlobalPlayerList$1.class
 fr\redconflict\essentials\repository\h2\H2SeenRepository.class
 fr\redconflict\useful\FurnaceCommand.class
 fr\redconflict\anticheat\ViolationTracker$Counter.class
 fr\redconflict\essentials\command\social\HelpCommand.class
 fr\redconflict\staff\commands\KickCommand.class
 fr\redconflict\essentials\service\TeleportService$PendingTeleport.class
+fr\redconflict\network\TabInjector$Shown.class
 fr\redconflict\essentials\command\teleport\HomeCommand.class
 fr\redconflict\anticheat\AttestationService$Pending.class

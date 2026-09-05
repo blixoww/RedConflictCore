@@ -67,10 +67,15 @@ public class NativeGuard {
     /**
      * Traite un rapport de natives.
      *
-     * @param files   lignes {@code nom|taille|sha256}
-     * @param foreign lignes {@code chemin} — natives chargées hors du dossier
+     * @param files   lignes {@code nom|taille|sha256} — dossier des natives
+     * @param foreign lignes {@code chemin} — natives chargées par la JVM hors du dossier
+     * @param modules lignes {@code chemin} — modules RÉELLEMENT mappés dans le
+     *                processus hors des dossiers attendus. Champ récent : vide
+     *                pour un ancien client. Contrairement à {@code foreign}, il
+     *                voit une DLL injectée de l'extérieur (CreateRemoteThread +
+     *                LoadLibraryA) — le cœur des injecteurs tout faits.
      */
-    public void handleReport(Player player, String files, String foreign) {
+    public void handleReport(Player player, String files, String foreign, String modules) {
         if (!plugin.getConfig().getBoolean("anticheat.natives.enabled", true)) {
             return;
         }
@@ -79,10 +84,11 @@ public class NativeGuard {
         }
         List<Entry> entries = parse(files);
         List<String> intruders = parsePaths(foreign);
+        List<String> mapped = parsePaths(modules);
 
         // Un rapport identique au précédent n'apprend rien : le client renvoie
         // son manifeste dès qu'un fichier change, pas seulement à la connexion.
-        String digest = entries.toString() + intruders.toString();
+        String digest = entries.toString() + intruders.toString() + mapped.toString();
         if (digest.equals(lastReport.get(player.getUniqueId()))) {
             return;
         }
@@ -90,6 +96,7 @@ public class NativeGuard {
 
         if (plugin.getConfig().getBoolean("anticheat.natives.learn", true)) {
             learn(player, entries);
+            learnModules(player, mapped);
             return;
         }
         judge(player, entries);
@@ -101,6 +108,50 @@ public class NativeGuard {
             violations.flag(player, Check.NATIVES,
                     "bibliothèque native étrangère : " + join(intruders, 3));
         }
+
+        judgeModules(player, mapped);
+    }
+
+    /**
+     * Traite la liste des modules mappés dans le processus : pure télémétrie.
+     *
+     * <p><b>Pourquoi aucune violation ici.</b> Cette liste est structurellement
+     * bruyante — overlay Discord/Steam, RivaTuner, Nahimic, shims d'antivirus,
+     * pilotes GPU s'y retrouvent tous, légitimement. En faire un verdict
+     * automatique noierait le staff et accuserait des innocents. Elle ne sert donc
+     * qu'à donner de la visibilité : une ligne d'information, à lire à l'œil.
+     *
+     * <p>Le seul signal ACTIONNABLE de ce relevé — une DLL chargée depuis
+     * {@code %TEMP%} hors JNA, sans faux positif connu — n'est pas jugé ici : il est
+     * déjà porté côté client par le bit d'environnement, donc par l'attestation,
+     * silencieusement.
+     */
+    private void judgeModules(Player player, List<String> mapped) {
+        if (mapped.isEmpty() || !plugin.getConfig().getBoolean("anticheat.modules.enabled", true)) {
+            return;
+        }
+        if (plugin.getConfig().getBoolean("anticheat.modules.log-unknown", true)) {
+            plugin.getLogger().info("[AC] Modules non reconnus mappés chez " + player.getName()
+                    + " : " + join(mapped, 6) + " — télémétrie (aucune sanction).");
+        }
+    }
+
+    /**
+     * Mode apprentissage des modules : journalise une fois les modules non
+     * reconnus, pour repérer d'un coup d'œil ce que voient les postes joueurs.
+     */
+    private void learnModules(Player player, List<String> mapped) {
+        if (mapped.isEmpty()) {
+            return;
+        }
+        String text = join(mapped, 8);
+        synchronized (learned) {
+            if (!learned.add("mod:" + text)) {
+                return;
+            }
+        }
+        plugin.getLogger().info("[AC] Modules mappés chez " + player.getName()
+                + " (hors dossiers attendus) : " + text);
     }
 
     // ── Verdict ────────────────────────────────────────────────────────────────

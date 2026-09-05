@@ -118,6 +118,10 @@ public final class HwidBanService {
                     // 1. Machine virtuelle : refus si demandé (contournement le
                     //    plus propre du ban HWID — repartir d'un PC « neuf »).
                     if (isVm && blockVms) {
+                        // Tracé : c'est la seule façon de distinguer un vrai refus
+                        // d'un faux positif quand un joueur dit « je n'ai pas de VM ».
+                        plugin.getLogger().info("[HWID] " + name + " refusé : machine "
+                                + "virtuelle détectée (" + safeReason(vmReason) + ").");
                         kick(player, StaffFormatter.banScreen(
                                 "Machine virtuelle non autorisée",
                                 "Permanent", "AntiCheat"));
@@ -143,6 +147,17 @@ public final class HwidBanService {
                 }
             }
         });
+    }
+
+    /**
+     * Motif rendu inoffensif pour la console : il vient du client, donc il peut
+     * contenir n'importe quoi — sauts de ligne compris, qui maquilleraient le
+     * journal.
+     */
+    private static String safeReason(String reason) {
+        if (reason == null) return "";
+        String s = reason.replaceAll("[^a-zA-Z0-9:_. -]", "");
+        return s.length() > 40 ? s.substring(0, 40) : s;
     }
 
     private void kick(final Player player, final String screen) {

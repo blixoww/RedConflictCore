@@ -97,6 +97,7 @@ public class RedConflictCore extends JavaPlugin {
     private PBShopModule pbShopModule;
     private SiteDatabase siteDatabase;
     private SiteBridgeModule siteBridgeModule;
+    private fr.redconflict.network.NetworkModule networkModule;
     private fr.redconflict.vote.VoteModule voteModule;
 
     @Override
@@ -169,6 +170,11 @@ public class RedConflictCore extends JavaPlugin {
         // dépendance. Un canal enregistré avant lui serait un canal non gardé.
         this.antiCheatModule = new AntiCheatModule(this);
         modules.install(antiCheatModule);
+
+        // Tab-list partage de la grappe : ne depend que de la base H2, et doit
+        // exister avant StaffModule, dont le PlayerListManager le consomme.
+        this.networkModule = new fr.redconflict.network.NetworkModule(this, database);
+        modules.install(networkModule);
 
         this.essentialsModule = new EssentialsModule(this, database);
         modules.install(essentialsModule);
@@ -330,6 +336,15 @@ public class RedConflictCore extends JavaPlugin {
     /** Provider central de connexions H2 (pool HikariCP). */
     public Database getCoreDatabase() {
         return this.database;
+    }
+
+    /**
+     * Tab-list partage entre les serveurs de la grappe (memes joueurs, meme total).
+     * {@code null} si le module n'a pas demarre : l'appelant retombe alors sur un
+     * tab strictement local.
+     */
+    public fr.redconflict.network.GlobalPlayerList getGlobalPlayerList() {
+        return networkModule == null ? null : networkModule.getGlobalPlayerList();
     }
 
     /**

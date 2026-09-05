@@ -154,4 +154,21 @@ public class EssentialsConfig {
     public String currencySymbol() {
         return config.getString("economy.currency-symbol", "$");
     }
+
+    // ── Chat ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * true = le Core met en forme le chat public (préfixe de grade + pseudo).
+     *
+     * <p>Sans effet là où RedFaction est installé : son propre format prend le
+     * relais. Voir {@code ChatFormatListener}.
+     */
+    public boolean chatFormatEnabled() {
+        return config.getBoolean("chat.format-enabled", true);
+    }
+
+    /** Format du chat public : {player}, {message} et placeholders PlaceholderAPI. */
+    public String chatFormat() {
+        return config.getString("chat.format", "{prefix}{player} &8» &f{message}");
+    }
 }

@@ -247,13 +247,14 @@ public class EssentialsModule implements Module, Reloadable {
         pm.registerEvents(new BackDeathListener(backService, config), plugin);
         pm.registerEvents(new IgnoreChatListener(ignores), plugin);
         pm.registerEvents(new fr.redconflict.essentials.listener.ChatColorListener(), plugin);
+        pm.registerEvents(new fr.redconflict.essentials.listener.ChatFormatListener(config), plugin);
         pm.registerEvents(new InvseeListener(invsee), plugin);
         pm.registerEvents(new fr.redconflict.essentials.listener.SpawnListener(spawns), plugin);
         pm.registerEvents(new WeatherLockListener(weather), plugin);
 
         Bukkit.getScheduler().runTaskTimer(plugin, cooldowns::purgeExpired,
                 COOLDOWN_PURGE_TICKS, COOLDOWN_PURGE_TICKS);
-        logger.info("[Essentials] Module actif : 41 commandes, 7 listeners.");
+        logger.info("[Essentials] Module actif : 41 commandes, 8 listeners.");
     }
 
     @Override
