@@ -2,6 +2,11 @@
 #  Configuration des items du shop — Format:
 #  displayName|minecraft_item:meta|baseBuy|baseSell|maxStack|floor|ceil
 #  Prix en centimes (100 = 1€). Ex: 10000 = 100€
+#
+#  UN ITEM = UNE SEULE CATÉGORIE. Un même item:meta listé deux fois crée deux
+#  lignes en base, avec deux prix qui dérivent séparément : le joueur achète
+#  dans la catégorie la moins chère et revend dans l'autre. Le chargeur refuse
+#  donc les doublons (il garde la 1re occurrence et logue les suivantes).
 # ══════════════════════════════════════════════════════════════════════════
 
 categories:
@@ -20,7 +25,6 @@ categories:
       - "Redstone|redstone|800|500|64|200|8000"
       - "Lapis-Lazuli|dye:4|1200|800|64|300|10000"
       - "Quartz du Nether|quartz|1500|1000|64|500|12000"
-      - "Silex|flint|300|150|64|50|3000"
       - "Minerai de fer|iron_ore|1500|1000|64|400|12000"
       - "Minerai d'or|gold_ore|3000|2000|64|1000|20000"
       - "Minerai de diamant|diamond_ore|12000|9000|64|6000|60000"
@@ -39,6 +43,15 @@ categories:
       - "Bloc de quartz|quartz_block|6000|4000|64|2000|40000"
       - "Quartz ciselé|quartz_block:1|6500|4500|64|2500|45000"
       - "Pilier de quartz|quartz_block:2|6500|4500|64|2500|45000"
+      # ── Minerais moddés (Ruby / Cobalt / Acier) ──────────────────────────
+      - "Ruby|ruby|12000|8000|64|4000|60000"
+      - "Minerai de Ruby|ruby_ore|15000|10000|64|5000|80000"
+      - "Bloc de Ruby|ruby_block|108000|72000|64|36000|540000"
+      - "Lingot de Cobalt|cobalt_ingot|18000|12000|64|6000|90000"
+      - "Minerai de Cobalt|cobalt_ore|20000|14000|64|7000|100000"
+      - "Bloc de Cobalt|cobalt_block|162000|108000|64|54000|810000"
+      - "Lingot d'Acier|steel_ingot|6000|4000|64|2000|40000"
+      - "Bloc d'Acier|steel_block|54000|36000|64|18000|360000"
 
   blocs:
     name: "Blocs"
@@ -59,11 +72,7 @@ categories:
       - "Pierre taillée craquelée|stonebrick:2|250|120|64|40|2500"
       - "Pierre taillée ciselée|stonebrick:3|300|150|64|50|3000"
       - "Brique|brick_block|300|150|64|50|3000"
-      - "Brique du Nether (bloc)|nether_brick|400|200|64|80|4000"
       - "Clôture Nether|nether_brick_fence|400|200|64|80|4000"
-      - "Sable|sand|80|50|64|10|800"
-      - "Sable rouge|sand:1|100|60|64|15|1000"
-      - "Gravier|gravel|60|30|64|10|600"
       - "Grès|sandstone|150|75|64|20|1500"
       - "Grès taillé|sandstone:1|200|100|64|30|2000"
       - "Grès lisse|sandstone:2|200|100|64|30|2000"
@@ -71,24 +80,15 @@ categories:
       - "Grès rouge taillé|red_sandstone:1|250|120|64|40|2500"
       - "Grès rouge lisse|red_sandstone:2|250|120|64|40|2500"
       - "Obsidienne|obsidian|3000|2000|64|1000|20000"
-      - "Glowstone|glowstone|4000|2500|64|1000|25000"
       - "Prismarine|prismarine|2000|1200|64|500|15000"
       - "Prismarine foncée|prismarine:1|2500|1500|64|600|18000"
       - "Prismarine taillée|prismarine:2|3000|1800|64|800|20000"
       - "Lanterne de mer|sea_lantern|5000|3000|64|1500|30000"
       - "Éponge|sponge|8000|5000|64|2000|50000"
       - "Éponge mouillée|sponge:1|3000|1500|64|800|20000"
-      - "Pierre de l'End|end_stone|300|150|64|50|3000"
-      - "Netherrack|netherrack|50|25|64|5|500"
-      - "Soul Sand|soul_sand|300|150|64|50|3000"
-      - "Glace|ice|500|250|64|80|5000"
-      - "Glace compactée|packed_ice|800|500|64|150|8000"
-      - "Bloc de neige|snow|200|100|64|30|2000"
       - "Terre cuite|hardened_clay|250|120|64|40|2500"
       - "Argile|clay|250|120|64|40|2500"
       - "Enclume|anvil|15000|10000|64|5000|80000"
-      - "Mycelium|mycelium|200|100|64|30|2000"
-      - "Podzol|dirt:2|150|75|64|25|1500"
       - "Laine Blanche|wool:0|200|100|64|30|2000"
       - "Laine Orange|wool:1|200|100|64|30|2000"
       - "Laine Magenta|wool:2|200|100|64|30|2000"
@@ -121,6 +121,9 @@ categories:
       - "Terre cuite Verte|stained_hardened_clay:13|300|150|64|50|3000"
       - "Terre cuite Rouge|stained_hardened_clay:14|300|150|64|50|3000"
       - "Terre cuite Noire|stained_hardened_clay:15|300|150|64|50|3000"
+      # ── Moddé : portes en obsidienne (posées comme des blocs) ────────────
+      - "Porte en Obsidienne|obsidian_door|8000|5000|64|2500|50000"
+      - "Trappe en Obsidienne|obsidian_trapdoor|6000|3500|64|1800|40000"
 
   verre:
     name: "Verre"
@@ -161,6 +164,8 @@ categories:
       - "Vitre Verte|stained_glass_pane:13|150|75|64|25|1500"
       - "Vitre Rouge|stained_glass_pane:14|150|75|64|25|1500"
       - "Vitre Noire|stained_glass_pane:15|150|75|64|25|1500"
+      # ── Moddé ────────────────────────────────────────────────────────────
+      - "Bloc Transparent|transparent_block|2000|1200|64|500|15000"
 
   bois:
     name: "Bois"
@@ -253,6 +258,9 @@ categories:
       - "Chair putréfiée|rotten_flesh|50|25|64|5|500"
       - "Œil d'araignée|spider_eye|400|200|64|80|4000"
       - "Sucre|sugar|80|40|64|10|800"
+      # ── Moddé ────────────────────────────────────────────────────────────
+      - "Pomme au Cobalt|cobalt_apple|15000|9000|64|4000|80000"
+      - "Tarte citrouille verte|green_pumpkin_pie|5000|3000|64|1500|30000"
 
   agriculture:
     name: "Agriculture"
@@ -268,7 +276,6 @@ categories:
       - "Fève de cacao|dye:3|200|100|64|30|2000"
       - "Champignon rouge|red_mushroom|150|80|64|25|1500"
       - "Champignon brun|brown_mushroom|150|80|64|25|1500"
-      - "Verrue du Nether|nether_wart|500|300|64|100|5000"
       - "Nénuphar|waterlily|200|100|64|30|2000"
       - "Vigne|vine|100|50|64|15|1000"
       - "Citrouille|pumpkin|300|150|64|50|3000"
@@ -299,10 +306,6 @@ categories:
       - "Étiquette|name_tag|5000|3000|64|1500|30000"
       - "Laisse|lead|2000|1200|64|500|15000"
       - "Encre noire|dye:0|150|80|64|25|1500"
-      - "Larme de Ghast|ghast_tear|3000|2000|64|800|20000"
-      - "Crème de Magma|magma_cream|1500|800|64|300|12000"
-      - "Poudre de Blaze|blaze_powder|1200|700|64|300|10000"
-      - "Bâton de Blaze|blaze_rod|2000|1200|64|500|15000"
       - "Poudre à canon|gunpowder|600|400|64|150|6000"
       - "Perle de l'Ender|ender_pearl|3000|2000|16|1000|20000"
       - "Œil de l'Ender|ender_eye|5000|3000|64|1500|30000"
@@ -314,14 +317,12 @@ categories:
     icon: "minecraft:redstone"
     sort: 8
     items:
-      - "Poudre de redstone|redstone|800|500|64|200|8000"
       - "Torche de redstone|redstone_torch|500|250|64|80|5000"
       - "Répéteur|repeater|1500|800|64|300|12000"
       - "Comparateur|comparator|2000|1200|64|500|15000"
       - "Piston|piston|3000|1800|64|800|20000"
       - "Piston collant|sticky_piston|4000|2500|64|1000|25000"
       - "Lampe Redstone|redstone_lamp|3000|1800|64|800|20000"
-      - "Poudre de Glowstone|glowstone_dust|1000|600|64|200|10000"
       - "Distributeur|dispenser|2000|1200|64|500|15000"
       - "Dropper|dropper|2000|1200|64|500|15000"
       - "Entonnoir|hopper|5000|3000|64|1500|30000"
@@ -361,7 +362,6 @@ categories:
       - "Glowstone|glowstone|4000|2500|64|1000|25000"
       - "Poudre de Glowstone|glowstone_dust|1000|600|64|200|10000"
       - "Verrue du Nether|nether_wart|500|300|64|100|5000"
-      - "Quartz du Nether|quartz|1500|1000|64|500|12000"
 
   decoration:
     name: "Décoration"
@@ -417,7 +417,9 @@ categories:
       - "Tête de Squelette|skull:0|3000|1800|64|800|20000"
       - "Tête de Zombie|skull:2|3000|1800|64|800|20000"
       - "Tête de Creeper|skull:4|5000|3000|64|1500|30000"
-      - "Panneau|sign|150|75|16|25|1500"
+      # ── Moddé ────────────────────────────────────────────────────────────
+      - "Dalle en Obsidienne|obsidian_slab|4000|2500|64|1200|25000"
+      - "Escalier en Obsidienne|obsidian_stairs|5000|3000|64|1500|30000"
 
   terrains:
     name: "Terrains"
@@ -437,8 +439,6 @@ categories:
       - "Sable rouge|sand:1|100|60|64|15|1000"
       - "Gravier|gravel|60|30|64|10|600"
       - "Argile (boule)|clay_ball|80|40|64|10|800"
-      - "Netherrack|netherrack|50|25|64|5|500"
-      - "Soul Sand|soul_sand|300|150|64|50|3000"
 
   divers:
     name: "Divers"
@@ -462,34 +462,10 @@ categories:
       - "Table d'enchantement|enchanting_table|30000|18000|64|8000|150000"
       - "Alambic|brewing_stand|8000|5000|64|2000|50000"
       - "Chaudron|cauldron|3000|1800|64|800|20000"
-      - "Étoile du Nether|nether_star|50000|30000|64|15000|200000"
       - "Balise|beacon|100000|60000|64|30000|500000"
       - "Cisailles|shears|1500|800|1|300|12000"
       - "Silex|flint|300|150|64|50|3000"
       - "Flint and Steel|flint_and_steel|1500|800|1|300|12000"
-      - "Poudre à canon|gunpowder|600|400|64|150|6000"
-      - "Étiquette|name_tag|5000|3000|64|1500|30000"
-      - "Laisse|lead|2000|1200|64|500|15000"
-
-  modde:
-    name: "Moddé"
-    icon: "minecraft:nether_star"
-    sort: 13
-    items:
-      - "Minerai de Ruby|ruby_ore|15000|10000|64|5000|80000"
-      - "Ruby|ruby|12000|8000|64|4000|60000"
-      - "Bloc de Ruby|ruby_block|108000|72000|64|36000|540000"
-      - "Minerai de Cobalt|cobalt_ore|20000|14000|64|7000|100000"
-      - "Lingot de Cobalt|cobalt_ingot|18000|12000|64|6000|90000"
-      - "Bloc de Cobalt|cobalt_block|162000|108000|64|54000|810000"
-      - "Lingot d'Acier|steel_ingot|6000|4000|64|2000|40000"
-      - "Bloc d'Acier|steel_block|54000|36000|64|18000|360000"
-      - "Pomme au Cobalt|cobalt_apple|15000|9000|64|4000|80000"
-      - "Tarte citrouille verte|green_pumpkin_pie|5000|3000|64|1500|30000"
-      - "Porte en Obsidienne|obsidian_door|8000|5000|64|2500|50000"
-      - "Trappe en Obsidienne|obsidian_trapdoor|6000|3500|64|1800|40000"
-      - "Dalle en Obsidienne|obsidian_slab|4000|2500|64|1200|25000"
-      - "Escalier en Obsidienne|obsidian_stairs|5000|3000|64|1500|30000"
-      - "Échelle en Acier|steel_ladder|3000|1800|64|800|20000"
+      # ── Moddé ────────────────────────────────────────────────────────────
       - "Coffre en Acier|steel_chest|15000|9000|64|4000|80000"
-      - "Bloc Transparent|transparent_block|2000|1200|64|500|15000"
+      - "Échelle en Acier|steel_ladder|3000|1800|64|800|20000"

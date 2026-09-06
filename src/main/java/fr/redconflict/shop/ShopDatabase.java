@@ -662,6 +662,16 @@ public class ShopDatabase {
             if (catsSection == null) return false;
 
             int totalItems = 0, totalCats = 0;
+
+            // Un item ne doit exister QUE dans une seule categorie. Deux lignes
+            // pour le meme item:meta, c'est deux entrees en base avec chacune son
+            // prix courant : ils divergent des la premiere transaction, et le
+            // joueur achete dans la categorie la moins chere pour revendre dans
+            // l'autre. On garde la premiere occurrence et on logue les suivantes
+            // avec leur categorie, pour que la correction se fasse dans le YAML.
+            java.util.Map<String, String> seen = new java.util.HashMap<String, String>();
+            int duplicates = 0;
+
             for (String catKey : catsSection.getKeys(false)) {
                 org.bukkit.configuration.ConfigurationSection cs = catsSection.getConfigurationSection(catKey);
                 if (cs == null) continue;
@@ -681,15 +691,26 @@ public class ShopDatabase {
                         mcItem = mp[0];
                         try { meta = Integer.parseInt(mp[1]); } catch (NumberFormatException ignored) {}
                     }
+                    String key = mcItem + ":" + meta;
+                    String owner = seen.get(key);
+                    if (owner != null) {
+                        duplicates++;
+                        LOG.warning("[Shop] Doublon ignore : " + key + " (" + p[0] + ") est deja"
+                            + " dans la categorie '" + owner + "', il est ignore dans '" + catName + "'.");
+                        continue;
+                    }
+
                     try {
                         createItem(catId, p[0], mcItem, meta,
                             Long.parseLong(p[2]), Long.parseLong(p[3]),
                             Integer.parseInt(p[4]), Long.parseLong(p[5]), Long.parseLong(p[6]));
+                        seen.put(key, catName);
                         totalItems++;
                     } catch (NumberFormatException ignored) {}
                 }
             }
-            LOG.info("[Shop] Catalogue chargé : " + totalCats + " catégories, " + totalItems + " items.");
+            LOG.info("[Shop] Catalogue chargé : " + totalCats + " catégories, " + totalItems + " items."
+                + (duplicates > 0 ? " " + duplicates + " doublon(s) ignoré(s) — voir les avertissements ci-dessus." : ""));
             return totalItems > 0;
         } catch (Exception e) {
             LOG.severe("[Shop] Erreur chargement shop_items.yml: " + e.getMessage());
