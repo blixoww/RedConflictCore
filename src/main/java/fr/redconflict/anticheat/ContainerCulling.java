@@ -135,7 +135,13 @@ public class ContainerCulling implements Listener {
         final long hideDelay = plugin.getConfig().getLong("anticheat.chest-esp.hide-delay-ms", 1000L);
         final int budget = plugin.getConfig().getInt("anticheat.chest-esp.max-traces-per-pass", 1500);
         final boolean mask = plugin.getConfig().getBoolean("anticheat.chest-esp.mask", false);
+        final boolean detect = plugin.getConfig().getBoolean("anticheat.chest-esp.detect", true);
         final List<String> disabled = plugin.getConfig().getStringList("anticheat.chest-esp.disabled-worlds");
+
+        // Ni masque, ni preuve a constituer : la passe ne produirait rien.
+        if (!mask && !detect) {
+            return;
+        }
 
         final double radiusSq = radius * radius;
         final double closeSq = close * close;
@@ -189,9 +195,31 @@ public class ContainerCulling implements Listener {
                             reveal(player, track);
                             continue;
                         }
+                        // Sans masquage, la seule chose que le trace alimente est
+                        // {@link #judge} — et judge ne juge QUE les conteneurs
+                        // mures. Tracer les autres coute le meme prix pour un
+                        // resultat que personne ne lit : dans une base normale,
+                        // c'est la quasi-totalite des coffres.
+                        if (!mask && !track.buried) {
+                            continue;
+                        }
+                        // Rien n'a bouge depuis le dernier trace : meme oeil, meme
+                        // conteneur, donc meme verdict. On garde l'etat precedent
+                        // et on se contente d'honorer le delai de masquage — un
+                        // joueur immobile ne coute plus une seule ligne de vue.
+                        if (!needsTrace(track, eye, now)) {
+                            if (mask && track.blindSince != 0L && now - track.blindSince >= hideDelay) {
+                                conceal(player, track);
+                            }
+                            continue;
+                        }
                         if (traces++ >= budget) {
                             break;
                         }
+                        track.eyeX = eye.getX();
+                        track.eyeY = eye.getY();
+                        track.eyeZ = eye.getZ();
+                        track.tracedAt = now;
                         if (clearLineOfSight(eye, container)) {
                             track.seen = true;
                             track.blindSince = 0L;
@@ -229,6 +257,34 @@ public class ContainerCulling implements Listener {
                 iterator.remove();
             }
         }
+    }
+
+    /** Deplacement de l'œil, au-dela duquel une ligne de vue peut avoir change. */
+    private static final double RETRACE_DISTANCE_SQ = 0.25D * 0.25D;
+
+    /** Age maximal d'un verdict, meme immobile : le monde, lui, peut changer. */
+    private static final long RETRACE_MAX_AGE_MS = 2_000L;
+
+    /**
+     * Faut-il refaire la ligne de vue de cet œil vers ce conteneur ?
+     *
+     * <p>Le trace est la seule operation chere de la passe : il parcourt les blocs
+     * entre les deux points. Or son resultat ne depend que de la geometrie — un
+     * joueur qui n'a pas bouge d'un quart de bloc obtiendrait exactement le meme.
+     * On le rejoue quand meme toutes les deux secondes, parce que le monde peut
+     * s'ouvrir sans que le joueur bouge : un mur casse par un allie, une porte.
+     *
+     * <p>C'est ce qui fait qu'un joueur immobile dans sa base ne coute plus rien,
+     * alors qu'il payait jusqu'ici un trace par coffre a portee et par passe.
+     */
+    private static boolean needsTrace(Track track, Location eye, long now) {
+        if (Double.isNaN(track.eyeX) || now - track.tracedAt >= RETRACE_MAX_AGE_MS) {
+            return true;
+        }
+        double dx = eye.getX() - track.eyeX;
+        double dy = eye.getY() - track.eyeY;
+        double dz = eye.getZ() - track.eyeZ;
+        return dx * dx + dy * dy + dz * dz > RETRACE_DISTANCE_SQ;
     }
 
     /**
@@ -447,7 +503,28 @@ public class ContainerCulling implements Listener {
         }
         ChunkIndex fresh = new ChunkIndex(now, found);
         index.put(Long.valueOf(chunkKey), fresh);
+        evictStaleIndexes(now);
         return fresh;
+    }
+
+    /**
+     * Oublie les inventaires de chunk perimes.
+     *
+     * <p>Sans ca, la carte gardait une entree par chunk jamais revisite : un
+     * serveur ouvert depuis des semaines finissait avec des dizaines de milliers
+     * de listes de coffres pour des bases que plus personne ne visite. Le
+     * declenchement au-dela d'un seuil evite de balayer la carte a chaque
+     * reconstruction.
+     */
+    private void evictStaleIndexes(long now) {
+        if (index.size() < 4096) {
+            return;
+        }
+        for (Iterator<Map.Entry<Long, ChunkIndex>> it = index.entrySet().iterator(); it.hasNext(); ) {
+            if (now - it.next().getValue().builtAt > INDEX_TTL_MS) {
+                it.remove();
+            }
+        }
     }
 
     private void invalidate(Block block) {
@@ -529,6 +606,14 @@ public class ContainerCulling implements Listener {
         private boolean masked;
         private long blindSince;
         private long touchedAt;
+
+        /**
+         * Oeil du joueur au dernier trace, et sa date. Tant que l'oeil n'a pas
+         * bouge, refaire le trace redonnerait le meme verdict : c'est la meme
+         * geometrie. Voir {@link ContainerCulling#needsTrace}.
+         */
+        private double eyeX = Double.NaN, eyeY, eyeZ;
+        private long tracedAt;
 
         private Track(Location at, boolean buried) {
             this.at = at;

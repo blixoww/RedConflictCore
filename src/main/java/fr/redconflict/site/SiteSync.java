@@ -11,7 +11,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
@@ -50,12 +52,42 @@ public final class SiteSync {
     /** Au-delà, on découpe l'envoi : un batch géant tient la connexion trop longtemps. */
     private static final int BATCH_SIZE = 500;
 
+    /**
+     * Cycles au bout desquels les PB sont realignes meme sans changement en jeu.
+     *
+     * <p>Un achat sur le site bouge {@code users.money} sans que le serveur de
+     * jeu en sache rien : le filet doit exister. A douze cycles de cinq minutes,
+     * il se declenche une fois par heure — largement assez pour un classement.
+     */
+    private static final int PB_REFRESH_CYCLES = 12;
+
     private final RedConflictCore plugin;
     private final Database h2;
     private final SiteDatabase site;
 
     private BukkitTask task;
     private long intervalMinutes;
+
+    /**
+     * Empreinte de la derniere ligne poussee, par UUID.
+     *
+     * <p><b>Ce que ca change.</b> Le miroir recopiait TOUS les profils a chaque
+     * passage, toutes les cinq minutes, que quoi que ce soit ait bouge ou non.
+     * Serveur vide, personne connecte depuis des heures : le cycle lisait quand
+     * meme toute la table H2 et renvoyait chaque ligne a MariaDB. C'est
+     * exactement le genre de travail qui fait un pic de processeur regulier sur
+     * un serveur ou « rien ne se passe ».
+     *
+     * <p>On garde donc une empreinte par joueur et on n'envoie que ce qui a
+     * change. A vide, le cycle ne fait plus une seule ecriture.
+     */
+    private final Map<String, Long> pushed = new java.util.HashMap<String, Long>();
+
+    /** Empreinte du classement des factions au dernier envoi. */
+    private long factionsFingerprint;
+
+    /** Cycles depuis le dernier realignement des PB, pour ne pas le sauter indefiniment. */
+    private int pbCycles;
 
     /**
      * Miroir des empreintes matérielles des bannis, publié dans le même cycle.
@@ -287,7 +319,15 @@ public final class SiteSync {
             players = syncPlayers();
             // Avant l'agrégation : le total PB par faction se calcule sur la
             // colonne qu'on vient de réaligner, pas sur la précédente.
-            refreshPbFromLedger();
+            //
+            // Cette jointure balaie tout rc_players. Aucun profil n'a bouge et
+            // l'heure n'est pas venue du realignement de securite : il n'y a
+            // rien a realigner, on s'en passe. C'est le cas d'un serveur au
+            // repos — precisement celui ou ce travail ne se justifie pas.
+            if (players > 0 || ++pbCycles >= PB_REFRESH_CYCLES) {
+                pbCycles = 0;
+                refreshPbFromLedger();
+            }
             factions = syncFactions();
         } catch (SQLException e) {
             // Journalisé sans propager : une panne du site ne doit jamais
@@ -296,10 +336,17 @@ public final class SiteSync {
             return;
         }
 
+        // Rien ecrit nulle part : le cycle n'a rien a raconter. Une ligne
+        // « 0 profil, 0 faction » toutes les cinq minutes sur trois serveurs ne
+        // renseigne personne et remplit la console.
+        if (players == 0 && factions < 0 && hwidRows <= 0) {
+            return;
+        }
+
         long ms = System.currentTimeMillis() - started;
         plugin.getLogger().info("[SiteSync] " + players + " profils, "
-                + factions + " factions"
-                + (hwidRows >= 0 ? ", " + hwidRows + " empreintes bannies" : "")
+                + (factions < 0 ? "classement inchangé" : factions + " factions")
+                + (hwidRows > 0 ? ", " + hwidRows + " empreintes bannies" : "")
                 + " en " + ms + " ms.");
     }
 
@@ -372,8 +419,27 @@ public final class SiteSync {
             try {
                 int pending = 0;
                 while (r.next()) {
-                    ws.setString(1, r.getString("uuid"));
-                    ws.setString(2, nullToEmpty(r.getString("name")));
+                    String uuid = r.getString("uuid");
+                    String name = nullToEmpty(r.getString("name"));
+                    String faction = nullToEmpty(r.getString("faction"));
+                    String rankLabel = nullToEmpty(r.getString("rank_label"));
+
+                    // Empreinte des colonnes REELLEMENT ecrites par ce miroir
+                    // (pb en est exclu, il vient de users.money). Identique a la
+                    // derniere fois : la ligne cible est deja bonne, l'envoyer
+                    // serait un aller-retour reseau et une ecriture disque pour
+                    // reecrire exactement ce qui s'y trouve.
+                    long print = fingerprint(name, r.getLong("kills"), r.getLong("deaths"),
+                            r.getLong("playtime_s"), r.getLong("balance"), faction, rankLabel,
+                            r.getInt("streak"), r.getLong("bounty"), r.getLong("last_join"));
+                    Long previous = pushed.get(uuid);
+                    if (previous != null && previous.longValue() == print) {
+                        continue;
+                    }
+                    pushed.put(uuid, Long.valueOf(print));
+
+                    ws.setString(1, uuid);
+                    ws.setString(2, name);
                     ws.setLong(3, r.getLong("kills"));
                     ws.setLong(4, r.getLong("deaths"));
                     ws.setLong(5, r.getLong("playtime_s"));
@@ -396,6 +462,10 @@ public final class SiteSync {
                 dst.commit();
             } catch (SQLException e) {
                 dst.rollback();
+                // Les empreintes decrivent ce qui est REELLEMENT en base. La
+                // transaction est annulee : on les oublie, sans quoi le cycle
+                // suivant sauterait des lignes qui n'ont jamais ete ecrites.
+                pushed.clear();
                 throw e;
             } finally {
                 dst.setAutoCommit(autoCommit);
@@ -439,13 +509,39 @@ public final class SiteSync {
         Map<String, Integer> points =
                 pointsColumn ? factionPoints() : Collections.<String, Integer>emptyMap();
 
-        int count = 0;
-
+        // L'agregation est lue d'abord, en entier : elle tient en quelques
+        // dizaines de lignes, et il faut la connaitre COMPLETE pour savoir si
+        // elle a bouge. Sans ca, le miroir vidait et reecrivait toute la table
+        // du classement toutes les cinq minutes, y compris sur un serveur ou
+        // personne ne s'est connecte depuis la veille.
+        List<Object[]> rows = new ArrayList<Object[]>();
+        long print = 1125899906842597L;
         try (Connection src = h2.getConnection();
              PreparedStatement rs = src.prepareStatement(read);
-             ResultSet r = rs.executeQuery();
-             Connection dst = site.getConnection()) {
+             ResultSet r = rs.executeQuery()) {
+            while (r.next()) {
+                String tag = r.getString("faction");
+                Integer p = points.get(tag);
+                Object[] row = new Object[] {
+                        tag, Integer.valueOf(r.getInt("members")),
+                        Long.valueOf(r.getLong("kills")), Long.valueOf(r.getLong("deaths")),
+                        Long.valueOf(r.getLong("balance")), Long.valueOf(r.getLong("pb")),
+                        Long.valueOf(p == null ? 0L : p.longValue()) };
+                rows.add(row);
+                for (Object value : row) {
+                    print = print * 31L + (value == null ? 0 : value.hashCode());
+                }
+            }
+        }
+        // L'empreinte porte aussi la presence de la colonne : la migration
+        // passee entre deux cycles doit declencher une reecriture.
+        print = print * 31L + (pointsColumn ? 1 : 2);
 
+        if (print == factionsFingerprint) {
+            return -1;   // rien n'a change : aucune ecriture cote site
+        }
+
+        try (Connection dst = site.getConnection()) {
             boolean autoCommit = dst.getAutoCommit();
             dst.setAutoCommit(false);
             try (Statement clear = dst.createStatement();
@@ -456,23 +552,21 @@ public final class SiteSync {
                 // implicitement la transaction.
                 clear.executeUpdate("DELETE FROM rc_factions");
 
-                while (r.next()) {
-                    String tag = r.getString("faction");
-                    ws.setString(1, tag);
-                    ws.setInt(2, r.getInt("members"));
-                    ws.setLong(3, r.getLong("kills"));
-                    ws.setLong(4, r.getLong("deaths"));
-                    ws.setLong(5, r.getLong("balance"));
-                    ws.setLong(6, r.getLong("pb"));
+                for (Object[] row : rows) {
+                    ws.setString(1, (String) row[0]);
+                    ws.setInt(2, ((Integer) row[1]).intValue());
+                    ws.setLong(3, ((Long) row[2]).longValue());
+                    ws.setLong(4, ((Long) row[3]).longValue());
+                    ws.setLong(5, ((Long) row[4]).longValue());
+                    ws.setLong(6, ((Long) row[5]).longValue());
                     if (pointsColumn) {
-                        Integer p = points.get(tag);
-                        ws.setLong(7, p == null ? 0L : p.longValue());
+                        ws.setLong(7, ((Long) row[6]).longValue());
                     }
                     ws.addBatch();
-                    count++;
                 }
                 ws.executeBatch();
                 dst.commit();
+                factionsFingerprint = print;
             } catch (SQLException e) {
                 dst.rollback();
                 throw e;
@@ -480,7 +574,7 @@ public final class SiteSync {
                 dst.setAutoCommit(autoCommit);
             }
         }
-        return count;
+        return rows.size();
     }
 
     // ── Points de classement (FactionEvent) ──────────────────────────────
@@ -545,6 +639,32 @@ public final class SiteSync {
             points.put(tag, ranking.getPoints(faction));
         }
         return points;
+    }
+
+    /**
+     * Empreinte compacte d'une ligne de profil.
+     *
+     * <p>Un simple cumul façon {@code String.hashCode} sur 64 bits : on ne
+     * cherche pas une garantie cryptographique, seulement a savoir si la ligne a
+     * bouge depuis le dernier envoi. Une collision ferait sauter UNE mise a jour
+     * de classement jusqu'au prochain changement du joueur ; a 64 bits, elle
+     * n'arrivera pas.
+     */
+    private static long fingerprint(String name, long kills, long deaths, long playtime,
+                                    long balance, String faction, String rankLabel,
+                                    int streak, long bounty, long lastJoin) {
+        long h = 1125899906842597L;
+        h = h * 31L + name.hashCode();
+        h = h * 31L + kills;
+        h = h * 31L + deaths;
+        h = h * 31L + playtime;
+        h = h * 31L + balance;
+        h = h * 31L + faction.hashCode();
+        h = h * 31L + rankLabel.hashCode();
+        h = h * 31L + streak;
+        h = h * 31L + bounty;
+        h = h * 31L + lastJoin;
+        return h;
     }
 
     private static String nullToEmpty(String value) {
