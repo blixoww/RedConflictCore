@@ -286,6 +286,7 @@ fr\redconflict\essentials\command\CommandEnvironment.class
 fr\redconflict\network\NetworkPlayer.class
 fr\redconflict\useful\UtilityModule.class
 fr\redconflict\job\JobConfig$LevelReward.class
+fr\redconflict\clearlagg\ClearLaggManager$1.class
 fr\redconflict\essentials\command\economy\PayCommand.class
 fr\redconflict\anticheat\FlyCheck$State.class
 fr\redconflict\staff\StaffDatabase.class
@@ -469,6 +470,7 @@ fr\redconflict\essentials\command\teleport\DelWarpCommand.class
 fr\redconflict\essentials\service\TeleportService$1.class
 fr\redconflict\useful\GuideCommand.class
 fr\redconflict\anticheat\AimCheck.class
+fr\redconflict\clearlagg\ClearLaggManager$Removed.class
 fr\redconflict\anticheat\HoneypotCheck$1.class
 fr\redconflict\annonyme\AnonymeCommand.class
 fr\redconflict\site\OrderService$Order.class

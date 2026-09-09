@@ -909,10 +909,21 @@ clearlagg:
   # Protéger les animaux apprivoisés (chiens, chats...)
   protect-tamed: true
 
-  # ── MobStacker detection (heuristiques) ──────────────────────────────────
+  # ── Mobs empilés (MobStacker) ────────────────────────────────────────────
+  #
+  # Un mob empilé porte un nom ("x24 Zombie") : sans ce bloc, protect-named le
+  # protégerait comme un boss, et une ferme de x64 traverserait tous les
+  # nettoyages.
+  #
   # Active la détection des mobs "stackés" (MobStacker, etc.)
   detect-mobstacker: true
-  # Clés metadata courantes utilisées par des plugins de stacking (heuristique)
+  # Clés metadata annonçant un mob empilé.
+  #
+  # NE PAS RETIRER "mobstack" : c'est la clé que RedConflictMobStacker pose sur
+  # chaque stack, avec sa taille. C'est elle qui rend la détection EXACTE —
+  # indépendante du format d'affichage réglé dans son config.yml. Les autres
+  # clés couvrent les plugins de stacking tiers, qui ne posent rien de fiable ;
+  # pour eux on retombe sur la forme du nom (compteur en tête ou en fin).
   mobstacker-metadata-keys:
     - stack
     - stacked

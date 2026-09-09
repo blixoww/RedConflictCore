@@ -87,8 +87,30 @@ public class ClearLaggManager {
     private List<String> mobStackerKeys = new ArrayList<>();
     /** Si true, les entités nommées détectées comme "stackées" pourront être supprimées */
     private boolean forceClearNamedStacked = true;
-    /** Pattern pour détecter un nom contenant un compteur (ex: "(5) Zombie" ou "Zombie x5") */
-    private Pattern stackNamePattern = Pattern.compile("(?i).*(?:\\b|\\(|\\[|x|×)\\s*\\d+\\s*(?:\\)|\\]|\\b).*");
+
+    /**
+     * Repli quand aucune métadonnée n'est posée : reconnaître une étiquette de
+     * stack à sa forme.
+     *
+     * <p><b>Étroit à dessein.</b> La version précédente acceptait n'importe quel
+     * nom contenant un nombre : « Chef de guerre - Niveau 3 » et le loup
+     * apprivoisé « Rex2 » étaient donc pris pour des stacks, et supprimés par le
+     * nettoyage — exactement ce que {@code protect-named} est censé empêcher.
+     *
+     * <p>On n'accepte plus qu'un <b>compteur en tête ou en fin de nom</b>
+     * ({@code x24 Zombie}, {@code 24X ZOMBIE}, {@code [24] Zombie},
+     * {@code Zombie x24}) : c'est là que tous les plugins de stacking le posent,
+     * et c'est là qu'un joueur n'écrit jamais rien de tel.
+     *
+     * <p>Les codes couleur sont retirés avant le test : sans ça, le même format
+     * était reconnu en couleur et manqué en clair.
+     */
+    private static final Pattern STACK_LABEL = Pattern.compile(
+            "(?i)^(?:x\\s*\\d{1,9}|\\d{1,9}\\s*x|\\(\\s*\\d{1,9}\\s*\\)|\\[\\s*\\d{1,9}\\s*\\]).*"
+          + "|.*(?:^|\\s)(?:x\\s*\\d{1,9}|\\d{1,9}\\s*x)$");
+
+    /** Extrait le nombre d'une étiquette reconnue par {@link #STACK_LABEL}. */
+    private static final Pattern STACK_AMOUNT = Pattern.compile("\\d{1,9}");
 
     // ── État interne ──────────────────────────────────────────────────────────
 
@@ -355,16 +377,17 @@ public class ClearLaggManager {
      * @return nombre total d'entités supprimées
      */
     public int runClearLagg() {
-        int total = 0;
+        Removed removed = new Removed();
         try {
             for (World world : Bukkit.getWorlds()) {
                 if (excludedWorlds.contains(world.getName().toLowerCase())) {
                     if (debugMode) plugin.getLogger().info("[ClearLagg] Monde ignoré : " + world.getName());
                     continue;
                 }
-                int count = clearWorld(world);
-                total += count;
-                if (debugMode) plugin.getLogger().info("[ClearLagg] " + world.getName() + " → " + count + " entités supprimées");
+                int before = removed.entities;
+                clearWorld(world, removed);
+                if (debugMode) plugin.getLogger().info("[ClearLagg] " + world.getName() + " → "
+                        + (removed.entities - before) + " entités supprimées");
             }
         } catch (Throwable t) {
             plugin.getLogger().severe("[ClearLagg] Erreur inattendue lors du clearlagg : " + t.getMessage());
@@ -372,25 +395,43 @@ public class ClearLaggManager {
         } finally {
             // Always broadcast result (even if partial) so admins know the task ran
             Bukkit.broadcastMessage("§8[§6§lClearLagg§8] §aNettoyage terminé — §f"
-                    + total + " §aentité(s) supprimée(s).");
+                    + removed.entities + " §aentité(s) supprimée(s)" + removed.stackSuffix() + ".");
 
             // Log to console as well so admins see it in server logs
-            plugin.getLogger().info("[ClearLagg] Nettoyage terminé — " + total + " entité(s) supprimée(s).");
+            plugin.getLogger().info("[ClearLagg] Nettoyage terminé — " + removed.entities
+                    + " entité(s) supprimée(s)" + removed.stackSuffix() + ".");
 
             // send title on completion if configured
             if (warningUseTitle) {
                 String title = "§6§lClearLagg";
-                String subtitle = "§aNettoyage terminé — §f" + total + "§a entité(s)";
+                String subtitle = "§aNettoyage terminé — §f" + removed.entities + "§a entité(s)";
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     sendTitle(p, title, subtitle);
                 }
             }
         }
-        return total;
+        return removed.entities;
     }
 
-    private int clearWorld(World world) {
-        int count = 0;
+    /**
+     * Ce qu'un nettoyage a enlevé : des entités, et les mobs qu'elles portaient.
+     *
+     * <p>Les deux chiffres diffèrent dès qu'un plugin de stacking tourne — une
+     * entité « x64 Zombie » en vaut soixante-quatre. Ne montrer que le premier
+     * donnait l'impression que le nettoyage passait à côté des fermes, alors
+     * qu'il les vidait.
+     */
+    private static final class Removed {
+        private int entities;
+        private int mobs;
+
+        /** « (dont N mobs empilés) », ou rien quand aucun stack n'a été touché. */
+        private String stackSuffix() {
+            return mobs > entities ? " §7(soit §f" + mobs + " §7mobs, stacks compris)§a" : "";
+        }
+    }
+
+    private void clearWorld(World world, Removed removed) {
         // Collect entities to remove first to avoid concurrent modification and to catch errors per-entity.
         List<Entity> toRemove = new ArrayList<>();
         try {
@@ -416,8 +457,12 @@ public class ClearLaggManager {
 
             for (Entity e : toRemove) {
                 try {
+                    // La taille se lit AVANT la suppression : après, l'entité
+                    // n'est plus dans le monde et ses métadonnées sont perdues.
+                    int size = stackSizeOf(e);
                     e.remove();
-                    count++;
+                    removed.entities++;
+                    removed.mobs += size;
                 } catch (Throwable t) {
                     if (debugMode) plugin.getLogger().warning("[ClearLagg] Erreur lors de la suppression de l'entité " + e + ": " + t.getMessage());
                 }
@@ -436,7 +481,6 @@ public class ClearLaggManager {
             plugin.getLogger().severe("[ClearLagg] Exception lors du nettoyage du monde " + world.getName() + ": " + t.getMessage());
             if (debugMode) t.printStackTrace();
         }
-        return count;
     }
 
     /**
@@ -448,12 +492,18 @@ public class ClearLaggManager {
 
         // Protéger les entités nommées (nametag personnalisé)
         boolean hasCustomName = entity.getCustomName() != null && !entity.getCustomName().isEmpty();
-        boolean isStacked = detectMobStacker && isStackedEntity(entity);
 
         if (protectNamedEntities && hasCustomName) {
-            // Si c'est un mob "stacké" et qu'on autorise la suppression des nommés stackés,
-            // on laisse passer la vérification plus loin. Sinon on protège cette entité.
-            if (!isStacked || (isStacked && !forceClearNamedStacked)) {
+            // Un mob empilé porte lui aussi un nom : c'est toute la difficulté.
+            // S'il est reconnu comme tel, on continue les vérifications comme
+            // pour n'importe quel mob ; sinon ce nom est celui d'un boss, d'un
+            // familier ou d'un PNJ, et il protège son porteur.
+            //
+            // Le test n'est fait QUE dans cette branche : c'est le seul endroit
+            // où la réponse change quelque chose, et il ne concerne qu'une
+            // poignée d'entités — inutile de le payer sur chaque item au sol.
+            boolean isStacked = detectMobStacker && isStackedEntity(entity);
+            if (!isStacked || !forceClearNamedStacked) {
                 return false;
             }
         }
@@ -503,9 +553,19 @@ public class ClearLaggManager {
     }
 
     /**
-     * Heuristiques pour détecter un mob "stacké" par un plugin type MobStacker.
-     * - Metadata : si l'entité a une metadata dont la clé contient l'une des clés configurées.
-     * - Nom personnalisé : si le nom contient un compteur (ex: "(5) Zombie", "Zombie x5").
+     * L'entité est-elle un mob empilé ?
+     *
+     * <p>Deux sources, dans cet ordre :
+     * <ol>
+     *   <li><b>La métadonnée, qui fait foi.</b> RedConflictMobStacker recopie la
+     *       taille du stack dans {@code mobstack} (voir
+     *       {@code StackManager#STACK_META}) précisément pour ne pas nous laisser
+     *       deviner. Aucune ambiguïté, aucun faux positif, et indépendant du
+     *       format d'affichage choisi dans sa configuration ;</li>
+     *   <li><b>la forme du nom, en repli.</b> Pour les plugins de stacking qui ne
+     *       posent rien — l'ancien MobStacker tiers — et pour la poignée de
+     *       secondes où un stack relu du disque n'a pas encore été marqué.</li>
+     * </ol>
      */
     private boolean isStackedEntity(Entity entity) {
         try {
@@ -517,11 +577,51 @@ public class ClearLaggManager {
             // En 1.8 certains environnements peuvent ne pas supporter certaines méthodes, ignore.
         }
 
-        // Vérifie le nom (heuristique)
-        String name = entity.getCustomName();
-        if (name != null && stackNamePattern.matcher(name).matches()) return true;
+        return STACK_LABEL.matcher(stripped(entity.getCustomName())).matches();
+    }
 
-        return false;
+    /**
+     * Combien de mobs cette entité représente-t-elle réellement ?
+     *
+     * <p>Sert au décompte annoncé : supprimer un « x64 Zombie » et l'annoncer
+     * comme « 1 entité » laissait croire que le nettoyage n'avait rien fait,
+     * alors qu'il venait d'enlever soixante-quatre mobs.
+     *
+     * @return au moins 1
+     */
+    private int stackSizeOf(Entity entity) {
+        // Un item au sol ou une flèche ne porte pas de stack : inutile de lui
+        // faire traverser six lectures de métadonnées, il y en a des milliers.
+        if (!(entity instanceof LivingEntity)) return 1;
+
+        try {
+            for (String key : mobStackerKeys) {
+                for (org.bukkit.metadata.MetadataValue value : entity.getMetadata(key)) {
+                    int size = value.asInt();
+                    if (size > 1) return size;
+                }
+            }
+        } catch (Throwable ignored) {
+            // Métadonnée posée par un plugin qui n'y met pas un nombre : on
+            // retombe sur le nom, ou sur 1.
+        }
+
+        String name = stripped(entity.getCustomName());
+        if (!STACK_LABEL.matcher(name).matches()) return 1;
+        java.util.regex.Matcher amount = STACK_AMOUNT.matcher(name);
+        if (!amount.find()) return 1;
+        try {
+            return Math.max(1, Integer.parseInt(amount.group()));
+        } catch (NumberFormatException ignored) {
+            return 1;
+        }
+    }
+
+    /** Nom affiché sans ses codes couleur, jamais nul. */
+    private static String stripped(String name) {
+        if (name == null || name.isEmpty()) return "";
+        String plain = org.bukkit.ChatColor.stripColor(name);
+        return plain == null ? "" : plain.trim();
     }
 
     // ── API publique ──────────────────────────────────────────────────────────
