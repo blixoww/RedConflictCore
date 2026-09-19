@@ -142,6 +142,7 @@ toujours instantanément).
 | `staff.lockchat` | `/lockchat` |
 | `staff.msgspy` | `/msgspy` — surveillance des MP |
 | `staff.giveall` | `/giveall` |
+| `redconflict.succes.admin` | `/succes reset <joueur> [confirm]` · `/succes debloquer <joueur> <id>` — le reset vise aussi un joueur hors ligne et exige `confirm` s'il y a quelque chose à perdre |
 | `staff.topluck` | `/topluck`, `/tl` |
 | `staff.annonyme` | voit les pseudos masqués par `/annonyme` |
 | `staff.loto` | forcer / administrer le loto |

@@ -371,6 +371,7 @@ fr\redconflict\bounty\BountyAnnouncer.class
 fr\redconflict\essentials\service\resolve\EnchantmentResolver.class
 fr\redconflict\essentials\repository\h2\AbstractH2Repository.class
 fr\redconflict\essentials\service\IgnoreService.class
+fr\redconflict\succes\SuccesManager$ResetPreview.class
 fr\redconflict\staff\StaffFormatter.class
 fr\redconflict\succes\SuccesLoginListener$1.class
 fr\redconflict\profil\ProfilCommand$ProfilePayload.class

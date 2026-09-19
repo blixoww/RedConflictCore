@@ -1,8 +1,6 @@
 package fr.redconflict.succes;
 
-import org.bukkit.GameMode;
 import org.bukkit.Material;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -17,9 +15,7 @@ import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -31,20 +27,6 @@ import java.util.UUID;
  * dans le YAML sans revenir ici.
  */
 public class SuccesGameplayListener implements Listener {
-
-    /**
-     * Blocs posés par un joueur depuis le démarrage : ils ne comptent pas
-     * quand on les recasse.
-     *
-     * <p>Sans ce garde-fou, « miner 64 obsidiennes » se gagne en posant et
-     * recassant la même pile — l'obsidienne se récupère intégralement. Le jeu
-     * de positions est <b>borné</b> : au-delà de {@link #PLACED_CAP} entrées, la
-     * plus ancienne est oubliée. Une mémoire longue n'a pas d'intérêt ici (on
-     * vise le va-et-vient immédiat) et un ensemble sans limite finirait par
-     * peser sur un serveur qui tourne des semaines.
-     */
-    private static final int PLACED_CAP = 20000;
-    private final Set<String> placed = new LinkedHashSet<>();
 
     /** Série de kills en cours, par joueur. Repart de zéro à la mort. */
     private final Map<UUID, Integer> streaks = new HashMap<>();
@@ -62,9 +44,6 @@ public class SuccesGameplayListener implements Listener {
         Player player = event.getPlayer();
         if (ignored(player)) return;
 
-        String key = keyOf(event.getBlock());
-        if (placed.remove(key)) return;   // posé par un joueur : ne compte pas
-
         manager.progress(player, SuccesTrigger.BLOCK_MINE, event.getBlock().getType().name(), 1);
     }
 
@@ -72,11 +51,6 @@ public class SuccesGameplayListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
         if (ignored(player)) return;
-
-        if (placed.size() >= PLACED_CAP) {
-            placed.remove(placed.iterator().next());
-        }
-        placed.add(keyOf(event.getBlock()));
 
         manager.progress(player, SuccesTrigger.BLOCK_PLACE, event.getBlock().getType().name(), 1);
     }
@@ -162,16 +136,16 @@ public class SuccesGameplayListener implements Listener {
     // ── Outils ───────────────────────────────────────────────────────────────
 
     /**
-     * Le mode créatif ne compte pour rien : les blocs y sont gratuits et les
-     * morts sans conséquence.
+     * Seul cas écarté : un joueur dont l'avancement n'est pas chargé, pour qui
+     * il n'y a rien à incrémenter.
+     *
+     * <p><b>Le créatif ne l'est plus.</b> Il ne protégeait pas grand-chose —
+     * la bourse distribue déjà des objets contre de l'argent — et il n'est de
+     * toute façon accordé qu'à l'administrateur, à qui il faisait surtout
+     * croire que la détection était en panne.
      */
     private boolean ignored(Player player) {
-        return player == null
-                || player.getGameMode() == GameMode.CREATIVE
-                || !manager.isLoaded(player.getUniqueId());
+        return player == null || !manager.isLoaded(player.getUniqueId());
     }
 
-    private String keyOf(Block block) {
-        return block.getWorld().getName() + ':' + block.getX() + ':' + block.getY() + ':' + block.getZ();
-    }
 }

@@ -21,7 +21,7 @@
 #  reward.items MATERIAL:quantité:data|ENCHANT=niveau|ENCHANT=niveau
 #
 #  ── Déclencheurs ──────────────────────────────────────────────────────────
-#  BLOCK_MINE <matériau>   bloc cassé (un bloc posé par un joueur ne compte pas)
+#  BLOCK_MINE <matériau>   bloc cassé
 #  BLOCK_PLACE <matériau>  bloc posé
 #  CRAFT <matériau>        objet fabriqué
 #  CONSUME <matériau>      nourriture ou potion consommée
@@ -154,16 +154,16 @@ succes:
 
   armure-ruby:
     name: "Bardé de rubis"
-    description: "Fabriquer 10 plastrons en rubis."
+    description: "Fabriquer 1 plastrons en rubis."
     category: ARTISANAT
     tier: 1
     trigger: CRAFT
     target: RUBY_CHESTPLATE
-    goal: 10
+    goal: 1
     reward:
       money: 12000
       items:
-        - "ANVIL:1"
+        - "STEEL_ANVIL:1"
 
   enchanteur:
     name: "Enchanteur"

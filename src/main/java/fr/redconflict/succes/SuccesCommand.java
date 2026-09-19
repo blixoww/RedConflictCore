@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 /**
  * {@code /succes} — succès du joueur.
@@ -21,7 +22,7 @@ import java.util.Locale;
  * /succes info &lt;id&gt;          détail d'un succès
  * /succes recuperer [id|*]   encaisse une récompense, ou toutes
  *
- * /succes reset &lt;joueur&gt;     (staff) efface tout l'avancement
+ * /succes reset &lt;joueur&gt; [confirm]  (staff) efface tout l'avancement
  * /succes debloquer &lt;joueur&gt; &lt;id&gt;  (staff) force un déblocage
  * </pre>
  *
@@ -37,7 +38,7 @@ public class SuccesCommand extends CoreCommand {
     private static final List<String> ACTIONS =
             Arrays.asList("liste", "info", "recuperer");
     private static final List<String> ADMIN_ACTIONS =
-            Arrays.asList("reset", "debloquer");
+            Arrays.asList("reset", "debloquer", "debug");
 
     private final SuccesManager manager;
     private final SuccesCatalog catalog;
@@ -81,6 +82,9 @@ public class SuccesCommand extends CoreCommand {
             case "debloquer":
             case "unlock":
                 adminUnlock(sender, args);
+                break;
+            case "debug":
+                adminDebug(sender, args);
                 break;
             default:
                 sendUsage(sender);
@@ -220,22 +224,53 @@ public class SuccesCommand extends CoreCommand {
 
     // ── Staff ────────────────────────────────────────────────────────────────
 
+    /**
+     * {@code /succes reset <joueur> [confirm]} — efface tout l'avancement.
+     *
+     * <p>Sans {@code confirm}, la commande ne fait qu'annoncer ce qu'elle
+     * détruirait. Il n'y a pas d'annulation : le seul moment où l'on peut
+     * encore changer d'avis, c'est avant. Le geste ne demande rien quand il n'y
+     * a rien à perdre.
+     */
     private void adminReset(CommandSender commandSender, String[] args) {
         if (!commandSender.hasPermission(PERM_ADMIN)) {
             commandSender.sendMessage(RC.ERR_NO_PERM);
             return;
         }
         if (args.length < 2) {
-            commandSender.sendMessage(RC.PRE + "§cUsage : §f/succes reset <joueur>");
+            commandSender.sendMessage(RC.PRE + "§cUsage : §f/succes reset <joueur> [confirm]");
             return;
         }
-        Player target = Bukkit.getPlayerExact(args[1]);
-        if (target == null) {
-            commandSender.sendMessage(RC.ERR_PLAYER_NOT_FOUND);
+
+        String name = args[1];
+        UUID uuid = manager.resolvePlayer(name);
+        if (uuid == null) {
+            commandSender.sendMessage(RC.PRE + "§cJoueur inconnu du serveur : §f" + name);
             return;
         }
-        manager.reset(target.getUniqueId());
-        commandSender.sendMessage(RC.PRE + "§7Succès de §f" + target.getName() + " §7remis à zéro.");
+        Player online = Bukkit.getPlayer(uuid);
+        if (online != null) name = online.getName();
+
+        SuccesManager.ResetPreview preview = manager.previewReset(uuid);
+        boolean confirmed = args.length >= 3 && "confirm".equalsIgnoreCase(args[2]);
+
+        if (!confirmed && !preview.isEmpty()) {
+            commandSender.sendMessage(RC.PRE + "Remise à zéro des succès de §f" + name
+                    + (online == null ? " §8(hors ligne)" : "") + " §7:");
+            commandSender.sendMessage("  §8» §f" + preview.unlocked + " §7débloqué(s), dont §e"
+                    + preview.pending + " §7récompense(s) non réclamée(s)");
+            commandSender.sendMessage("  §8» §f" + preview.started + " §7en cours d'avancement");
+            commandSender.sendMessage("  §cIrréversible§7. Confirmez : §f/succes reset " + name + " confirm");
+            return;
+        }
+
+        manager.reset(uuid);
+        commandSender.sendMessage(RC.PRE + "§7Succès de §f" + name + " §7remis à zéro"
+                + (online == null ? " §8(hors ligne)" : "") + "§7.");
+        // Un effacement se trace : c'est le seul moyen de savoir qui l'a demandé.
+        plugin.getLogger().info("[Succes] " + commandSender.getName()
+                + " a remis à zéro les succès de " + name + " (" + preview.unlocked
+                + " débloqué(s), " + preview.started + " en cours).");
     }
 
     private void adminUnlock(CommandSender commandSender, String[] args) {
@@ -259,6 +294,46 @@ public class SuccesCommand extends CoreCommand {
         commandSender.sendMessage(RC.PRE + "§7Succès §f" + args[2] + " §7débloqué pour §f" + target.getName() + "§7.");
     }
 
+    /**
+     * {@code /succes debug [joueur]} — les derniers faits reçus par le système.
+     *
+     * <p>Répond à la seule question utile quand un succès n'avance pas :
+     * l'événement est-il arrivé jusqu'ici ? Une ligne par fait, avec le nombre
+     * de succès qu'il concernait.
+     */
+    private void adminDebug(CommandSender commandSender, String[] args) {
+        if (!commandSender.hasPermission(PERM_ADMIN)) {
+            commandSender.sendMessage(RC.ERR_NO_PERM);
+            return;
+        }
+
+        String name = (args.length >= 2) ? args[1]
+                : (commandSender instanceof Player ? commandSender.getName() : null);
+        if (name == null) {
+            commandSender.sendMessage(RC.PRE + "§cUsage : §f/succes debug <joueur>");
+            return;
+        }
+
+        UUID uuid = manager.resolvePlayer(name);
+        if (uuid == null) {
+            commandSender.sendMessage(RC.PRE + "§cJoueur inconnu du serveur : §f" + name);
+            return;
+        }
+
+        List<String> lines = manager.traceOf(uuid);
+        commandSender.sendMessage(RC.SEP);
+        commandSender.sendMessage(RC.PRE + "Derniers faits reçus — §f" + name);
+        if (lines.isEmpty()) {
+            commandSender.sendMessage("§7Aucun. Le système n'a reçu aucun événement pour ce joueur");
+            commandSender.sendMessage("§7depuis son arrivée §8(§7ou il est hors ligne§8)§7.");
+        } else {
+            for (String line : lines) {
+                commandSender.sendMessage("  §8» " + line);
+            }
+        }
+        commandSender.sendMessage(RC.SEP);
+    }
+
     private void sendUsage(CommandSender commandSender) {
         commandSender.sendMessage(RC.PRE + "Commande §f/succes");
         commandSender.sendMessage("§8» §f/succes §8- §7Ouvre le menu des succès");
@@ -266,8 +341,9 @@ public class SuccesCommand extends CoreCommand {
         commandSender.sendMessage("§8» §f/succes info §8<§7id§8> §8- §7Détail d'un succès");
         commandSender.sendMessage("§8» §f/succes recuperer §8[§7id§8|§7*§8] §8- §7Encaisse une récompense");
         if (commandSender.hasPermission(PERM_ADMIN)) {
-            commandSender.sendMessage("§8» §f/succes reset §8<§7joueur§8> §8- §7Remet l'avancement à zéro");
+            commandSender.sendMessage("§8» §f/succes reset §8<§7joueur§8> §8[§7confirm§8] §8- §7Remet l'avancement à zéro");
             commandSender.sendMessage("§8» §f/succes debloquer §8<§7joueur§8> §8<§7id§8> §8- §7Force un déblocage");
+            commandSender.sendMessage("§8» §f/succes debug §8[§7joueur§8] §8- §7Derniers faits reçus");
         }
     }
 
@@ -294,7 +370,8 @@ public class SuccesCommand extends CoreCommand {
             } else if ("recuperer".equals(action) || "claim".equals(action)) {
                 out.add("*");
                 addMatching(out, idsOf(), args[1]);
-            } else if (("reset".equals(action) || "debloquer".equals(action) || "unlock".equals(action))
+            } else if (("reset".equals(action) || "debloquer".equals(action)
+                    || "unlock".equals(action) || "debug".equals(action))
                     && commandSender.hasPermission(PERM_ADMIN)) {
                 for (Player online : Bukkit.getOnlinePlayers()) {
                     if (online.getName().toLowerCase(Locale.ROOT).startsWith(args[1].toLowerCase(Locale.ROOT))) {
@@ -305,9 +382,12 @@ public class SuccesCommand extends CoreCommand {
             return out;
         }
 
-        if (args.length == 3 && ("debloquer".equals(action) || "unlock".equals(action))
-                && commandSender.hasPermission(PERM_ADMIN)) {
-            addMatching(out, idsOf(), args[2]);
+        if (args.length == 3 && commandSender.hasPermission(PERM_ADMIN)) {
+            if ("debloquer".equals(action) || "unlock".equals(action)) {
+                addMatching(out, idsOf(), args[2]);
+            } else if ("reset".equals(action)) {
+                addMatching(out, java.util.Collections.singletonList("confirm"), args[2]);
+            }
         }
         return out;
     }

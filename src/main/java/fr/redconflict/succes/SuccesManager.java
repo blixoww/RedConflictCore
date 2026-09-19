@@ -10,8 +10,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +88,7 @@ public class SuccesManager {
     }
 
     public void unload(UUID uuid) {
+        trace.remove(uuid);
         Map<String, SuccesDatabase.Entry> entries = cache.remove(uuid);
         if (entries == null) return;
         for (Map.Entry<String, SuccesDatabase.Entry> e : entries.entrySet()) {
@@ -120,6 +123,43 @@ public class SuccesManager {
         return cache.containsKey(uuid);
     }
 
+    // ── Traçage ──────────────────────────────────────────────────────────────
+
+    /** Faits retenus par joueur pour {@code /succes debug}. */
+    private static final int TRACE_SIZE = 12;
+    private final Map<UUID, Deque<String>> trace = new ConcurrentHashMap<>();
+
+    /**
+     * Retient le dernier fait reçu pour ce joueur.
+     *
+     * <p><b>Pourquoi ça existe.</b> Quand un succès n'avance pas, la seule
+     * question qui compte est « l'événement est-il seulement arrivé ? », et
+     * rien ne permettait d'y répondre sans relire le code et deviner. Douze
+     * lignes par joueur connecté suffisent à trancher en cinq secondes.
+     */
+    private void trace(Player player, SuccesTrigger trigger, String target, int amount,
+                       int concerned, boolean loaded) {
+        Deque<String> lines = trace.get(player.getUniqueId());
+        if (lines == null) {
+            lines = new ArrayDeque<>();
+            trace.put(player.getUniqueId(), lines);
+        }
+        while (lines.size() >= TRACE_SIZE) {
+            lines.pollFirst();
+        }
+        lines.addLast("§7" + trigger.name()
+                + (target == null || target.isEmpty() ? "" : "§8:§f" + target)
+                + " §8x§7" + amount
+                + " §8→ §f" + concerned + " §7succès concerné(s)"
+                + (loaded ? "" : " §c(avancement non chargé)"));
+    }
+
+    /** Les derniers faits reçus pour ce joueur, du plus ancien au plus récent. */
+    public List<String> traceOf(UUID uuid) {
+        Deque<String> lines = trace.get(uuid);
+        return lines == null ? new ArrayList<String>() : new ArrayList<>(lines);
+    }
+
     // ── Avancement ───────────────────────────────────────────────────────────
 
     /**
@@ -130,10 +170,13 @@ public class SuccesManager {
      */
     public void progress(Player player, SuccesTrigger trigger, String target, int amount) {
         if (player == null || amount <= 0) return;
+
+        List<Succes> concerned = catalog.matching(trigger, target);
         Map<String, SuccesDatabase.Entry> entries = cache.get(player.getUniqueId());
+        trace(player, trigger, target, amount, concerned.size(), entries != null);
         if (entries == null) return;
 
-        for (Succes succes : catalog.matching(trigger, target)) {
+        for (Succes succes : concerned) {
             SuccesDatabase.Entry entry = entries.get(succes.id);
             if (entry == null) {
                 entry = new SuccesDatabase.Entry();
@@ -359,12 +402,83 @@ public class SuccesManager {
 
     // ── Administration ───────────────────────────────────────────────────────
 
-    /** Efface tout l'avancement d'un joueur. */
+    /**
+     * Efface tout l'avancement d'un joueur, connecté ou non.
+     *
+     * <p>Le cache n'est vidé que s'il existe déjà : y poser une entrée pour un
+     * absent la laisserait là jusqu'au prochain arrêt, personne ne venant la
+     * décharger.
+     */
     public void reset(UUID uuid) {
-        cache.put(uuid, new HashMap<String, SuccesDatabase.Entry>());
+        if (cache.containsKey(uuid)) {
+            cache.put(uuid, new HashMap<String, SuccesDatabase.Entry>());
+        }
         database.reset(uuid);
         Player player = Bukkit.getPlayer(uuid);
         if (player != null && packets != null) packets.sendData(player);
+    }
+
+    /**
+     * Retrouve un joueur par son pseudo, connecté ou non.
+     *
+     * <p>Passe par {@code player_profiles} plutôt que par un UUID dérivé du
+     * pseudo : en mode hors-ligne, n'importe quelle chaîne donne un UUID
+     * valide, et une faute de frappe « réussirait » sur un joueur qui n'existe
+     * pas. La base, elle, ne connaît que de vrais joueurs — et la comparaison y
+     * est insensible à la casse.
+     *
+     * @return l'UUID, ou {@code null} si le serveur n'a jamais vu ce pseudo
+     */
+    public UUID resolvePlayer(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        if (online != null) return online.getUniqueId();
+        PlayerDatabase profiles = plugin.getPlayerDatabase();
+        return profiles == null ? null : profiles.getUUIDByName(name);
+    }
+
+    /**
+     * Ce qu'une remise à zéro effacerait.
+     *
+     * <p>Lit le cache s'il est chargé, la base sinon : la commande doit pouvoir
+     * viser un absent, et c'est justement là qu'on veut voir ce qu'on s'apprête
+     * à détruire avant de le faire.
+     */
+    public ResetPreview previewReset(UUID uuid) {
+        Map<String, SuccesDatabase.Entry> entries = cache.get(uuid);
+        if (entries == null) entries = database.load(uuid);
+
+        int unlocked = 0;
+        int pending = 0;
+        int started = 0;
+        for (Map.Entry<String, SuccesDatabase.Entry> e : entries.entrySet()) {
+            if (catalog.get(e.getKey()) == null) continue;   // succès retiré du catalogue
+            SuccesDatabase.Entry entry = e.getValue();
+            if (entry.unlocked) {
+                unlocked++;
+                if (!entry.claimed) pending++;
+            } else if (entry.progress > 0) {
+                started++;
+            }
+        }
+        return new ResetPreview(unlocked, pending, started);
+    }
+
+    /** Bilan chiffré d'une remise à zéro, pour la demander en connaissance de cause. */
+    public static final class ResetPreview {
+        public final int unlocked;
+        public final int pending;
+        public final int started;
+
+        ResetPreview(int unlocked, int pending, int started) {
+            this.unlocked = unlocked;
+            this.pending = pending;
+            this.started = started;
+        }
+
+        /** Vrai s'il n'y a rien à effacer : inutile de demander confirmation. */
+        public boolean isEmpty() {
+            return unlocked == 0 && started == 0;
+        }
     }
 
     /** Débloque un succès de force (test, dédommagement). */
