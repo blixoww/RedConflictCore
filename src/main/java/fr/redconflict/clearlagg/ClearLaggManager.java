@@ -202,13 +202,18 @@ public class ClearLaggManager {
             ));
         }
 
-        // If mobsToClear is empty, provide sensible defaults (common mobs & animals excluding villagers)
+        // Liste de repli quand la configuration n'en donne aucune. Uniquement des
+        // types que l'API 1.8 connaît : SHULKER, LLAMA et POLAR_BEAR y figuraient,
+        // ils n'existent qu'à partir de 1.9/1.10/1.11 et ne nettoyaient donc rien.
+        // Ni golems de fer ni golems de neige : ce sont des constructions de
+        // joueurs, pas des mobs qui s'accumulent tout seuls.
         if (mobsToClear == null || mobsToClear.isEmpty()) {
             mobsToClear = new ArrayList<>(Arrays.asList(
                     "ZOMBIE", "SKELETON", "CREEPER", "SPIDER", "CAVE_SPIDER", "ENDERMAN",
-                    "WITCH", "SLIME", "MAGMA_CUBE", "BLAZE", "GHAST", "SILVERFISH",
-                    "ENDERMITE", "GUARDIAN", "SHULKER", "SQUID", "BAT",
-                    "WOLF", "OCELOT", "RABBIT", "PIG", "SHEEP", "COW", "CHICKEN", "HORSE", "LLAMA", "POLAR_BEAR"
+                    "WITCH", "SLIME", "MAGMA_CUBE", "BLAZE", "GHAST", "PIG_ZOMBIE",
+                    "SILVERFISH", "ENDERMITE", "GUARDIAN", "SQUID", "BAT",
+                    "WOLF", "OCELOT", "RABBIT", "PIG", "SHEEP", "COW", "CHICKEN",
+                    "MUSHROOM_COW", "HORSE"
             ));
         }
 
@@ -218,11 +223,74 @@ public class ClearLaggManager {
         excludedWorlds.replaceAll(String::toLowerCase);
         mobStackerKeys.replaceAll(String::toLowerCase);
 
+        // Un nom de type inconnu ne correspond à aucune entité : il ne nettoie
+        // rien et ne protège rien, sans un mot. On le dit.
+        warnUnknownTypes("mobs-to-clear", mobsToClear);
+        warnUnknownTypes("excluded-mobs", excludedMobs);
+
         // Ensure warning list is sorted ascending (smallest first) and unique
         Collections.sort(warningSecondsList);
         List<Integer> uniq = new ArrayList<>();
         for (int s : warningSecondsList) if (!uniq.contains(s) && s > 0) uniq.add(s);
         warningSecondsList = uniq;
+    }
+
+    /**
+     * Noms que ce serveur ne connaît pas mais qu'il faut laisser passer sans
+     * rien dire, parce qu'ils sont lus autrement.
+     *
+     * <p>{@code ZOMBIE_VILLAGER} n'est pas un {@link EntityType} en 1.8 — le
+     * zombie-villageois y est un {@code ZOMBIE} dont {@code isVillager()} vaut
+     * vrai — mais {@link #shouldRemove} lit précisément cette chaîne pour le
+     * protéger. L'avertir serait envoyer l'exploitant retirer la ligne qui
+     * protège ses villageois.
+     */
+    private static final Set<String> VIRTUAL_TYPES =
+            new HashSet<>(Arrays.asList("ZOMBIE_VILLAGER"));
+
+    /**
+     * Renommages faits par Mojang depuis la 1.8, dans le sens utile : le nom que
+     * tous les guides écrivent aujourd'hui, vers celui que cette API attend.
+     */
+    private static final Map<String, String> RENAMED_SINCE_1_8 = new HashMap<>();
+    static {
+        RENAMED_SINCE_1_8.put("ZOMBIE_PIGMAN",    "PIG_ZOMBIE");
+        RENAMED_SINCE_1_8.put("ZOMBIFIED_PIGLIN", "PIG_ZOMBIE");
+        RENAMED_SINCE_1_8.put("MOOSHROOM",        "MUSHROOM_COW");
+        RENAMED_SINCE_1_8.put("SNOW_GOLEM",       "SNOWMAN");
+        RENAMED_SINCE_1_8.put("MULE",             "HORSE (une variante du cheval en 1.8, pas un type à part)");
+        RENAMED_SINCE_1_8.put("DONKEY",           "HORSE (une variante du cheval en 1.8, pas un type à part)");
+        RENAMED_SINCE_1_8.put("SKELETON_HORSE",   "HORSE (une variante du cheval en 1.8, pas un type à part)");
+        RENAMED_SINCE_1_8.put("ZOMBIE_HORSE",     "HORSE (une variante du cheval en 1.8, pas un type à part)");
+    }
+
+    /**
+     * Prévient quand une liste de types contient un nom que ce serveur ne
+     * connaît pas.
+     *
+     * <p><b>C'est la panne la plus discrète de toute cette configuration.</b> Un
+     * nom inconnu ne correspond à aucune entité : il ne supprime rien, ne protège
+     * rien, et ne dit rien. « Le clearlagg ne nettoie pas les cochons-zombies »
+     * se lit alors comme un défaut du plugin, alors que la ligne dit
+     * {@code ZOMBIE_PIGMAN} — le nom d'après 1.13 — quand l'API 1.8 attend
+     * {@code PIG_ZOMBIE}.
+     *
+     * <p>On avertit sans rien retirer : la liste peut contenir des noms lus
+     * autrement (voir {@link #VIRTUAL_TYPES}), et une configuration n'est pas au
+     * plugin de la réécrire.
+     */
+    private void warnUnknownTypes(String key, List<String> names) {
+        for (String name : names) {
+            if (VIRTUAL_TYPES.contains(name)) continue;
+            try {
+                EntityType.valueOf(name);
+            } catch (IllegalArgumentException unknown) {
+                String suggestion = RENAMED_SINCE_1_8.get(name);
+                plugin.getLogger().warning("[ClearLagg] clearlagg." + key + " : type d'entité inconnu « "
+                        + name + " » — cette ligne ne fait rien."
+                        + (suggestion != null ? " Sur cette version, écris plutôt « " + suggestion + " »." : ""));
+            }
+        }
     }
 
     // ── Scheduling ────────────────────────────────────────────────────────────

@@ -385,6 +385,7 @@ public class HdvManager {
             this.database.addPBEarnings(listing.getSellerUuid(), listing.getSellerName(), pbPrice);
             String itemName = nameOf(listing.getItem());
             this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), pbPrice);
+            creditSucces(player, listing, 0L);
             giveItem(player, listing.getItem(), listing.getQuantity());
             HdvServerHandler.sendActionResult(player, true, "Achat effectue en PB !");
             sendSoldNotif(listing, pbPrice, true, player.getName());
@@ -406,11 +407,39 @@ public class HdvManager {
             giveItem(player, listing.getItem(), listing.getQuantity());
             String itemName = nameOf(listing.getItem());
             this.database.logTransaction(player.getName(), listing.getSellerName(), itemName, listing.getQuantity(), moneyPrice);
+            creditSucces(player, listing, moneyPrice);
             HdvServerHandler.sendActionResult(player, true, "Achat effectue !");
             sendSoldNotif(listing, moneyPrice, false, player.getName());
             sendListings(player, 0, "");
         } else {
             HdvServerHandler.sendActionResult(player, false, "Achat echoue (deja vendu ?).");
+        }
+    }
+
+    /**
+     * Fait avancer les succès des DEUX parties d'une vente conclue.
+     *
+     * <p>Le vendeur est souvent absent au moment où son annonce part : son
+     * compteur passe par la voie hors-ligne, qui écrit directement en base.
+     *
+     * @param moneySpent montant en monnaie de jeu, 0 pour un achat en PB
+     */
+    private void creditSucces(Player buyer, HdvListing listing, long moneySpent) {
+        fr.redconflict.succes.SuccesManager succes = fr.redconflict.succes.SuccesManager.get();
+        if (succes == null) return;
+
+        int quantity = Math.max(1, listing.getQuantity());
+        succes.progress(buyer, fr.redconflict.succes.SuccesTrigger.HDV_BUY, quantity);
+        if (moneySpent > 0) {
+            succes.progress(buyer, fr.redconflict.succes.SuccesTrigger.MONEY_SPENT, (int) Math.min(Integer.MAX_VALUE, moneySpent));
+        }
+
+        try {
+            java.util.UUID seller = java.util.UUID.fromString(listing.getSellerUuid());
+            succes.progressOffline(seller, fr.redconflict.succes.SuccesTrigger.HDV_SELL, "", quantity);
+        } catch (IllegalArgumentException ignored) {
+            // Annonce ancienne dont l'UUID vendeur n'est pas exploitable : on
+            // ne bloque pas la vente pour un compteur de succès.
         }
     }
 

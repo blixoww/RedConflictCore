@@ -868,8 +868,16 @@ clearlagg:
   clear-all-mobs: false
 
   # Liste des types de mobs à supprimer (ignoré si clear-all-mobs: true)
-  # Noms exacts des EntityType Bukkit (en majuscule ou minuscule)
-  # Voir la liste complète : https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/entity/EntityType.html
+  #
+  # ATTENTION : ce sont les noms de l'API de CETTE version (1.8), et un nom
+  # inconnu ne nettoie rien du tout — silencieusement. Les guides du web donnent
+  # souvent les noms d'après 1.13 : ZOMBIE_PIGMAN s'écrit PIG_ZOMBIE ici,
+  # MOOSHROOM s'écrit MUSHROOM_COW, et MULE / DONKEY n'existent pas (ce sont des
+  # variantes de HORSE en 1.8). Depuis la dernière version du plugin, chaque nom
+  # inconnu est signalé au démarrage dans la console — regarde-la si un mob
+  # résiste au nettoyage.
+  #
+  # Liste complète : https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/entity/EntityType.html
   mobs-to-clear:
     - ZOMBIE
     - SKELETON
@@ -882,20 +890,23 @@ clearlagg:
     - MAGMA_CUBE
     - BLAZE
     - GHAST
-    - ZOMBIE_PIGMAN
+    - PIG_ZOMBIE
     - SILVERFISH
     - ENDERMITE
     - GUARDIAN
-    # Mobs passifs (décommenter/ajouter si vous voulez les nettoyer)
+    # Mobs passifs et ambiants (retire ceux que tu veux garder)
     - COW
     - PIG
     - SHEEP
     - CHICKEN
     - RABBIT
     - HORSE
-    - MULE
-    - DONKEY
     - WOLF
+    - OCELOT
+    - MUSHROOM_COW
+    - SQUID
+    - BAT
+    - IRON_GOLEM
 
   # Types de mobs TOUJOURS exclus du clearlagg (même si clear-all-mobs: true)
   # Par défaut : villageois et zombie-villageois protégés

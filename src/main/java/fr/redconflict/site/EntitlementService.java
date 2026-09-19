@@ -149,7 +149,11 @@ public final class EntitlementService {
         public String denialReason(BoutiqueItem item, boolean permanent) {
             switch (ownershipOf(item)) {
                 case OWNED_PERMANENT:
-                    return "Tu possèdes déjà " + item.name + " à vie.";
+                    // « à vie » n'a de sens qu'en face d'une location. Sur un
+                    // article qui n'existe qu'en une seule forme, la précision
+                    // laisse croire qu'une autre forme existait.
+                    return "Tu possèdes déjà " + item.name
+                            + (item.hasTwoVariants() ? " à vie." : ".");
                 case OWNED_TEMPORARY:
                     if (permanent) return null;   // passage à vie : autorisé
                     Row row = rows.get(key(item.category, item.id));
@@ -171,11 +175,19 @@ public final class EntitlementService {
         /**
          * Étiquette courte affichée sur la fiche du client : « À vie »,
          * « 12 jours », « Inclus ». Vide si le joueur ne possède rien.
+         *
+         * <p><b>« À vie » est réservé aux articles qui existent aussi en
+         * location.</b> Un kit ne se loue pas : il n'a qu'une seule forme. Lui
+         * coller « À vie » ne l'opposait à rien et produisait surtout une
+         * incohérence visible — deux kits identiques affichaient deux
+         * étiquettes différentes selon que le droit venait d'un achat
+         * (« À vie ») ou d'un grade, d'un pack ou d'un don du staff
+         * (« Inclus »). Le joueur, lui, a la même chose dans les deux cas.
          */
         public String label(BoutiqueItem item) {
             switch (ownershipOf(item)) {
                 case OWNED_PERMANENT:
-                    return "À vie";
+                    return item.hasTwoVariants() ? "À vie" : "Inclus";
                 case OWNED_TEMPORARY:
                     Row row = rows.get(key(item.category, item.id));
                     String remaining = row != null ? row.remainingLabel() : "";

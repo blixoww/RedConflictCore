@@ -371,6 +371,14 @@ public class ShopManager {
         // Donner les items
         giveItems(player, item.minecraftItem, item.meta, quantity);
 
+        // Succès « dépensier » : la bourse est la deuxième source de dépense
+        // après l'hôtel des ventes.
+        fr.redconflict.succes.SuccesManager succes = fr.redconflict.succes.SuccesManager.get();
+        if (succes != null) {
+            succes.progress(player, fr.redconflict.succes.SuccesTrigger.MONEY_SPENT,
+                    (int) Math.min(Integer.MAX_VALUE, totalCost));
+        }
+
         // Enregistrer le volume cumulatif (prix mis à jour uniquement toutes les 24h)
         database.recordBuyVolume(itemId, quantity);
 

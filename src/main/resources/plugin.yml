@@ -58,6 +58,10 @@ commands:
     description: Système de métiers (Mineur/Agriculteur/Artisan)
     usage: /metier [top [metier]|info|set|xp|reset]
     aliases: [job, jobs, profession]
+  succes:
+    description: Succès du joueur — objectifs, avancement et récompenses
+    usage: /succes [liste|info|recuperer|reset|debloquer]
+    aliases: [succès, achievements]
   sellall:
     description: Vend automatiquement tous les items vendables de l'inventaire au prix du shop
     usage: /sellall
@@ -424,6 +428,9 @@ commands:
     aliases: [meteo]
 
 permissions:
+  redconflict.succes.admin:
+    description: /succes reset et /succes debloquer — remise à zéro et déblocage forcé
+    default: op
   # Livraison des achats web. Accordée à la console d'office ; ne la donner à
   # aucun grade joueur : elle permet de s'offrir n'importe quel article.
   redconflict.site.deliver:

@@ -29,6 +29,7 @@ Aucune permission requise — ne rien accorder, ne rien retirer.
 `/rtp` `/ct` `/poubelle` `/hdv` `/shop` `/sellall` `/pb` `/pbshop` `/metier`
 `/bottlexp` `/trade` `/baltop` `/ks` `/profil` `/prime` `/friend` `/loto`
 `/guide` `/commands` `/hub` `/minage` `/faction` `/cobble` `/tpu` `/msg` `/r`
+`/succes`
 `/annonyme` `/spawn` `/tpa` `/tpaccept` `/tpno` `/tpahere` `/top` `/home`
 `/sethome` `/delhome` `/warp` `/ignore` `/seen` `/list` `/help` `/pay` `/money`
 
@@ -50,6 +51,7 @@ Aucune permission requise — ne rien accorder, ne rien retirer.
 | `redconflict.near.unlimited` | `/near` sans borne de rayon | vendu avec `/near` |
 | `redconflict.sethome.multiple.10` | 10 homes | Immortel |
 | `greatkits.kits.Elite` / `.Immortel` | `/kit elite` / `/kit immortel` | grades (plugin GreatKits) |
+| `greatkits.kits.Youtubeur` | `/kit youtubeur` | **non vendu** — grade offert, voir 5.4 |
 | `greatkits.kits.Starter` / `.Bonus` / `.Potion` | kits achetables | catégorie Kits |
 
 Achat temporaire → `lp … permission settemp … %duree%` (30 j) : le groupe **et**
@@ -162,8 +164,14 @@ Hiérarchie : chaque grade hérite du précédent, on ne redonne jamais ce qui e
 déjà hérité.
 
 ```
-default ──> elite ──> immortel ──> moderateur-joueur ──> moderateur
+                                 ┌──> youtubeur
+default ──> elite ──> immortel ──┤
+                                 └──> moderateur-joueur ──> moderateur
 ```
+
+`youtubeur` est une **branche laterale** : il herite d'Immortel mais ne mene a
+rien. Un moderateur n'en herite donc pas — les deux grades recompensent des
+choses differentes, et les chainer donnerait a tout le staff le kit Youtubeur.
 
 ### 5.1 Joueur — groupe `default`
 
@@ -211,7 +219,35 @@ lp group immortel permission set greatkits.kits.Immortel true
 `sethome.multiple.6` reste hérité d'Elite, c'est sans effet : `maxHomes()` retient
 la plus grande valeur détenue, donc 10.
 
-### 5.4 Modérateur Joueur — `moderateur-joueur`
+### 5.4 Youtubeur — `youtubeur`
+
+Grade des createurs de contenu. Il ne se vend pas et n'apparait pas dans
+`boutique.yml` : il s'attribue a la main. Poids **25** — au-dessus d'Immortel
+(20), en dessous de Modo-J (30), donc il s'affiche bien entre les deux.
+
+```
+lp creategroup youtubeur
+lp group youtubeur parent add immortel
+lp group youtubeur setweight 25
+lp group youtubeur meta setprefix 25 "&d&lYoutubeur &8» &f"
+
+lp group youtubeur permission set redconflict.hat true
+lp group youtubeur permission set redconflict.anvil true
+lp group youtubeur permission set redconflict.sethome.multiple.15 true
+lp group youtubeur permission set greatkits.kits.Youtubeur true
+```
+
+Tout Immortel est herite : `/ec`, `/repairall`, `/feed`, `/near` sans borne.
+`sethome.multiple.10` reste herite, sans effet : `maxHomes()` retient la plus
+grande valeur detenue, donc 15.
+
+**Retrait** — un grade offert se reprend aussi :
+
+```
+lp user <pseudo> parent remove youtubeur
+```
+
+### 5.5 Modérateur Joueur — `moderateur-joueur`
 
 Modérateur recruté parmi les joueurs. Mêmes avantages de jeu qu'Immortel, plus
 la modération du chat et du comportement. **Pas** de sanctions lourdes, pas
@@ -257,7 +293,7 @@ gardant le reste retiré :
 lp group moderateur-joueur permission set staff.staff true
 ```
 
-### 5.5 Modérateur — `moderateur`
+### 5.6 Modérateur — `moderateur`
 
 Permissions joueur identiques à Immortel, plus la modération complète.
 
@@ -301,7 +337,7 @@ Immortel hors modération.
 `redconflict.weather`, `shop.admin`, `jobs.admin`,
 `redconflict.boutique.admin`, `redconflict.pb.admin`, et les `.others`.
 
-### 5.6 Administrateur (pour mémoire)
+### 5.7 Administrateur (pour mémoire)
 
 ```
 lp creategroup admin
@@ -317,7 +353,7 @@ lp group admin permission set jobs.admin true
 Le joker `redconflict.*` couvre aussi `redconflict.teleport.bypass` et les
 `sethome.multiple.<n>`, malgré leur `default: false`.
 
-### 5.7 Attribuer un grade
+### 5.8 Attribuer un grade
 
 ```
 lp user <pseudo> parent set elite
@@ -329,9 +365,9 @@ lp user <pseudo> parent set moderateur
 
 ## 6. À configurer hors du Core
 
-1. **Kits GreatKits `Elite` et `Immortel`** : les nœuds sont accordés par les
-   grades, mais les kits doivent exister côté GreatKits, sinon `/kit elite` ne
-   répond pas.
+1. **Kits GreatKits `Elite`, `Immortel` et `Youtubeur`** : les nœuds sont
+   accordés par les grades, mais les kits doivent exister côté GreatKits, sinon
+   `/kit elite` ne répond pas.
 2. **MySpawner** et **Vault** doivent être présents pour les spawners et
    l'économie de la boutique.
 

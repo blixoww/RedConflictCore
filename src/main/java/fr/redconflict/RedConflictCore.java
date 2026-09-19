@@ -203,6 +203,8 @@ public class RedConflictCore extends JavaPlugin {
         modules.install(new RingModule(this));
         this.jobModule = new JobModule(this, database);
         modules.install(jobModule);
+        // Après les métiers : sa relève à la minute lit leurs niveaux.
+        modules.install(new fr.redconflict.succes.SuccesModule(this, database));
         modules.install(new HdvModule(this));
         modules.install(new ShopModule(this));
         modules.install(new FactionModule(this));
