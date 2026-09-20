@@ -2,3 +2,19 @@
 /shelf/
 /workspace.xml
 .idea
+
+# Sortie de build. Elle etait VERSIONNEE : 542 fichiers et 15 Mo de .class et de
+# jars recompiles a chaque « mvn package », donc un diff geant a chaque commit.
+# Rien n'en depend — rc-deploy-jar.sh prend le jar depose par scp dans
+# /home/lezink, pas celui du depot.
+/target/
+/dependency-reduced-pom.xml
+
+# Environnements de developpement et fichiers systeme
+*.iml
+*.iws
+/.idea/
+/shelf/
+/workspace.xml
+.vscode/
+.DS_Store

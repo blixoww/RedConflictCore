@@ -172,6 +172,27 @@ public class SuccesDatabase {
         }
     }
 
+    /**
+     * Efface l'avancement d'un joueur sur <b>un seul</b> succès (commande
+     * d'administration).
+     *
+     * <p>Utile quand un objectif change de barème : plutôt que de tout remettre
+     * à zéro, on ne rouvre que celui qui n'a plus le même sens. La ligne est
+     * supprimée et non remise à zéro — l'absence de ligne <i>est</i> l'état
+     * neutre, et c'est ce que {@code entryOf} recrée à la demande.
+     */
+    public void reset(UUID uuid, String succesId) {
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                "DELETE FROM player_succes WHERE uuid = ? AND succes_id = ?")) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, succesId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOG.warning("[Succes] reset(" + uuid + ", " + succesId + ") : " + e.getMessage());
+        }
+    }
+
     /** Efface tout l'avancement d'un joueur (commande d'administration). */
     public void reset(UUID uuid) {
         try (Connection c = db.getConnection();

@@ -17,6 +17,7 @@ import java.util.List;
  * 0xF3 ACH_PROGRESS avancement d'un seul succès
  * 0xF4 ACH_UNLOCK   déblocage, pour le bandeau de notification
  * 0xF5 ACH_OPEN     demande d'ouverture du menu
+ * 0xF6 ACH_VIEW     fiche d'un AUTRE joueur, en lecture seule
  * </pre>
  *
  * <p><b>Le catalogue part une fois, l'avancement à la demande.</b> Les
@@ -32,6 +33,7 @@ public class SuccesPacketSender {
     private static final int PKT_PROGRESS = 0xF3;
     private static final int PKT_UNLOCK = 0xF4;
     private static final int PKT_OPEN = 0xF5;
+    private static final int PKT_VIEW = 0xF6;
 
     /** {@code CraftPlayer.addChannel}, résolu une fois — voir {@link #ensureChannelOpen}. */
     private static java.lang.reflect.Method ADD_CHANNEL;
@@ -104,6 +106,38 @@ public class SuccesPacketSender {
     /** Demande d'ouverture du menu (commande {@code /succes}). */
     public void sendOpen(Player player) {
         send(player, PacketBuilder.create(PKT_OPEN).build());
+    }
+
+    /**
+     * Fiche des succès d'un <b>autre</b> joueur ({@code /succes <joueur>}), à
+     * ouvrir en lecture seule.
+     *
+     * <p>Le catalogue n'est pas renvoyé : le client l'a déjà, il ne dépend pas
+     * du joueur regardé. Seul l'avancement change, et il part dans l'ordre du
+     * catalogue — le client rapproche les deux par identifiant.
+     *
+     * <p>Aucune permission n'est vérifiée en amont : ce sont des succès, pas un
+     * inventaire. Mais on n'envoie que l'avancement, jamais ce qu'il reste à
+     * encaisser côté paiement — et le client ouvre un écran sans bouton, parce
+     * que réclamer la récompense d'autrui n'a aucun sens.
+     *
+     * @param targetName nom à afficher en titre
+     * @param snapshot   avancement du joueur regardé, par identifiant de succès
+     */
+    public void sendView(Player viewer, String targetName,
+                         java.util.Map<String, SuccesDatabase.Entry> snapshot) {
+        List<Succes> all = catalog.all();
+        PacketBuilder pb = PacketBuilder.create(PKT_VIEW);
+        pb.writeString(targetName);
+        pb.writeVarInt(all.size());
+        for (Succes succes : all) {
+            SuccesDatabase.Entry entry = snapshot.get(succes.id);
+            if (entry == null) entry = new SuccesDatabase.Entry();
+            pb.writeString(succes.id);
+            pb.writeVarInt(Math.min(entry.progress, succes.goal));
+            pb.writeByte((byte) entry.state());
+        }
+        send(viewer, pb.build());
     }
 
     private void send(Player player, byte[] data) {

@@ -60,7 +60,7 @@ commands:
     aliases: [job, jobs, profession]
   succes:
     description: Succès du joueur — objectifs, avancement et récompenses
-    usage: /succes [liste|info|recuperer|reset|debloquer]
+    usage: /succes [joueur|liste|info|recuperer|reset|debloquer]
     aliases: [succès, achievements]
   sellall:
     description: Vend automatiquement tous les items vendables de l'inventaire au prix du shop
@@ -347,7 +347,7 @@ commands:
     usage: /hat
     permission: redconflict.hat
   invsee:
-    description: Ouvre l'inventaire d'un joueur, modifiable (staff)
+    description: Ouvre l'inventaire d'un joueur, armure comprise, modifiable (staff)
     usage: /invsee <joueur>
     permission: redconflict.invsee
   # ── Module Essentials — joueur / statut ─────────────────────────────────

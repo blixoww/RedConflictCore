@@ -18,13 +18,21 @@ import java.util.UUID;
  *
  * <pre>
  * /succes                    ouvre le menu (client moddé) + résumé
+ * /succes &lt;joueur&gt;           la fiche d'un AUTRE joueur, en lecture seule
  * /succes liste [rubrique]   liste en chat, repli pour un client vanilla
  * /succes info &lt;id&gt;          détail d'un succès
  * /succes recuperer [id|*]   encaisse une récompense, ou toutes
  *
- * /succes reset &lt;joueur&gt; [confirm]  (staff) efface tout l'avancement
- * /succes debloquer &lt;joueur&gt; &lt;id&gt;  (staff) force un déblocage
+ * /succes reset &lt;joueur&gt; &lt;all|id&gt; [confirm]  (staff) efface l'avancement
+ * /succes debloquer &lt;joueur&gt; &lt;id&gt;            (staff) force un déblocage
  * </pre>
+ *
+ * <p><b>Un pseudo en premier argument n'est pas une sous-commande.</b> Tout ce
+ * qui n'est pas un verbe connu est traité comme un nom de joueur — la même
+ * convention que {@code /profil}, pour que consulter quelqu'un reste un geste
+ * d'une seule frappe. Un joueur qui s'appellerait « liste » ou « reset » ne
+ * serait pas consultable ainsi ; aucun pseudo Minecraft ne ressemble à ça, et
+ * l'inverse (préfixer par un verbe) coûterait une frappe à tout le monde.
  *
  * <p><b>Le chat n'est pas un repli au rabais.</b> Le menu vit dans le client
  * moddé, mais un joueur doit pouvoir tout consulter et tout encaisser sans lui
@@ -40,6 +48,10 @@ public class SuccesCommand extends CoreCommand {
     private static final List<String> ADMIN_ACTIONS =
             Arrays.asList("reset", "debloquer", "debug");
 
+    /** Remise à zéro totale ; sinon l'argument est un identifiant de succès. */
+    private static final List<String> RESET_ALL = Arrays.asList("all", "tout", "*");
+
+    private final RedConflictCore core;
     private final SuccesManager manager;
     private final SuccesCatalog catalog;
     private final SuccesPacketSender sender;
@@ -47,6 +59,7 @@ public class SuccesCommand extends CoreCommand {
     public SuccesCommand(RedConflictCore plugin, SuccesManager manager,
                          SuccesCatalog catalog, SuccesPacketSender sender) {
         super(plugin, "succes", false);
+        this.core = plugin;
         this.manager = manager;
         this.catalog = catalog;
         this.sender = sender;
@@ -87,7 +100,8 @@ public class SuccesCommand extends CoreCommand {
                 adminDebug(sender, args);
                 break;
             default:
-                sendUsage(sender);
+                // Ni verbe ni alias : c'est un pseudo. Voir l'en-tête de classe.
+                openOther(sender, args[0]);
         }
     }
 
@@ -122,6 +136,109 @@ public class SuccesCommand extends CoreCommand {
         if (pending > 0) {
             player.sendMessage("  §7Tout encaisser : §e/succes recuperer *");
         }
+    }
+
+    /**
+     * {@code /succes <joueur>} — la fiche de quelqu'un d'autre, en lecture seule.
+     *
+     * <p>Ouverte à tous, sans permission : un succès est un fait public, et se
+     * comparer fait partie du jeu. Le client ouvre le même écran que pour soi,
+     * sans les boutons — on ne réclame pas la récompense d'autrui.
+     *
+     * <p>Fonctionne sur un joueur absent : l'avancement est relu en base. C'est
+     * la seule branche asynchrone de la commande, et elle l'est pour cette
+     * raison-là uniquement.
+     */
+    private void openOther(CommandSender commandSender, String name) {
+        if (!(commandSender instanceof Player)) {
+            // Depuis la console, la fiche n'a nulle part à s'ouvrir : /succes
+            // liste rend le même service en texte.
+            sendUsage(commandSender);
+            return;
+        }
+        final Player viewer = (Player) commandSender;
+
+        if (catalog.size() == 0) {
+            viewer.sendMessage(RC.PRE + "§cAucun succès n'est configuré sur ce serveur.");
+            return;
+        }
+
+        final UUID uuid = manager.resolvePlayer(name);
+        if (uuid == null) {
+            viewer.sendMessage(RC.PRE + "§cJoueur inconnu du serveur : §f" + name);
+            viewer.sendMessage("  §7Sans argument, §f/succes §7ouvre le tien.");
+            return;
+        }
+        if (uuid.equals(viewer.getUniqueId())) {
+            open(viewer);
+            return;
+        }
+
+        Player online = Bukkit.getPlayer(uuid);
+        if (online != null) {
+            // Connecté : son avancement est en mémoire, rien à attendre.
+            show(viewer, online.getName(), manager.snapshotOf(uuid));
+            return;
+        }
+
+        final String typed = name;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+            @Override public void run() {
+                final java.util.Map<String, SuccesDatabase.Entry> snapshot = manager.snapshotOf(uuid);
+                final String display = resolveName(uuid, typed);
+                Bukkit.getScheduler().runTask(plugin, new Runnable() {
+                    @Override public void run() {
+                        // Le demandeur a pu partir pendant la lecture.
+                        if (viewer.isOnline()) show(viewer, display, snapshot);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Envoie la fiche au client moddé, et le résumé en chat qui la remplace sur
+     * un client vanilla.
+     */
+    private void show(Player viewer, String display,
+                      java.util.Map<String, SuccesDatabase.Entry> snapshot) {
+        // Le catalogue d'abord : la fiche ne porte que l'avancement, et un client
+        // qui ne l'aurait pas encore recu (connexion juste avant l'envoi initial)
+        // afficherait une fenetre vide — qu'on lirait comme « ce joueur n'a rien
+        // fait » plutot que comme « il manque une donnee ».
+        this.sender.sendInit(viewer);
+        this.sender.sendView(viewer, display, snapshot);
+
+        int unlocked = 0;
+        int pending = 0;
+        for (Succes succes : catalog.all()) {
+            SuccesDatabase.Entry entry = snapshot.get(succes.id);
+            if (entry == null || !entry.unlocked) continue;
+            unlocked++;
+            if (!entry.claimed) pending++;
+        }
+
+        viewer.sendMessage(RC.PRE + "Succès de §f" + display + " §7: §f"
+                + unlocked + "§7/§f" + catalog.size()
+                + (pending > 0 ? " §8— §e" + pending + " §7non réclamé(s)" : ""));
+    }
+
+    /**
+     * Le pseudo tel que la base l'écrit, à défaut celui qui a été tapé : afficher
+     * « leziink » en titre quand le compte s'appelle « Leziink » donne
+     * l'impression de regarder quelqu'un d'autre.
+     *
+     * <p>Lecture H2 : à n'appeler que depuis un thread asynchrone.
+     */
+    private String resolveName(UUID uuid, String fallback) {
+        fr.redconflict.data.PlayerDatabase profiles = core.getPlayerDatabase();
+        if (profiles != null) {
+            fr.redconflict.data.PlayerDatabase.PlayerProfile profile = profiles.getProfile(uuid);
+            if (profile != null && profile.name != null && !profile.name.isEmpty()) {
+                return profile.name;
+            }
+        }
+        return fallback;
     }
 
     private void sendList(CommandSender commandSender, String categoryFilter) {
@@ -225,20 +342,30 @@ public class SuccesCommand extends CoreCommand {
     // ── Staff ────────────────────────────────────────────────────────────────
 
     /**
-     * {@code /succes reset <joueur> [confirm]} — efface tout l'avancement.
+     * {@code /succes reset <joueur> <all|id> [confirm]} — efface l'avancement.
+     *
+     * <p><b>La portée est obligatoire</b>, et c'est volontaire : {@code all}
+     * efface tout, un identifiant n'efface que ce succès-là. Un
+     * {@code /succes reset <joueur>} qui aurait tout emporté par défaut serait
+     * un piège — la frappe la plus courte serait la plus destructrice.
+     *
+     * <p>Rouvrir un seul succès est le geste utile au quotidien : un objectif
+     * dont le barème change, un déblocage accordé par erreur. Tout remettre à
+     * zéro reste possible, mais devient un choix explicite.
      *
      * <p>Sans {@code confirm}, la commande ne fait qu'annoncer ce qu'elle
-     * détruirait. Il n'y a pas d'annulation : le seul moment où l'on peut
-     * encore changer d'avis, c'est avant. Le geste ne demande rien quand il n'y
-     * a rien à perdre.
+     * détruirait. Il n'y a pas d'annulation : le seul moment où l'on peut encore
+     * changer d'avis, c'est avant. Le geste ne demande rien quand il n'y a rien
+     * à perdre.
      */
     private void adminReset(CommandSender commandSender, String[] args) {
         if (!commandSender.hasPermission(PERM_ADMIN)) {
             commandSender.sendMessage(RC.ERR_NO_PERM);
             return;
         }
-        if (args.length < 2) {
-            commandSender.sendMessage(RC.PRE + "§cUsage : §f/succes reset <joueur> [confirm]");
+        if (args.length < 3) {
+            commandSender.sendMessage(RC.PRE + "§cUsage : §f/succes reset <joueur> <all|id> [confirm]");
+            commandSender.sendMessage("  §7§fall §8- §7tout l'avancement  §8·  §f<id> §8- §7un seul succès");
             return;
         }
 
@@ -251,25 +378,44 @@ public class SuccesCommand extends CoreCommand {
         Player online = Bukkit.getPlayer(uuid);
         if (online != null) name = online.getName();
 
-        SuccesManager.ResetPreview preview = manager.previewReset(uuid);
-        boolean confirmed = args.length >= 3 && "confirm".equalsIgnoreCase(args[2]);
+        String scope = args[2];
+        boolean all = RESET_ALL.contains(scope.toLowerCase(Locale.ROOT));
+        Succes succes = all ? null : catalog.get(scope);
+        if (!all && succes == null) {
+            commandSender.sendMessage(RC.PRE + "§cSuccès inconnu : §f" + scope);
+            commandSender.sendMessage("  §7Les identifiants sont dans §f/succes liste§7 ; "
+                    + "§fall §7efface tout.");
+            return;
+        }
+
+        SuccesManager.ResetPreview preview = all
+                ? manager.previewReset(uuid)
+                : manager.previewReset(uuid, succes.id);
+        boolean confirmed = args.length >= 4 && "confirm".equalsIgnoreCase(args[3]);
+        String what = all ? "tous les succès" : "le succès §f" + succes.name;
 
         if (!confirmed && !preview.isEmpty()) {
-            commandSender.sendMessage(RC.PRE + "Remise à zéro des succès de §f" + name
+            commandSender.sendMessage(RC.PRE + "Remise à zéro de §7" + what + " §7de §f" + name
                     + (online == null ? " §8(hors ligne)" : "") + " §7:");
             commandSender.sendMessage("  §8» §f" + preview.unlocked + " §7débloqué(s), dont §e"
                     + preview.pending + " §7récompense(s) non réclamée(s)");
             commandSender.sendMessage("  §8» §f" + preview.started + " §7en cours d'avancement");
-            commandSender.sendMessage("  §cIrréversible§7. Confirmez : §f/succes reset " + name + " confirm");
+            commandSender.sendMessage("  §cIrréversible§7. Confirmez : §f/succes reset "
+                    + name + " " + scope + " confirm");
             return;
         }
 
-        manager.reset(uuid);
-        commandSender.sendMessage(RC.PRE + "§7Succès de §f" + name + " §7remis à zéro"
+        if (all) {
+            manager.reset(uuid);
+        } else {
+            manager.resetSucces(uuid, succes.id);
+        }
+        commandSender.sendMessage(RC.PRE + "§7Remis à zéro : " + what + " §7de §f" + name
                 + (online == null ? " §8(hors ligne)" : "") + "§7.");
         // Un effacement se trace : c'est le seul moyen de savoir qui l'a demandé.
         plugin.getLogger().info("[Succes] " + commandSender.getName()
-                + " a remis à zéro les succès de " + name + " (" + preview.unlocked
+                + " a remis à zéro " + (all ? "tous les succès" : "le succès " + succes.id)
+                + " de " + name + " (" + preview.unlocked
                 + " débloqué(s), " + preview.started + " en cours).");
     }
 
@@ -337,11 +483,12 @@ public class SuccesCommand extends CoreCommand {
     private void sendUsage(CommandSender commandSender) {
         commandSender.sendMessage(RC.PRE + "Commande §f/succes");
         commandSender.sendMessage("§8» §f/succes §8- §7Ouvre le menu des succès");
+        commandSender.sendMessage("§8» §f/succes §8<§7joueur§8> §8- §7Les succès d'un autre joueur");
         commandSender.sendMessage("§8» §f/succes liste §8[§7rubrique§8] §8- §7Liste en chat");
         commandSender.sendMessage("§8» §f/succes info §8<§7id§8> §8- §7Détail d'un succès");
         commandSender.sendMessage("§8» §f/succes recuperer §8[§7id§8|§7*§8] §8- §7Encaisse une récompense");
         if (commandSender.hasPermission(PERM_ADMIN)) {
-            commandSender.sendMessage("§8» §f/succes reset §8<§7joueur§8> §8[§7confirm§8] §8- §7Remet l'avancement à zéro");
+            commandSender.sendMessage("§8» §f/succes reset §8<§7joueur§8> §8<§7all§8|§7id§8> §8[§7confirm§8] §8- §7Remet à zéro");
             commandSender.sendMessage("§8» §f/succes debloquer §8<§7joueur§8> §8<§7id§8> §8- §7Force un déblocage");
             commandSender.sendMessage("§8» §f/succes debug §8[§7joueur§8] §8- §7Derniers faits reçus");
         }
@@ -357,6 +504,9 @@ public class SuccesCommand extends CoreCommand {
         if (args.length == 1) {
             addMatching(out, ACTIONS, args[0]);
             if (commandSender.hasPermission(PERM_ADMIN)) addMatching(out, ADMIN_ACTIONS, args[0]);
+            // Les pseudos aussi : /succes <joueur> est la forme la plus courante
+            // après /succes tout court.
+            addOnline(out, args[0]);
             return out;
         }
 
@@ -373,11 +523,7 @@ public class SuccesCommand extends CoreCommand {
             } else if (("reset".equals(action) || "debloquer".equals(action)
                     || "unlock".equals(action) || "debug".equals(action))
                     && commandSender.hasPermission(PERM_ADMIN)) {
-                for (Player online : Bukkit.getOnlinePlayers()) {
-                    if (online.getName().toLowerCase(Locale.ROOT).startsWith(args[1].toLowerCase(Locale.ROOT))) {
-                        out.add(online.getName());
-                    }
-                }
+                addOnline(out, args[1]);
             }
             return out;
         }
@@ -386,10 +532,26 @@ public class SuccesCommand extends CoreCommand {
             if ("debloquer".equals(action) || "unlock".equals(action)) {
                 addMatching(out, idsOf(), args[2]);
             } else if ("reset".equals(action)) {
-                addMatching(out, java.util.Collections.singletonList("confirm"), args[2]);
+                // « all » en tête : c'est la portée qu'on cherche le plus souvent,
+                // et la liste des identifiants est longue.
+                addMatching(out, java.util.Collections.singletonList("all"), args[2]);
+                addMatching(out, idsOf(), args[2]);
             }
+            return out;
+        }
+
+        if (args.length == 4 && "reset".equals(action) && commandSender.hasPermission(PERM_ADMIN)) {
+            addMatching(out, java.util.Collections.singletonList("confirm"), args[3]);
         }
         return out;
+    }
+
+    /** Pseudos connectés commençant par ce préfixe. */
+    private static void addOnline(List<String> out, String prefix) {
+        String lower = prefix.toLowerCase(Locale.ROOT);
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online.getName().toLowerCase(Locale.ROOT).startsWith(lower)) out.add(online.getName());
+        }
     }
 
     private List<String> idsOf() {

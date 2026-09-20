@@ -115,8 +115,10 @@ public class EnderchestCommand extends EssCommand {
             }
         }
 
-        // Même mécanique que /invsee : la session rend tous les clics inertes
-        // jusqu'à la fermeture de l'inventaire.
+        // La session déclare la fenêtre en LECTURE SEULE, et c'est ce qui rend
+        // tous les clics inertes jusqu'à sa fermeture (voir InvseeListener).
+        // Sans elle, cette copie serait modifiable : les objets qu'on en sort
+        // n'appartiennent à personne, ils seraient créés de rien.
         //
         // Ouvrir AVANT d'enregistrer la session : openInventory ferme ce que le
         // joueur avait sous les yeux, et cette fermeture déclenche le
@@ -124,7 +126,7 @@ public class EnderchestCommand extends EssCommand {
         // effacerait la session qu'on vient d'ouvrir et le coffre deviendrait
         // modifiable sans que rien ne le signale.
         player.openInventory(view);
-        sessions.open(player.getUniqueId(), uuid);
+        sessions.openSnapshot(player.getUniqueId(), uuid);
 
         // « Instantané » et non « hors ligne » : le joueur peut très bien être
         // connecté sur un autre serveur de la grappe, où le Bukkit local ne le

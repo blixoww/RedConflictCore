@@ -419,6 +419,47 @@ public class SuccesManager {
     }
 
     /**
+     * Efface l'avancement d'un joueur sur <b>un seul</b> succès.
+     *
+     * <p>L'entrée est retirée du cache et non remise à zéro : une entrée à zéro
+     * serait réécrite en base au déchargement, alors que l'absence d'entrée est
+     * exactement l'état neutre que {@link #entryOf} recrée à la demande.
+     */
+    public void resetSucces(UUID uuid, String succesId) {
+        Map<String, SuccesDatabase.Entry> entries = cache.get(uuid);
+        if (entries != null) entries.remove(succesId);
+        database.reset(uuid, succesId);
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && packets != null) packets.sendData(player);
+    }
+
+    /**
+     * Copie de tout l'avancement d'un joueur — pour le montrer à quelqu'un
+     * d'autre, sans lui donner de prise dessus.
+     *
+     * <p><b>Copie et non vue :</b> ce qui est renvoyé part dans un paquet et
+     * traverse peut-être un changement de thread ; rendre les entrées vivantes
+     * du cache les exposerait à être lues pendant qu'un succès progresse.
+     *
+     * <p><b>Où l'appeler.</b> Joueur connecté : en mémoire, donc depuis le
+     * thread principal (le cache est écrit là, et seulement là). Joueur absent :
+     * c'est une lecture H2, à faire en asynchrone. {@link #isLoaded} dit dans
+     * quel cas on est — l'appelant choisit son thread en conséquence.
+     */
+    public Map<String, SuccesDatabase.Entry> snapshotOf(UUID uuid) {
+        Map<String, SuccesDatabase.Entry> entries = cache.get(uuid);
+        if (entries == null) return database.load(uuid);
+
+        Map<String, SuccesDatabase.Entry> copy = new HashMap<>();
+        for (Map.Entry<String, SuccesDatabase.Entry> e : entries.entrySet()) {
+            SuccesDatabase.Entry source = e.getValue();
+            copy.put(e.getKey(), new SuccesDatabase.Entry(
+                    source.progress, source.unlocked, source.claimed));
+        }
+        return copy;
+    }
+
+    /**
      * Retrouve un joueur par son pseudo, connecté ou non.
      *
      * <p>Passe par {@code player_profiles} plutôt que par un UUID dérivé du
@@ -444,6 +485,15 @@ public class SuccesManager {
      * à détruire avant de le faire.
      */
     public ResetPreview previewReset(UUID uuid) {
+        return previewReset(uuid, null);
+    }
+
+    /**
+     * Ce qu'une remise à zéro effacerait, limitée à un succès.
+     *
+     * @param succesId le succès visé, ou {@code null} pour tout l'avancement
+     */
+    public ResetPreview previewReset(UUID uuid, String succesId) {
         Map<String, SuccesDatabase.Entry> entries = cache.get(uuid);
         if (entries == null) entries = database.load(uuid);
 
@@ -451,6 +501,7 @@ public class SuccesManager {
         int pending = 0;
         int started = 0;
         for (Map.Entry<String, SuccesDatabase.Entry> e : entries.entrySet()) {
+            if (succesId != null && !succesId.equals(e.getKey())) continue;
             if (catalog.get(e.getKey()) == null) continue;   // succès retiré du catalogue
             SuccesDatabase.Entry entry = e.getValue();
             if (entry.unlocked) {

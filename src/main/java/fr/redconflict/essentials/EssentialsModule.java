@@ -166,7 +166,7 @@ public class EssentialsModule implements Module, Reloadable {
         SeenService seen = new SeenService(seenRepo);
         WeatherService weather = new WeatherService();
         EconomyService economy = new EconomyService();
-        InvseeSessions invsee = new InvseeSessions();
+        InvseeSessions invsee = new InvseeSessions(plugin);
         ItemResolver items = new ItemResolver();
         EnchantmentResolver enchantments = new EnchantmentResolver();
         PotionResolver potions = new PotionResolver();
@@ -248,7 +248,7 @@ public class EssentialsModule implements Module, Reloadable {
         pm.registerEvents(new IgnoreChatListener(ignores), plugin);
         pm.registerEvents(new fr.redconflict.essentials.listener.ChatColorListener(), plugin);
         pm.registerEvents(new fr.redconflict.essentials.listener.ChatFormatListener(config), plugin);
-        pm.registerEvents(new InvseeListener(invsee), plugin);
+        pm.registerEvents(new InvseeListener(plugin, invsee), plugin);
         pm.registerEvents(new fr.redconflict.essentials.listener.SpawnListener(spawns), plugin);
         pm.registerEvents(new WeatherLockListener(weather), plugin);
 
