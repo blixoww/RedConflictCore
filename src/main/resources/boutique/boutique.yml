@@ -44,9 +44,9 @@ boutique:
         - "lp user %player% permission set redconflict.nv true"
         - "lp user %player% permission set redconflict.sethome.multiple.6 true"
         - "lp user %player% permission set greatkits.kits.Elite true"
-      prix_monnaie: 30000
+      prix_monnaie: 90000
       prix_pb: 50
-      prix_monnaie_perm: 100000
+      prix_monnaie_perm: 300000
       prix_pb_perm: 150
       duree: 2592000
     - id: "immortel"
@@ -83,9 +83,9 @@ boutique:
         - "lp user %player% permission set redconflict.feed true"
         - "lp user %player% permission set redconflict.sethome.multiple.10 true"
         - "lp user %player% permission set greatkits.kits.Immortel true"
-      prix_monnaie: 75000
+      prix_monnaie: 225000
       prix_pb: 100
-      prix_monnaie_perm: 250000
+      prix_monnaie_perm: 750000
       prix_pb_perm: 250
       duree: 2592000
 
@@ -101,9 +101,9 @@ boutique:
         - "&8Permission : redconflict.ec"
       commande: "lp user %player% permission settemp redconflict.ec true %duree%"
       commande_perm: "lp user %player% permission set redconflict.ec true"
-      prix_monnaie: 5000
+      prix_monnaie: 15000
       prix_pb: 50
-      prix_monnaie_perm: 25000
+      prix_monnaie_perm: 75000
       prix_pb_perm: 250
       duree: 2592000
     - id: "craft"
@@ -114,9 +114,9 @@ boutique:
         - "&8Permission : redconflict.craft"
       commande: "lp user %player% permission settemp redconflict.craft true %duree%"
       commande_perm: "lp user %player% permission set redconflict.craft true"
-      prix_monnaie: 3000
+      prix_monnaie: 9000
       prix_pb: 30
-      prix_monnaie_perm: 15000
+      prix_monnaie_perm: 45000
       prix_pb_perm: 150
       duree: 2592000
     - id: "furnace"
@@ -127,9 +127,9 @@ boutique:
         - "&8Permission : redconflict.furnace"
       commande: "lp user %player% permission settemp redconflict.furnace true %duree%"
       commande_perm: "lp user %player% permission set redconflict.furnace true"
-      prix_monnaie: 2000
+      prix_monnaie: 6000
       prix_pb: 20
-      prix_monnaie_perm: 10000
+      prix_monnaie_perm: 30000
       prix_pb_perm: 100
       duree: 2592000
     # Le noeud vendu est redconflict.nv, teste par /vision. Le nom de l'article
@@ -145,9 +145,9 @@ boutique:
         - "&8Permission : redconflict.nv"
       commande: "lp user %player% permission settemp redconflict.nv true %duree%"
       commande_perm: "lp user %player% permission set redconflict.nv true"
-      prix_monnaie: 2000
+      prix_monnaie: 6000
       prix_pb: 20
-      prix_monnaie_perm: 10000
+      prix_monnaie_perm: 30000
       prix_pb_perm: 100
       duree: 2592000
     - id: "repairall"
@@ -158,9 +158,9 @@ boutique:
         - "&8Permission : redconflict.repair"
       commande: "lp user %player% permission settemp redconflict.repair true %duree%"
       commande_perm: "lp user %player% permission set redconflict.repair true"
-      prix_monnaie: 5000
+      prix_monnaie: 15000
       prix_pb: 50
-      prix_monnaie_perm: 25000
+      prix_monnaie_perm: 75000
       prix_pb_perm: 250
       duree: 2592000
     - id: "back"
@@ -171,9 +171,9 @@ boutique:
         - "&8Permission : redconflict.back"
       commande: "lp user %player% permission settemp redconflict.back true %duree%"
       commande_perm: "lp user %player% permission set redconflict.back true"
-      prix_monnaie: 3000
+      prix_monnaie: 9000
       prix_pb: 30
-      prix_monnaie_perm: 15000
+      prix_monnaie_perm: 45000
       prix_pb_perm: 150
       duree: 2592000
     - id: "feed"
@@ -184,9 +184,9 @@ boutique:
         - "&8Permission : redconflict.feed"
       commande: "lp user %player% permission settemp redconflict.feed true %duree%"
       commande_perm: "lp user %player% permission set redconflict.feed true"
-      prix_monnaie: 2000
+      prix_monnaie: 6000
       prix_pb: 20
-      prix_monnaie_perm: 10000
+      prix_monnaie_perm: 30000
       prix_pb_perm: 100
       duree: 2592000
     - id: "near"
@@ -202,9 +202,9 @@ boutique:
       commandes_perm:
         - "lp user %player% permission set redconflict.near true"
         - "lp user %player% permission set redconflict.near.unlimited true"
-      prix_monnaie: 3000
+      prix_monnaie: 9000
       prix_pb: 30
-      prix_monnaie_perm: 15000
+      prix_monnaie_perm: 45000
       prix_pb_perm: 150
       duree: 2592000
 
@@ -217,7 +217,7 @@ boutique:
         - "&7Equipement de base solide"
         - "&7Ideal pour les nouveaux joueurs"
       commande: "lp user %player% permission set greatkits.kits.Starter true"
-      prix_monnaie: 8000
+      prix_monnaie: 24000
       prix_pb: 10
     - id: "kit-bonus"
       nom: "&6Kit Bonus"
@@ -227,7 +227,7 @@ boutique:
         - "&7Armure et outils de qualite superieure"
         - "&7Passez au niveau au-dessus"
       commande: "lp user %player% permission set greatkits.kits.Bonus true"
-      prix_monnaie: 30000
+      prix_monnaie: 90000
       prix_pb: 40
     - id: "kit-potions"
       nom: "&dKit Potions"
@@ -237,7 +237,7 @@ boutique:
         - "&7Potions de force, vitesse, regeneration"
         - "&7Dominez chaque combat"
       commande: "lp user %player% permission set greatkits.kits.Potions true"
-      prix_monnaie: 50000
+      prix_monnaie: 150000
       prix_pb: 65
 
   spawners:
@@ -246,7 +246,7 @@ boutique:
       mob: "ZOMBIE"
       description:
         - "&7Un spawner de Zombie"
-      prix_monnaie: 20000
+      prix_monnaie: 60000
       prix_pb: 75
       commande: "mspa %player% add ZOMBIE 1"
     - id: "skeleton"
@@ -254,7 +254,7 @@ boutique:
       mob: "SKELETON"
       description:
         - "&7Un spawner de Skeleton"
-      prix_monnaie: 25000
+      prix_monnaie: 75000
       prix_pb: 100
       commande: "mspa %player% add SKELETON 1"
     - id: "spider"
@@ -262,7 +262,7 @@ boutique:
       mob: "SPIDER"
       description:
         - "&7Un spawner de Spider"
-      prix_monnaie: 25000
+      prix_monnaie: 75000
       prix_pb: 100
       commande: "mspa %player% add SPIDER 1"
     - id: "pig-zombie"
@@ -270,7 +270,7 @@ boutique:
       mob: "PIG_ZOMBIE"
       description:
         - "&7Un spawner de Pig Zombie"
-      prix_monnaie: 35000
+      prix_monnaie: 105000
       prix_pb: 140
       commande: "mspa %player% add PIG_ZOMBIE 1"
     - id: "blaze"
@@ -278,7 +278,7 @@ boutique:
       mob: "BLAZE"
       description:
         - "&7Un spawner de Blaze"
-      prix_monnaie: 40000
+      prix_monnaie: 120000
       prix_pb: 160
       commande: "mspa %player% add BLAZE 1"
     - id: "enderman"
@@ -286,7 +286,7 @@ boutique:
       mob: "ENDERMAN"
       description:
         - "&7Un spawner d'Enderman"
-      prix_monnaie: 55000
+      prix_monnaie: 165000
       prix_pb: 220
       commande: "mspa %player% add ENDERMAN 1"
     - id: "iron-golem"
@@ -294,7 +294,7 @@ boutique:
       mob: "IRON_GOLEM"
       description:
         - "&7Un spawner de Golem de Fer"
-      prix_monnaie: 70000
+      prix_monnaie: 210000
       prix_pb: 280
       commande: "mspa %player% add IRON_GOLEM 1"
 
@@ -439,7 +439,7 @@ offres_speciales:
         - "DURABILITY:3"
         - "FIRE_ASPECT:2"
         - "KNOCKBACK:2"
-      prix_monnaie: 50000
+      prix_monnaie: 150000
       prix_pb: 80
       duree: 86400
       quantite_stock: 5
@@ -452,7 +452,7 @@ offres_speciales:
         - "&7La pomme des legendes"
         - "&cAbsorption IV - Regeneration II"
         - "&cResistance - Effet de feu"
-      prix_monnaie: 15000
+      prix_monnaie: 45000
       prix_pb: 30
       duree: 43200
       quantite_stock: 20
@@ -469,7 +469,7 @@ offres_speciales:
         - "PROTECTION_ENVIRONMENTAL:4"
         - "DURABILITY:3"
         - "THORNS:2"
-      prix_monnaie: 75000
+      prix_monnaie: 225000
       prix_pb: 120
       duree: 86400
       quantite_stock: 3

@@ -54,7 +54,7 @@ succes:
     target: DIAMOND_ORE
     goal: 1
     reward:
-      money: 500
+      money: 250
       items:
         - "STEEL_PICKAXE:1|DIG_SPEED=3|DURABILITY=2"
 
@@ -67,7 +67,7 @@ succes:
     target: STONE
     goal: 10000
     reward:
-      money: 8000
+      money: 4000
       items:
         - "RUBY_PICKAXE:1|DIG_SPEED=4|DURABILITY=3"
 
@@ -80,7 +80,7 @@ succes:
     target: OBSIDIAN
     goal: 64
     reward:
-      money: 15000
+      money: 7500
       items:
         - "COBALT_PICKAXE:1|DIG_SPEED=5|DURABILITY=3"
         - "OBSIDIAN:32"
@@ -94,7 +94,7 @@ succes:
     target: DIAMOND_ORE
     goal: 256
     reward:
-      money: 60000
+      money: 30000
       items:
         - "EMERALD_PICKAXE:1|DIG_SPEED=5|DURABILITY=3|LOOT_BONUS_BLOCKS=3"
 
@@ -107,7 +107,7 @@ succes:
     target: EMERALD_ORE
     goal: 128
     reward:
-      money: 45000
+      money: 22500
       items:
         - "EMERALD:32"
 
@@ -120,7 +120,7 @@ succes:
     target: RUBY_ORE
     goal: 64
     reward:
-      money: 70000
+      money: 35000
       items:
         - "RUBY_SWORD:1|DAMAGE_ALL=4|DURABILITY=3"
 
@@ -133,7 +133,7 @@ succes:
     target: COBALT_ORE
     goal: 64
     reward:
-      money: 120000
+      money: 60000
       items:
         - "COBALT_PICKAXE:1|DIG_SPEED=5|DURABILITY=3|LOOT_BONUS_BLOCKS=3"
         - "GOLDEN_APPLE:16"
@@ -150,7 +150,7 @@ succes:
     target: COBALT_PICKAXE
     goal: 1
     reward:
-      money: 1000
+      money: 500
 
   armure-ruby:
     name: "Bardé de rubis"
@@ -161,7 +161,7 @@ succes:
     target: RUBY_CHESTPLATE
     goal: 1
     reward:
-      money: 12000
+      money: 6000
       items:
         - "STEEL_ANVIL:1"
 
@@ -173,7 +173,7 @@ succes:
     trigger: ENCHANT
     goal: 100
     reward:
-      money: 35000
+      money: 17500
       items:
         - "EXP_BOTTLE:64"
         - "INK_SACK:64:4"
@@ -187,7 +187,7 @@ succes:
     target: BEACON
     goal: 1
     reward:
-      money: 150000
+      money: 75000
       items:
         - "RUBY_BLOCK:1"
         - "NETHER_STAR:1"
@@ -202,7 +202,7 @@ succes:
     trigger: DEATH
     goal: 1
     reward:
-      money: 250
+      money: 125
       items:
         - "COOKED_BEEF:32"
 
@@ -214,7 +214,7 @@ succes:
     trigger: KILL_PLAYER
     goal: 1
     reward:
-      money: 1500
+      money: 750
       items:
         - "GOLDEN_APPLE:8"
 
@@ -226,7 +226,7 @@ succes:
     trigger: KILL_PLAYER
     goal: 100
     reward:
-      money: 50000
+      money: 25000
       items:
         - "COBALT_SWORD:1|DAMAGE_ALL=5|DURABILITY=3|FIRE_ASPECT=2"
 
@@ -238,7 +238,7 @@ succes:
     trigger: KILL_PLAYER
     goal: 1000
     reward:
-      money: 400000
+      money: 200000
       items:
         - "COBALT_SWORD:1|DAMAGE_ALL=5|FIRE_ASPECT=2"
         - "RUBY_HELMET:1|PROTECTION_ENVIRONMENTAL=4"
@@ -254,7 +254,7 @@ succes:
     trigger: KILLSTREAK
     goal: 10
     reward:
-      money: 30000
+      money: 15000
       items:
         - "RUBY_SWORD:1|DAMAGE_ALL=5"
 
@@ -266,7 +266,7 @@ succes:
     trigger: KILLSTREAK
     goal: 25
     reward:
-      money: 200000
+      money: 100000
       items:
         - "COBALT_SWORD:1|DAMAGE_ALL=5|FIRE_ASPECT=2"
 
@@ -279,7 +279,7 @@ succes:
     target: GOLDEN_APPLE
     goal: 100
     reward:
-      money: 10000
+      money: 5000
       items:
         - "GOLDEN_APPLE:32"
 
@@ -292,7 +292,7 @@ succes:
     target: GOLDEN_APPLE
     goal: 1000
     reward:
-      money: 250000
+      money: 125000
       items:
         - "GOLDEN_APPLE:64"
         - "GOLDEN_APPLE:16:1"
@@ -307,7 +307,7 @@ succes:
     trigger: HDV_BUY
     goal: 100
     reward:
-      money: 20000
+      money: 10000
 
   hdv-vente-100:
     name: "Marchand"
@@ -317,29 +317,29 @@ succes:
     trigger: HDV_SELL
     goal: 100
     reward:
-      money: 20000
+      money: 10000
       items:
         - "EMERALD:32"
 
   depense-50k:
     name: "Dépensier"
-    description: "Dépenser 50 000 $ en boutique et à l'hôtel des ventes."
+    description: "Dépenser 150 000 $ en boutique et à l'hôtel des ventes."
     category: ECONOMIE
     tier: 1
     trigger: MONEY_SPENT
-    goal: 50000
+    goal: 150000
     reward:
-      money: 10000
+      money: 5000
 
   depense-1m:
     name: "Mécène"
-    description: "Dépenser 1 000 000 $ au total."
+    description: "Dépenser 3 000 000 $ au total."
     category: ECONOMIE
     tier: 3
     trigger: MONEY_SPENT
-    goal: 1000000
+    goal: 3000000
     reward:
-      money: 300000
+      money: 150000
       items:
         - "COBALt_BLOCK:1"
 
@@ -354,7 +354,7 @@ succes:
     target: ANY
     goal: 25
     reward:
-      money: 40000
+      money: 20000
       items:
         - "EXP_BOTTLE:32"
 
@@ -367,7 +367,7 @@ succes:
     target: ANY
     goal: 50
     reward:
-      money: 250000
+      money: 125000
       items:
         - "NETHER_STAR:1"
         - "EXP_BOTTLE:64"
@@ -380,7 +380,7 @@ succes:
     trigger: PLAYTIME_MIN
     goal: 600
     reward:
-      money: 15000
+      money: 7500
 
   temps-100h:
     name: "Pilier"
@@ -390,7 +390,7 @@ succes:
     trigger: PLAYTIME_MIN
     goal: 6000
     reward:
-      money: 200000
+      money: 100000
       items:
         - "COBALT_BLOCK:1"
 
@@ -403,6 +403,6 @@ succes:
     target: TNT
     goal: 256
     reward:
-      money: 1000
+      money: 500
       items:
         - "TNT:64"

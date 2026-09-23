@@ -58,20 +58,27 @@ jobs:
     description: "Cultive les terres et plante des graines pour progresser"
     actions:
       # "break" = casser le bloc, "place" = le poser
+      #
+      # Les clés sont des noms de BLOCS : le listener lit event.getBlock().getType(),
+      # jamais l'item en main. D'où SUGAR_CANE_BLOCK (83) et non SUGAR_CANE (338,
+      # qui est l'item), CROPS et non SEEDS, CARROT et non CARROT_ITEM. Une clé
+      # d'item ne se déclenche jamais : elle ne correspond à aucun bloc posé.
       break:
-        #               I   II  III IV  V   VI
-        "CROPS:7":     [ 8,  9,  10, 11, 12, 13 ]   # blé mûr (data value 7)
-        SUGAR_CANE:    [ 5,  6,  7,  8,  9,  10 ]
-        CACTUS:        [ 5,  6,  7,  8,  9,  10 ]
-        "CARROT:7":    [ 10, 11, 12, 13, 14, 15 ]   # carottes mûres
-        "POTATO:7":    [ 10, 11, 12, 13, 14, 15 ]   # pommes de terre mûres
+        #                     I   II  III IV  V   VI
+        "CROPS:7":           [ 8,  9,  10, 11, 12, 13 ]   # blé mûr (data value 7)
+        SUGAR_CANE_BLOCK:    [ 5,  6,  7,  8,  9,  10 ]
+        CACTUS:              [ 5,  6,  7,  8,  9,  10 ]
+        MELON_BLOCK:         [ 6,  7,  8,  9,  10, 11 ]   # melon (pousse sur pied)
+        "CARROT:7":          [ 10, 11, 12, 13, 14, 15 ]   # carottes mûres
+        "POTATO:7":          [ 10, 11, 12, 13, 14, 15 ]   # pommes de terre mûres
       place:
-        #               I   II  III IV  V   VI
-        SEEDS:         [ 2,  2,  3,  3,  4,  4 ]
-        SUGAR_CANE:    [ 1,  1,  2,  2,  3,  3 ]
-        CACTUS:        [ 1,  1,  2,  2,  3,  3 ]
-        CARROT_ITEM:   [ 2,  2,  3,  3,  4,  4 ]
-        POTATO_ITEM:   [ 2,  2,  3,  3,  4,  4 ]
+        #                     I   II  III IV  V   VI
+        CROPS:               [ 2,  2,  3,  3,  4,  4 ]    # graines de blé plantées
+        SUGAR_CANE_BLOCK:    [ 1,  1,  2,  2,  3,  3 ]
+        CACTUS:              [ 1,  1,  2,  2,  3,  3 ]
+        MELON_STEM:          [ 2,  2,  3,  3,  4,  4 ]    # graines de melon plantées
+        CARROT:              [ 2,  2,  3,  3,  4,  4 ]
+        POTATO:              [ 2,  2,  3,  3,  4,  4 ]
 
   ARTISAN:
     display: "Artisan"
@@ -156,14 +163,16 @@ source-names:
   RUBY_ORE:     "Minerai de rubis"
   COBALT_ORE:   "Minerai de cobalt"
   # FARMER (le préfixe Récolte/Plantation est ajouté automatiquement)
-  "CROPS:7":    "Blé mûr"
-  "CARROT:7":   "Carottes mûres"
-  "POTATO:7":   "Pommes de terre mûres"
-  SUGAR_CANE:   "Canne à sucre"
-  CACTUS:       "Cactus"
-  SEEDS:        "Graines"
-  CARROT_ITEM:  "Carottes"
-  POTATO_ITEM:  "Pommes de terre"
+  "CROPS:7":         "Blé mûr"
+  "CARROT:7":        "Carottes mûres"
+  "POTATO:7":        "Pommes de terre mûres"
+  MELON_BLOCK:       "Melon"
+  SUGAR_CANE_BLOCK:  "Canne à sucre"
+  CACTUS:            "Cactus"
+  CROPS:             "Blé"
+  MELON_STEM:        "Pied de melon"
+  CARROT:            "Carottes"
+  POTATO:            "Pommes de terre"
   # ARTISAN
   CRAFT:        "Fabriquer un item"
   BREW:         "Brasser une potion"
