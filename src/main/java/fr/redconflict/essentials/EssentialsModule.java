@@ -110,6 +110,7 @@ public class EssentialsModule implements Module, Reloadable {
     private static final long COOLDOWN_PURGE_TICKS = 6000L;
 
     private final JavaPlugin plugin;
+    private fr.redconflict.essentials.service.OfflineEnderEditor enderEditor;
     private final Database database;
 
     private EssentialsConfig config;
@@ -212,8 +213,11 @@ public class EssentialsModule implements Module, Reloadable {
         // transfert entre serveurs. Une instance de lecture suffit : elle ne
         // tient aucun etat et ne cree rien (init() reste l'affaire du module de
         // synchronisation, qui peut tres bien etre desactive — le /ec le dira).
-        commands.register("ec", new EnderchestCommand(env, seen, invsee,
-                new fr.redconflict.db.PlayerDataDatabase(database)));
+        fr.redconflict.db.PlayerDataDatabase playerData = new fr.redconflict.db.PlayerDataDatabase(database);
+        // Édition staff d'un coffre hors ligne : verrou de présence + écriture à la fermeture.
+        this.enderEditor = new fr.redconflict.essentials.service.OfflineEnderEditor(playerData, database.getServerId());
+        plugin.getServer().getPluginManager().registerEvents(enderEditor, plugin);
+        commands.register("ec", new EnderchestCommand(env, seen, invsee, playerData, enderEditor));
         commands.register("hat", new HatCommand(env));
         commands.register("invsee", new InvseeCommand(env, invsee));
         // Joueur / statut
@@ -259,6 +263,7 @@ public class EssentialsModule implements Module, Reloadable {
 
     @Override
     public void disable() {
+        if (enderEditor != null) enderEditor.closeAll();
         // Les tâches et listeners sont libérés par Bukkit ; seul le service Vault
         // doit être désenregistré explicitement.
         if (economyProvider != null) {

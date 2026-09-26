@@ -5,6 +5,8 @@ import fr.redconflict.core.Module;
 import fr.redconflict.core.command.CommandRegistrar;
 import fr.redconflict.data.PlayerDataServerHandler;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -75,7 +77,10 @@ public final class VoteModule implements Module, Listener {
         this.rewards = new VoteRewards(plugin, storage);
         rewards.reload();
 
-        new CommandRegistrar(plugin).register("rcvote", new VoteCommand(plugin, rewards, storage));
+        new CommandRegistrar(plugin).register("rcvote", new VoteCommand(plugin, rewards, storage, this));
+        VoteMenu menu = new VoteMenu(plugin, rewards);
+        Bukkit.getPluginManager().registerEvents(menu, plugin);
+        new CommandRegistrar(plugin).register("vote", new VoteInfoCommand(plugin, rewards, storage, menu));
         Bukkit.getPluginManager().registerEvents(this, plugin);
 
         this.statuts = new VoteStatusMirror(plugin, plugin.getSiteDatabase());
@@ -150,6 +155,44 @@ public final class VoteModule implements Module, Listener {
                 lireEtEnvoyer(un);
             }
         }, Math.max(1L, delaiTicks));
+    }
+
+    /**
+     * Côté site de {@code /rcvote reset} : efface tout l'historique de votes du
+     * joueur, puis rafraîchit son encart s'il est connecté. Le compteur de jeu
+     * (H2) est remis à zéro par l'appelant ; ici, uniquement la base du site.
+     *
+     * <p>L'écriture part en asynchrone — la base du site est distante — et le
+     * compte rendu revient sur le thread principal.
+     */
+    public void reinitialiserSurSite(final UUID uuid, final String pseudo, final CommandSender demandeur) {
+        if (statuts == null) {
+            demandeur.sendMessage(ChatColor.GRAY + "[Vote] Pont site inactif : seul le compteur en jeu a été remis à zéro.");
+            return;
+        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+            @Override public void run() {
+                final VoteStatusMirror.Effacement r = statuts.effacer(uuid);
+                Bukkit.getScheduler().runTask(plugin, new Runnable() {
+                    @Override public void run() {
+                        if (r.erreur != null) {
+                            demandeur.sendMessage(ChatColor.RED + "[Vote] Site non remis à zéro : " + r.erreur + ".");
+                            plugin.getLogger().warning("[Vote] reset " + pseudo + " côté site : " + r.erreur);
+                        } else if (!r.compteTrouve) {
+                            demandeur.sendMessage(ChatColor.GRAY + "[Vote] " + pseudo
+                                    + " n'a pas de compte sur le site : rien à effacer.");
+                        } else {
+                            demandeur.sendMessage(ChatColor.GREEN + "[Vote] Site : " + r.votes
+                                    + " vote(s) de " + pseudo + " effacé(s), il peut revoter.");
+                            plugin.getLogger().info("[Vote] reset " + pseudo + " : "
+                                    + r.votes + " vote(s) effacé(s) côté site.");
+                        }
+                        dernierStatut.remove(uuid);
+                        rafraichirStatut(pseudo, 1L);
+                    }
+                });
+            }
+        });
     }
 
     /** Variante par pseudo, pour les appels venus d'une commande console. */

@@ -29,9 +29,15 @@ public class BountyListener implements Listener {
         // Mort PvP : la prime de la victime est réclamée puis les killstreaks mis
         // à jour. Mort non-PvP : la prime reste active, le streak est remis à zéro.
         if (killer != null && !killer.equals(victim)) {
-            bountyManager.onBountyTargetKilled(victim, killer);
-            ksManager.onDeath(victim);
-            ksManager.onKill(killer);
+            // Kill farmé (même IP, victime répétée) : la victime perd sa série,
+            // mais le tueur ne touche ni prime ni progression de série.
+            if (fr.redconflict.core.KillFarmGuard.counts(event)) {
+                bountyManager.onBountyTargetKilled(victim, killer);
+                ksManager.onDeath(victim);
+                ksManager.onKill(killer);
+            } else {
+                ksManager.onDeath(victim);
+            }
         } else {
             ksManager.onDeath(victim);
         }

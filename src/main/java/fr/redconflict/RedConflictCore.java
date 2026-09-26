@@ -81,7 +81,17 @@ public class RedConflictCore extends JavaPlugin {
     private Database database;
     private AntiCheatModule antiCheatModule;
     private PlayerLockService playerLockService;
+
+    /** Verrou de présence entre serveurs, ou {@code null} tant qu'il n'est pas prêt. */
+    public PlayerLockService getPlayerLockService() {
+        return playerLockService;
+    }
     private PlayerDataSyncService playerDataSync;
+
+    /** Synchronisation d'inventaires entre serveurs, ou {@code null} si désactivée. */
+    public PlayerDataSyncService getPlayerDataSync() {
+        return playerDataSync;
+    }
     private fr.redconflict.db.HandoffService handoff;
     private WorldGuardPlugin worldGuard;
     private FeatureToggles features;

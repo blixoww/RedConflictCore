@@ -428,19 +428,79 @@ public class HdvManager {
         fr.redconflict.succes.SuccesManager succes = fr.redconflict.succes.SuccesManager.get();
         if (succes == null) return;
 
-        int quantity = Math.max(1, listing.getQuantity());
-        succes.progress(buyer, fr.redconflict.succes.SuccesTrigger.HDV_BUY, quantity);
-        if (moneySpent > 0) {
-            succes.progress(buyer, fr.redconflict.succes.SuccesTrigger.MONEY_SPENT, (int) Math.min(Integer.MAX_VALUE, moneySpent));
+        java.util.UUID seller;
+        try {
+            seller = java.util.UUID.fromString(listing.getSellerUuid());
+        } catch (IllegalArgumentException e) {
+            // Annonce ancienne dont l'UUID vendeur n'est pas exploitable : on
+            // ne bloque pas la vente, mais elle ne compte pour aucun succès.
+            return;
         }
 
-        try {
-            java.util.UUID seller = java.util.UUID.fromString(listing.getSellerUuid());
-            succes.progressOffline(seller, fr.redconflict.succes.SuccesTrigger.HDV_SELL, "", quantity);
-        } catch (IllegalArgumentException ignored) {
-            // Annonce ancienne dont l'UUID vendeur n'est pas exploitable : on
-            // ne bloque pas la vente pour un compteur de succès.
+        // Sans taxe, l'argent d'une vente HDV ne disparaît pas : il passe d'un
+        // joueur à l'autre. Deux comptes d'une même personne pouvaient donc se
+        // renvoyer la même somme en boucle et valider « Bon client »,
+        // « Marchand » et « Mécène » sans rien dépenser. Ces échanges-là ne
+        // comptent pas, et une même paire de joueurs ne compte que
+        // PAIR_DAILY_CAP fois par 24 h.
+        if (colluding(buyer, seller) || !pairAllowance(buyer.getUniqueId(), seller)) return;
+
+        // Une transaction = un achat, quelle que soit la taille du lot : sinon
+        // un seul lot de 100 terres validait « Bon client ».
+        succes.progress(buyer, fr.redconflict.succes.SuccesTrigger.HDV_BUY, 1);
+        succes.progressOffline(seller, fr.redconflict.succes.SuccesTrigger.HDV_SELL, "", 1);
+
+        if (moneySpent > 0) {
+            // Une dépense ne compte que pour ce que vaut l'objet : son prix
+            // d'achat en bourse s'il y est coté, sinon SPEND_CAP par achat.
+            // Un lot de terre vendu 100 000 $ à un complice n'est pas une dépense.
+            long counted = Math.min(moneySpent, referenceValue(listing.getItem()));
+            if (counted > 0) {
+                succes.progress(buyer, fr.redconflict.succes.SuccesTrigger.MONEY_SPENT,
+                        (int) Math.min(Integer.MAX_VALUE, counted));
+            }
         }
+    }
+
+    // ── Anti-collusion (succès HDV) ──────────────────────────────────────────
+
+    private static final int  PAIR_DAILY_CAP = 5;
+    private static final long PAIR_WINDOW_MS = 24L * 60L * 60L * 1000L;
+    private static final long SPEND_CAP = 5_000L;
+
+    /** Paire acheteur→vendeur → horodatages des transactions comptées. */
+    private final java.util.Map<String, java.util.Deque<Long>> pairTrades = new java.util.HashMap<>();
+    private fr.redconflict.staff.StaffDatabase ipHistory;
+
+    /** Même IP maintenant, ou vendeur déjà vu sur l'IP de l'acheteur (historique). */
+    private boolean colluding(Player buyer, java.util.UUID seller) {
+        if (buyer.getUniqueId().equals(seller)) return true;
+        Player online = Bukkit.getPlayer(seller);
+        if (online != null && fr.redconflict.core.KillFarmGuard.sameAddress(buyer, online)) return true;
+        String ip = fr.redconflict.core.KillFarmGuard.host(buyer);
+        if (ip == null) return false;
+        try {
+            if (ipHistory == null) ipHistory = new fr.redconflict.staff.StaffDatabase(plugin.getCoreDatabase());
+            return ipHistory.getUuidsByIp(ip).contains(seller.toString());
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private boolean pairAllowance(java.util.UUID buyer, java.util.UUID seller) {
+        long now = System.currentTimeMillis();
+        java.util.Deque<Long> times = pairTrades.computeIfAbsent(buyer + ">" + seller, k -> new java.util.ArrayDeque<>());
+        while (!times.isEmpty() && now - times.peekFirst() >= PAIR_WINDOW_MS) times.pollFirst();
+        if (times.size() >= PAIR_DAILY_CAP) return false;
+        times.addLast(now);
+        return true;
+    }
+
+    /** Valeur de référence d'un lot ($) : cours d'achat en bourse, sinon plafond. */
+    private long referenceValue(ItemStack item) {
+        fr.redconflict.shop.ShopManager shop = fr.redconflict.shop.ShopManager.getInstance();
+        long centimes = shop != null ? shop.referenceBuyPrice(item) : -1L;
+        return centimes >= 0 ? centimes / 100L : SPEND_CAP;
     }
 
     private void sendSoldNotif(HdvListing listing, long price, boolean payPB, String buyerName) {
@@ -507,6 +567,26 @@ public class HdvManager {
         if (pricePB < 0L || pricePB > MAX_PRICE) {
             HdvServerHandler.sendActionResult(player, false, "Prix en PB invalide.");
             return;
+        }
+        // Prix en $ obligatoire : plus d'annonce « PB seul ». Les PB ne s'offrent
+        // qu'en second prix d'une annonce double devise. Un ancien client qui
+        // enverrait encore ce mode est refusé ici, pas seulement grisé chez lui.
+        if (payPB) {
+            HdvServerHandler.sendActionResult(player, false,
+                    "Un prix en $ est obligatoire (les PB ne peuvent qu'accompagner le prix en $).");
+            return;
+        }
+        // Plafond : le $ ne peut pas valoir plus que les PB × taux (10 PB → 10 000 $
+        // au plus par défaut). Sans lui, un double prix « 1 PB ou 5 000 000 $ »
+        // servait à écouler des PB à un taux absurde.
+        if (pricePB > 0L) {
+            long rate = Math.max(1L, plugin.getConfig().getLong("hdv.max-money-per-pb", 1000L));
+            long max = pricePB > MAX_PRICE / rate ? MAX_PRICE : pricePB * rate;
+            if (totalPrice > max) {
+                HdvServerHandler.sendActionResult(player, false,
+                        "Prix en $ trop eleve : " + max + " $ max pour " + pricePB + " PB.");
+                return;
+            }
         }
         ItemStack inSlot = player.getInventory().getItem(slot);
         if (inSlot == null || CustomPacketServerHandler.getNmsItemId(inSlot) == 0

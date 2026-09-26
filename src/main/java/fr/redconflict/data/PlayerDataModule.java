@@ -42,6 +42,10 @@ public class PlayerDataModule implements Module {
         CommandRegistrar commands = new CommandRegistrar(plugin);
         commands.register("ks", new KsCommand(plugin, playerDatabase));
         plugin.getServer().getPluginManager().registerEvents(new KsListener(playerDatabase, plugin), plugin);
+        // Le temps AFK ne compte pas comme temps de jeu (profil, site, succès).
+        fr.redconflict.ks.AfkTracker afk = new fr.redconflict.ks.AfkTracker();
+        plugin.getServer().getPluginManager().registerEvents(afk, plugin);
+        afk.start(plugin);
 
         // /profil : fiche publique d'un joueur, ouvre le GUI côté client moddé.
         commands.register("profil", new ProfilCommand(plugin));

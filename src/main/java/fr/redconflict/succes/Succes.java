@@ -37,10 +37,15 @@ public final class Succes {
     public final List<ItemStack> rewardItems;
     /** Résumé lisible des récompenses, calculé une fois, envoyé au client. */
     public final String rewardText;
+    /**
+     * Ce qui ne compte PAS pour ce succès (garde-fous anti-exploit), affiché
+     * dans l'infobulle du menu. Vide s'il n'y a rien de particulier à dire.
+     */
+    public final String note;
 
     public Succes(String id, String name, String description, String category, int tier,
                   SuccesTrigger trigger, String target, int goal,
-                  long rewardMoney, List<ItemStack> rewardItems, String rewardText) {
+                  long rewardMoney, List<ItemStack> rewardItems, String rewardText, String note) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -54,6 +59,7 @@ public final class Succes {
                 ? Collections.<ItemStack>emptyList()
                 : Collections.unmodifiableList(rewardItems);
         this.rewardText = rewardText == null ? "" : rewardText;
+        this.note = note == null ? "" : note.trim();
     }
 
     /** Vrai si l'événement décrit par {@code trigger}/{@code target} concerne ce succès. */

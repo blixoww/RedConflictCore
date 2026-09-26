@@ -39,13 +39,15 @@ public class ShopModule implements Module {
         // « bourse » remplace « shop » : le nom decrit ce que l'ecran fait —
         // acheter et vendre des ressources a un cours qui bouge. /shop est
         // desormais un alias de /pbshop, la Boutique.
-        commands.register(shopCommand, "bourse", "shopdebug");
+        commands.register(shopCommand, "bourse", "boursedebug");
         commands.register("sellall", new SellAllCommand(plugin, manager));
 
         // Événements boursiers (krach, inflation, aubaines).
         ShopEventManager eventManager = new ShopEventManager(plugin, manager);
         manager.setEventManager(eventManager);
         eventManager.enable();
+        // Les plafonds entre items dépendent de la marge lue par l'event manager.
+        manager.refreshConversionGuard();
         commands.register("shopevent", new ShopEventCommand(plugin, eventManager, manager.getDatabase()));
 
         plugin.getServer().getPluginManager().registerEvents(new Listener() {

@@ -101,9 +101,42 @@ public final class SiteDatabase {
         return pool != null && !pool.isClosed();
     }
 
+    /**
+     * Après un échec, fenêtre pendant laquelle le thread principal ne retente pas
+     * la base : il échoue tout de suite au lieu d'attendre le timeout du pool.
+     */
+    private static final long MAIN_THREAD_BACKOFF_MS = 30_000L;
+
+    /** Horodatage du dernier échec d'obtention de connexion (0 = aucun). */
+    private volatile long lastFailureAt = 0L;
+
+    /**
+     * Connexion du pool.
+     *
+     * <p><b>Coupe-circuit sur le thread principal.</b> Plusieurs actions en jeu
+     * (boutique, HDV, échange, profil) lisent encore le solde PB en direct. Base
+     * injoignable ou pool saturé, chacune gelait le serveur le temps du timeout
+     * (8 s), et les gels s'additionnaient d'un joueur à l'autre jusqu'à expulser
+     * tout le monde pour « too many packets ». Désormais, dans les 30 s qui
+     * suivent un échec, le thread principal échoue immédiatement : l'action est
+     * refusée proprement au lieu de figer le serveur. Les tâches asynchrones, elles,
+     * continuent d'attendre normalement — ce sont elles qui constatent le retour
+     * de la base et referment le circuit.
+     */
     public Connection getConnection() throws SQLException {
         if (!isAvailable()) throw new SQLException("Pont vers la base du site fermé.");
-        return pool.getConnection();
+        boolean main = org.bukkit.Bukkit.isPrimaryThread();
+        if (main && System.currentTimeMillis() - lastFailureAt < MAIN_THREAD_BACKOFF_MS) {
+            throw new SQLException("Base du site en échec récent : appel du thread principal écourté.");
+        }
+        try {
+            Connection c = pool.getConnection();
+            lastFailureAt = 0L;
+            return c;
+        } catch (SQLException e) {
+            lastFailureAt = System.currentTimeMillis();
+            throw e;
+        }
     }
 
     public String getUrl() {

@@ -24,11 +24,13 @@ public class VoteCommand extends CoreCommand {
 
     private final VoteRewards rewards;
     private final VoteStorage storage;
+    private final VoteModule module;
 
-    public VoteCommand(RedConflictCore plugin, VoteRewards rewards, VoteStorage storage) {
+    public VoteCommand(RedConflictCore plugin, VoteRewards rewards, VoteStorage storage, VoteModule module) {
         super(plugin, "rcvote", false);
         this.rewards = rewards;
         this.storage = storage;
+        this.module = module;
     }
 
     @Override
@@ -65,6 +67,10 @@ public class VoteCommand extends CoreCommand {
                 sender.sendMessage(fait
                         ? ChatColor.GREEN + "[Vote] Compteur de " + args[1] + " remis à zéro."
                         : ChatColor.GRAY + "[Vote] Aucun compteur pour " + args[1] + ".");
+                // Puis tout l'historique côté site (vote_votes + statut du HUD) :
+                // sans ça, le délai d'Azuriom restait et le joueur ne pouvait
+                // toujours pas revoter. Compte rendu asynchrone, voir VoteModule.
+                module.reinitialiserSurSite(uuid, args[1], sender);
                 return;
             }
             sender.sendMessage(ChatColor.GRAY + "[Vote] " + args[1] + " : "

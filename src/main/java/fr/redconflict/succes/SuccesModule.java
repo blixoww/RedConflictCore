@@ -38,6 +38,7 @@ public class SuccesModule implements Module {
     private final Database database;
 
     private SuccesDatabase succesDatabase;
+    private fr.redconflict.job.PlacedOreTracker placedBlocks;
     private SuccesManager manager;
     private int sweepTask = -1;
 
@@ -59,6 +60,9 @@ public class SuccesModule implements Module {
         }
 
         SuccesCatalog catalog = new SuccesCatalog(plugin);
+        // Une seule fois, avant toute connexion : l'avancement faussé par les
+        // achats en bourse comptés en centimes (voir SuccesSpendFix).
+        SuccesSpendFix.run(database, catalog);
         this.manager = new SuccesManager(plugin, succesDatabase, catalog);
         SuccesPacketSender sender = new SuccesPacketSender(plugin, catalog, manager);
         manager.setPacketSender(sender);
@@ -69,7 +73,10 @@ public class SuccesModule implements Module {
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(
                 plugin, SuccesPacketSender.CHANNEL_S2C);
 
-        SuccesGameplayListener gameplay = new SuccesGameplayListener(manager);
+        this.placedBlocks = new fr.redconflict.job.PlacedOreTracker(database, "succes_placed_blocks",
+                "bloc(s) posé(s) à la main suivis (sans succès de minage)");
+        placedBlocks.init();
+        SuccesGameplayListener gameplay = new SuccesGameplayListener(manager, placedBlocks);
         plugin.getServer().getPluginManager().registerEvents(gameplay, plugin);
         plugin.getServer().getPluginManager().registerEvents(
                 new SuccesLoginListener(plugin, manager, sender, gameplay), plugin);
@@ -98,6 +105,7 @@ public class SuccesModule implements Module {
 
     @Override
     public void disable() {
+        if (placedBlocks != null) placedBlocks.close();
         if (sweepTask != -1) {
             plugin.getServer().getScheduler().cancelTask(sweepTask);
             sweepTask = -1;

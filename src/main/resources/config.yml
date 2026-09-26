@@ -1305,6 +1305,11 @@ site:
 #
 # Sans le pont site (site.enabled: false) ou sans cette table, l'encart reste
 # simplement masqué : rien d'autre n'en dépend.
+# ── /discord ──────────────────────────────────────────────────────────────────
+# Lien affiché (cliquable) par /discord. Relu à chaque appel : pas de redémarrage.
+discord:
+  lien: "https://discord.gg/N6s4CA84XK"
+
 vote:
   # Relecture de rc_vote_status pour les joueurs connectés, en secondes (min. 15).
   # Pas besoin de descendre : ce qu'on transmet au client est une date limite,

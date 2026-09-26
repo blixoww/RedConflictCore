@@ -63,6 +63,9 @@ vote:
   # PB ci-dessus. Les PB passent par les lots « bonus-pb » et « jackpot ».
   pb: 0
 
+  # Page de vote affichée par /vote. Vide = ligne masquée.
+  lien: "https://redconflict.fr/vote"
+
   # %pb% et %lots% sont remplacés. Vide = aucun message.
   # %pb% n'est pas affiché ici : il vaut 0 la plupart du temps, et les lots qui
   # en donnent l'annoncent déjà par leur nom.
@@ -84,9 +87,17 @@ vote:
   #   give <joueur> <ITEM[:data]> [quantité] [enchantement niveau …]  -> inventaire
   #   eco give <joueur> <montant>                                     -> argent
   #   pb: <n> (champ du lot, pas une commande)                        -> Points Boutique
+  #   kit <nom> <joueur>  -> kit GreatKits, remis par le Core (le /kit de GreatKits
+  #                          ignore la console) ; <nom> = fichier de GreatKits/Kits
   #
   # « eco give » fonctionne hors ligne (le solde vit en base) ; les « give »
   # attendent la connexion du joueur — le Core met le lot de côté tout seul.
+  #
+  # Menu /vote : chaque lot y apparaît avec son nom et sa chance, calculée sur
+  # les poids ci-dessous. L'icône est déduite de la 1re commande (l'objet d'un
+  # « give », un lingot d'or pour « eco give », la clé pour « cc give », un
+  # coffre pour « kit »). Pour la forcer : « icone: "DIAMOND" » ou
+  # « icone: "INK_SACK:4" » dans le lot. Après modification : /rcvote reload.
   tirages: 1
 
   lots:
@@ -164,16 +175,15 @@ vote:
     - id: "bonus-pb"
       poids: 20             # 2,0 %
       nom: "&b5 Points Boutique"
+      # Le champ pb suffit : une commande « pb add » en plus doublerait le gain.
       pb: 5
-      commandes:
-        - "pb add %player% 5"
 
     # ── Le rare ───────────────────────────────────────────────────────────────
     - id: "epee-ruby"
       poids: 12             # 1,2 %
-      nom: "&cUne épée Ruby &7(Tranchant II)"
+      nom: "&cUne épée Ruby &7(Tranchant V)"
       commandes:
-        - "give %player% RUBY_SWORD 1 sharpness 2"
+        - "give %player% RUBY_SWORD 1 sharpness 5"
 
     - id: "cle-ruby"
       poids: 10             # 1,0 %
@@ -198,7 +208,6 @@ vote:
       commandes:
         - "eco give %player% 20000"
         - "give %player% COBALT_KEY 1"
-        - "pb add %player% 20"
 
     # ── Hors tirage (poids 0) : réservé à la garantie de fidélité ─────────────
     - id: "fidelite"

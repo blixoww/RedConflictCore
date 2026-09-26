@@ -1,6 +1,7 @@
 package fr.redconflict.vote;
 
 import fr.redconflict.RedConflictCore;
+import fr.redconflict.core.PlayerIds;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
@@ -72,17 +73,31 @@ public final class VoteRewards {
                 String id = String.valueOf(m.getOrDefault("id", "")).trim();
                 if (id.isEmpty()) continue;
 
+                int pbLot = asInt(m.get("pb"));
                 List<String> commandes = new ArrayList<>();
                 Object cmds = m.get("commandes");
                 if (cmds instanceof List) {
-                    for (Object c : (List<?>) cmds) commandes.add(String.valueOf(c));
+                    for (Object c : (List<?>) cmds) {
+                        String ligne = String.valueOf(c);
+                        // Le champ « pb » crédite déjà le lot. Une commande « pb add »
+                        // en plus doublait le gain (5 PB annoncés, 10 versés). On la
+                        // retire ici plutôt que de compter sur le YAML déployé, que
+                        // saveResource n'écrase jamais.
+                        if (pbLot > 0 && estCreditPb(ligne)) {
+                            plugin.getLogger().warning("[Vote] Lot « " + id + " » : commande « "
+                                    + ligne + " » ignorée, le champ pb: " + pbLot + " crédite déjà.");
+                            continue;
+                        }
+                        commandes.add(ligne);
+                    }
                 }
 
                 VoteLot lot = new VoteLot(id,
                         String.valueOf(m.getOrDefault("nom", id)),
                         asInt(m.get("poids")),
-                        asInt(m.get("pb")),
-                        commandes);
+                        pbLot,
+                        commandes,
+                        m.get("icone") == null ? "" : String.valueOf(m.get("icone")));
                 lus.put(id, lot);
                 somme += lot.poids;
             }
@@ -102,6 +117,31 @@ public final class VoteRewards {
         return lots.size();
     }
 
+    // ── Lecture pour /vote ─────────────────────────────────────────────────────
+
+    /** Lots qui peuvent sortir au tirage (poids > 0), du plus courant au plus rare. */
+    public List<VoteLot> lotsAuTirage() {
+        List<VoteLot> out = new ArrayList<>();
+        for (VoteLot lot : lots.values()) if (lot.poids > 0) out.add(lot);
+        out.sort((a, b) -> Integer.compare(b.poids, a.poids));
+        return out;
+    }
+
+    public int poidsTotal()   { return poidsTotal; }
+    public int pbParVote()    { return config == null ? 0 : config.getInt("vote.pb", 0); }
+    public int tirages()      { return config == null ? 1 : Math.max(1, config.getInt("vote.tirages", 1)); }
+    public String lienVote()  { return config == null ? "" : config.getString("vote.lien", "https://redconflict.fr/vote"); }
+
+    /** Tous les combien de votes tombe le palier de fidélité (0 = désactivé). */
+    public int palier() {
+        return config == null ? 0 : Math.max(0, config.getInt("vote.garantie.tous_les", 0));
+    }
+
+    /** Le lot du palier, ou {@code null} s'il n'y en a pas. */
+    public VoteLot lotPalier() {
+        return config == null ? null : lots.get(config.getString("vote.garantie.lot", ""));
+    }
+
     // ── Remise ─────────────────────────────────────────────────────────────────
 
     /**
@@ -110,10 +150,12 @@ public final class VoteRewards {
      * @param nom pseudo tel que le site l'a transmis
      */
     public void recompenser(String nom) {
-        @SuppressWarnings("deprecation")
-        OfflinePlayer cible = Bukkit.getOfflinePlayer(nom);
-        UUID uuid = cible.getUniqueId();
+        // Pas de Bukkit.getOfflinePlayer(nom) : derrière Velocity il peut rendre
+        // l'UUID premium d'un inconnu (voir PlayerIds) — PB et lots partaient ailleurs.
         Player enLigne = Bukkit.getPlayerExact(nom);
+        if (enLigne != null) nom = enLigne.getName();   // casse exacte du pseudo
+        OfflinePlayer cible = PlayerIds.offlinePlayer(nom);
+        UUID uuid = cible.getUniqueId();
 
         int total = storage.isAvailable() ? storage.enregistrerVote(uuid, nom) : 0;
 
@@ -135,8 +177,15 @@ public final class VoteRewards {
         int pb = config.getInt("vote.pb", 0);
         for (VoteLot lot : tires) pb += lot.pb;
 
-        if (pb > 0 && plugin.getPBManager() != null) {
-            plugin.getPBManager().add(cible, pb, "VOTE", "game");
+        if (pb > 0) {
+            boolean credite = plugin.getPBManager() != null
+                    && plugin.getPBManager().add(cible, pb, "VOTE", "game");
+            if (!credite) {
+                // Silencieux jusqu'ici : le joueur voyait « +5 PB » et rien n'arrivait.
+                plugin.getLogger().warning("[Vote] " + pb + " PB NON crédités à " + nom
+                        + " (uuid " + uuid + ") — compte Azuriom introuvable ou base du site"
+                        + " injoignable. À créditer à la main : /pb add " + nom + " " + pb);
+            }
         }
 
         // ── Lots : remis maintenant, ou mis de côté ──
@@ -239,6 +288,16 @@ public final class VoteRewards {
 
         plugin.getLogger().info("[Vote] " + nom + " récompensé : +" + pb + " PB "
                 + resume + " (vote n°" + total + ")");
+    }
+
+    /** {@code pb add …} / {@code points add …}, avec ou sans espace de noms. */
+    private static boolean estCreditPb(String ligne) {
+        String[] t = ligne.trim().replaceFirst("^/", "").split("\\s+");
+        if (t.length < 2) return false;
+        String tete = t[0].toLowerCase(java.util.Locale.ROOT);
+        int ns = tete.indexOf(':');
+        if (ns >= 0) tete = tete.substring(ns + 1);
+        return (tete.equals("pb") || tete.equals("points")) && t[1].equalsIgnoreCase("add");
     }
 
     private static int asInt(Object o) {

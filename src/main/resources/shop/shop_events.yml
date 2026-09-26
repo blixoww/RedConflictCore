@@ -12,6 +12,29 @@
 # Format des durées : en minutes (int). Probas en pourcent (double 0..100).
 # ───────────────────────────────────────────────────────────────────────────
 
+# Version du fichier. À INCRÉMENTER à chaque changement d'équilibrage : le
+# serveur remplace alors sa copie par celle du jar (l'ancienne est gardée en
+# shop_events.yml.v<N>.bak). Sans ça, un nouveau jar garde les anciens réglages.
+version: 2
+
+# ── Garde-fous anti-arbitrage ───────────────────────────────────────────────
+# Les events bougent l'achat et la vente séparément. Sans borne, on créait de
+# l'argent : aubaine « hausse » = revente plus chère que l'achat (achat puis
+# revente immédiate), aubaine « baisse » ou krach = achat moins cher que la
+# revente normale (achat bradé, revente après l'event).
+#
+# Règle appliquée à chaque prix, events cumulés et collier du marchand compris :
+#   revente max = marge × (prix d'achat le plus bas atteignable)
+# Les multiplicateurs ci-dessous restent les « intentions » de l'event ; le
+# garde-fou les rogne quand ils ouvriraient une boucle.
+garde_fous:
+  # Le prix d'achat ne descend jamais sous cette fraction du prix normal,
+  # même quand krach et aubaine se cumulent.
+  achat_min: 0.65
+  # La revente reste sous 90 % de cet achat minimal (10 % de perte garantie
+  # sur un aller-retour, quel que soit le moment choisi).
+  marge: 0.90
+
 # Roll quotidien (à minuit serveur). Si l'event tire, sa durée est piochée
 # uniformément dans [duration_min, duration_max].
 
@@ -24,10 +47,10 @@ krach:
   duration_max: 360
   # Multiplicateurs appliqués aux prix d'achat (player → shop : moins cher) et
   # de vente (shop → player : on récupère moins).
-  multiplier_buy_min: 0.55
-  multiplier_buy_max: 0.75
-  multiplier_sell_min: 0.40
-  multiplier_sell_max: 0.60
+  multiplier_buy_min: 0.70
+  multiplier_buy_max: 0.85
+  multiplier_sell_min: 0.50
+  multiplier_sell_max: 0.70
   # Annonces dans le chat
   announce_start: "&4&l[KRACH BOURSIER] &cLes marchés s'effondrent ! Les prix d'achat et de vente chutent pendant {duration}."
   announce_end:   "&6&l[BOURSE] &eLe krach est terminé, le marché revient à la normale."
@@ -37,10 +60,10 @@ inflation:
   daily_chance: 7.0
   duration_min: 120
   duration_max: 360
-  multiplier_buy_min: 1.40
-  multiplier_buy_max: 1.80
-  multiplier_sell_min: 1.30
-  multiplier_sell_max: 1.60
+  multiplier_buy_min: 1.30
+  multiplier_buy_max: 1.60
+  multiplier_sell_min: 1.10
+  multiplier_sell_max: 1.25
   announce_start: "&6&l[INFLATION] &eFlambée des prix ! L'achat coute plus cher mais la vente rapporte plus pendant {duration}."
   announce_end:   "&6&l[BOURSE] &eL'inflation est terminée, le marché se stabilise."
 
@@ -58,11 +81,13 @@ aubaine:
   upward_chance: 50.0
   # Multiplicateur magnitude (random uniforme dans la plage)
   # Hausse (sell↑) : multiplier_sell augmenté, multiplier_buy à 1.0
-  upward_multiplier_min: 1.50
-  upward_multiplier_max: 2.50
+  # Plafonné par garde_fous : au-delà de ~+18 % (diamant) à ~+80 % (fleurs),
+  # la revente est rognée, selon l'écart achat/vente naturel de l'item.
+  upward_multiplier_min: 1.15
+  upward_multiplier_max: 1.40
   # Baisse (buy↓) : multiplier_buy diminué, multiplier_sell à 1.0
-  downward_multiplier_min: 0.35
-  downward_multiplier_max: 0.60
+  downward_multiplier_min: 0.65
+  downward_multiplier_max: 0.80
   announce_start_up:   "&a&l[AUBAINE] &eLes acheteurs s'arrachent : &6{items}&e ! Vendez tant que ça vaut le coup ({duration})."
   announce_start_down: "&a&l[AUBAINE] &eOpportunité d'achat : &6{items}&e bradés ({duration})."
   announce_end:        "&7&o[BOURSE] L'aubaine sur certains items est terminée."

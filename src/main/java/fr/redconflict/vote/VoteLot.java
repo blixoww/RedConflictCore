@@ -19,13 +19,16 @@ public final class VoteLot {
     /** PB propres au lot, qui s'ajoutent à ceux du vote. */
     public final int pb;
     public final List<String> commandes;
+    /** Icône du menu /vote ({@code MATERIAL[:data]}), vide = déduite des commandes. */
+    public final String icone;
 
-    VoteLot(String id, String nom, int poids, int pb, List<String> commandes) {
+    VoteLot(String id, String nom, int poids, int pb, List<String> commandes, String icone) {
         this.id = id;
         this.nom = nom;
         this.poids = Math.max(0, poids);
         this.pb = Math.max(0, pb);
         this.commandes = Collections.unmodifiableList(commandes);
+        this.icone = icone == null ? "" : icone.trim();
     }
 
     /**
@@ -37,14 +40,7 @@ public final class VoteLot {
      */
     public boolean exigeConnecte() {
         for (String ligne : commandes) {
-            String[] t = ligne.trim().split("\\s+");
-            if (t.length < 2) continue;
-            String tete = t[0].toLowerCase(java.util.Locale.ROOT);
-            int ns = tete.indexOf(':');
-            if (ns >= 0) tete = tete.substring(ns + 1);
-            // `give` dépose dans l'inventaire ; `givekey` aussi, selon le plugin
-            // de clés. Les deux attendent donc le joueur.
-            if (tete.equals("give") || tete.equals("givekey")) return true;
+            if (fr.redconflict.boutique.RewardDispatcher.lineRequiresOnline(ligne)) return true;
         }
         return false;
     }

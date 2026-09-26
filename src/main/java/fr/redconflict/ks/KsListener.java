@@ -47,6 +47,18 @@ public class KsListener implements Listener {
      */
     public static Long takeJoinTime(UUID uuid) { return JOIN_TIMES.remove(uuid); }
 
+    /**
+     * Retire du temps de jeu une période d'inactivité, en reculant d'autant
+     * l'heure de connexion — jamais au-delà de maintenant. Toutes les lectures
+     * du temps de jeu (profil, site, succès) passent par cette heure : elles
+     * excluent l'AFK sans avoir à le connaître. Voir {@link AfkTracker}.
+     */
+    public static void excludeIdle(UUID uuid, long millis) {
+        Long t = JOIN_TIMES.get(uuid);
+        if (t == null || millis <= 0) return;
+        JOIN_TIMES.put(uuid, Math.min(System.currentTimeMillis(), t + millis));
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();

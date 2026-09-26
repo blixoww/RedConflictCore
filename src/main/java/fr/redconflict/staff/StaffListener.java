@@ -441,13 +441,26 @@ public class StaffListener implements Listener {
             title = "§8Coffre de l'End §7(lecture)";
         } else {
             org.bukkit.block.BlockState state = block.getState();
-            if (!(state instanceof InventoryHolder)) return false;
-            try {
-                source = ((InventoryHolder) state).getInventory();
-            } catch (Exception e) {
-                return false;
+            if (state instanceof InventoryHolder) {
+                try {
+                    source = ((InventoryHolder) state).getInventory();
+                } catch (Exception e) {
+                    source = null;
+                }
+            } else {
+                source = null;
             }
             title = containerTitle(block.getType());
+            if (source == null) {
+                // Conteneur que Bukkit ne connaît pas : les blocs custom du fork
+                // (coffre en acier…) n'ont pas d'état Bukkit dédié, getState()
+                // rend un bloc générique. Sans ce repli, le clic passait et
+                // ouvrait le VRAI coffre — animation et bruit pour tout le monde.
+                ItemStack[] raw = rawContents(block);
+                if (raw == null) return false;
+                openCopy(staff, raw, title);
+                return true;
+            }
         }
         if (source == null) return false;
 
@@ -466,6 +479,39 @@ public class StaffListener implements Listener {
         return true;
     }
 
+    /**
+     * Contenu d'un conteneur lu directement sur son entité de bloc serveur —
+     * n'importe quel inventaire, custom compris. {@code null} si le bloc n'en
+     * porte pas (panneau, bloc plein…) : le clic suit alors son cours normal.
+     */
+    private static ItemStack[] rawContents(org.bukkit.block.Block block) {
+        try {
+            net.minecraft.server.v1_8_R3.TileEntity te =
+                    ((org.bukkit.craftbukkit.v1_8_R3.CraftWorld) block.getWorld()).getHandle()
+                            .getTileEntity(new net.minecraft.server.v1_8_R3.BlockPosition(
+                                    block.getX(), block.getY(), block.getZ()));
+            if (!(te instanceof net.minecraft.server.v1_8_R3.IInventory)) return null;
+            net.minecraft.server.v1_8_R3.IInventory inv = (net.minecraft.server.v1_8_R3.IInventory) te;
+            ItemStack[] out = new ItemStack[inv.getSize()];
+            for (int i = 0; i < out.length; i++) {
+                net.minecraft.server.v1_8_R3.ItemStack nms = inv.getItem(i);
+                out[i] = nms == null ? null
+                        : org.bukkit.craftbukkit.v1_8_R3.inventory.CraftItemStack.asBukkitCopy(nms);
+            }
+            return out;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Ouvre au staff une copie jetable du contenu — jamais le conteneur lui-même. */
+    private static void openCopy(Player staff, ItemStack[] contents, String title) {
+        int size = Math.max(9, Math.min(54, (contents.length + 8) / 9 * 9));
+        Inventory copy = Bukkit.createInventory(null, size, title);
+        for (int i = 0; i < Math.min(contents.length, size); i++) copy.setItem(i, contents[i]);
+        staff.openInventory(copy);
+    }
+
     /** Titre de la fenêtre — 32 caractères maximum côté client 1.8. */
     private static String containerTitle(Material type) {
         switch (type) {
@@ -477,7 +523,11 @@ public class StaffListener implements Listener {
             case DROPPER:        return "§8Dropper §7(lecture)";
             case HOPPER:         return "§8Entonnoir §7(lecture)";
             case BREWING_STAND:  return "§8Alambic §7(lecture)";
-            default:             return "§8Conteneur §7(lecture)";
+            case BEACON:         return "§8Balise §7(lecture)";
+            default:
+                // Blocs custom du fork, sans constante dans ce switch.
+                if ("STEEL_CHEST".equals(type.name())) return "§8Coffre en acier §7(lecture)";
+                return "§8Conteneur §7(lecture)";
         }
     }
 

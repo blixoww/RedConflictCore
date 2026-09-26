@@ -18,6 +18,7 @@ public class JobModule implements Module {
     private JobDatabase jobDatabase;
     private JobManager jobManager;
     private JobTopManager jobTopManager;
+    private PlacedOreTracker placedOres;
 
     public JobModule(RedConflictCore plugin, Database database) {
         this.plugin = plugin;
@@ -50,9 +51,14 @@ public class JobModule implements Module {
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, JobPacketSender.CHANNEL_S2C);
 
         plugin.getServer().getPluginManager().registerEvents(new JobLoginListener(plugin, jobManager, jobSender), plugin);
-        plugin.getServer().getPluginManager().registerEvents(new JobMinerListener(jobManager, jobConfig), plugin);
+        // Minerais posés à la main : jamais d'XP Mineur (exploit Silk Touch).
+        this.placedOres = new PlacedOreTracker(database);
+        placedOres.init();
+        plugin.getServer().getPluginManager().registerEvents(new JobMinerListener(jobManager, jobConfig, placedOres), plugin);
         plugin.getServer().getPluginManager().registerEvents(new JobFarmerListener(jobManager, jobConfig), plugin);
-        plugin.getServer().getPluginManager().registerEvents(new JobArtisanListener(jobManager, jobConfig), plugin);
+        CraftCycles cycles = CraftCycles.fromServer();
+        plugin.getLogger().info("[Jobs] " + cycles.size() + " matériau(x) en cycle de craft (sans XP Artisan).");
+        plugin.getServer().getPluginManager().registerEvents(new JobArtisanListener(plugin, jobManager, jobConfig, cycles), plugin);
 
         new CommandRegistrar(plugin).register("metier", new JobCommand(plugin, jobManager, jobSender));
     }
@@ -61,6 +67,9 @@ public class JobModule implements Module {
     public void disable() {
         if (jobTopManager != null) {
             jobTopManager.shutdown();
+        }
+        if (placedOres != null) {
+            placedOres.close();
         }
         if (jobManager != null) {
             jobManager.saveAll();

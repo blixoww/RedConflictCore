@@ -22,22 +22,15 @@ import java.util.UUID;
  *
  * <p><b>Le joueur visé peut être hors ligne.</b> Son enderchest est alors relu
  * dans {@code player_data}, la table que la synchronisation entre serveurs
- * écrit à chaque déconnexion et toutes les quelques minutes. C'est un
- * <b>instantané</b>, et il est présenté comme tel : lecture seule, avec la date
- * de la dernière sauvegarde.
+ * écrit à chaque déconnexion et toutes les quelques minutes.
  *
- * <p>Cette date n'est pas un détail : un joueur absent d'<i>ici</i> peut très
- * bien jouer sur un autre serveur de la grappe, où il remplit son coffre sans
- * que cette ligne bouge avant la prochaine sauvegarde automatique. On affiche
- * donc l'ancienneté plutôt que d'affirmer « hors ligne », et le staff juge.
- *
- * <p><b>Pourquoi la lecture seule.</b> Ce qu'on affiche est une copie, pas le
- * coffre du joueur. Autoriser les modifications demanderait de réécrire la
- * ligne à la fermeture — et si le joueur se reconnecte entre-temps, sa propre
- * sauvegarde écraserait celle du staff, ou l'inverse. Une modification qui
- * disparaît sans rien dire est bien pire qu'une modification impossible. La
- * consultation, elle, est sans risque, et c'est ce qu'on vient chercher :
- * vérifier ce qu'un joueur a mis de côté.
+ * <p><b>Modifiable quand c'est sûr.</b> Si le joueur n'est connecté sur aucun
+ * serveur, {@link fr.redconflict.essentials.service.OfflineEnderEditor} prend
+ * son verrou de présence, le bloque à la connexion le temps de l'édition, et
+ * écrit le coffre à la fermeture — ou annule proprement les échanges du staff
+ * si le verrou a été perdu entre-temps. S'il est en ligne sur un autre serveur
+ * de la grappe, sa session y fait foi : on n'affiche qu'un instantané, en
+ * lecture seule, avec la date de la dernière sauvegarde.
  */
 public class EnderchestCommand extends EssCommand {
 
@@ -47,13 +40,16 @@ public class EnderchestCommand extends EssCommand {
     private final SeenService seen;
     private final InvseeSessions sessions;
     private final PlayerDataDatabase data;
+    private final fr.redconflict.essentials.service.OfflineEnderEditor editor;
 
     public EnderchestCommand(CommandEnvironment env, SeenService seen,
-                             InvseeSessions sessions, PlayerDataDatabase data) {
+                             InvseeSessions sessions, PlayerDataDatabase data,
+                             fr.redconflict.essentials.service.OfflineEnderEditor editor) {
         super(env, "ec", true, true);
         this.seen = seen;
         this.sessions = sessions;
         this.data = data;
+        this.editor = editor;
     }
 
     @Override
@@ -104,6 +100,16 @@ public class EnderchestCommand extends EssCommand {
             return false;
         }
 
+        // Modifiable quand c'est sûr : le joueur n'est connecté nulle part, et on
+        // le bloque à la connexion le temps de l'édition (voir OfflineEnderEditor).
+        if (editor != null && editor.tryOpen(player, uuid, display, snapshot)) {
+            player.sendMessage(Text.info("Enderchest de §f" + display
+                    + " §7(hors ligne, §amodifiable§7) — enregistré à la fermeture."));
+            player.sendMessage(Text.info("Dernière sauvegarde : §f"
+                    + (snapshot.updatedAt > 0 ? Text.since(snapshot.updatedAt) : "inconnue") + "§7."));
+            return true;
+        }
+
         Inventory view = Bukkit.createInventory(null, ENDER_SIZE, "EC de " + display);
         ItemStack[] stored = ItemArrayCodec.decode(snapshot.ender);
         if (stored != null) {
@@ -133,7 +139,8 @@ public class EnderchestCommand extends EssCommand {
         // voit pas. Ce qui compte est dit juste en dessous — de quand datent ces
         // objets.
         player.sendMessage(Text.info("Enderchest de §f" + display
-                + " §7(instantané, lecture seule)."));
+                + " §7(instantané, lecture seule : il est connecté sur un autre serveur,"
+                + " ou la synchronisation d'inventaires est désactivée)."));
         player.sendMessage(Text.info("Dernière sauvegarde : §f"
                 + (snapshot.updatedAt > 0 ? Text.since(snapshot.updatedAt) : "inconnue") + "§7."));
         return true;

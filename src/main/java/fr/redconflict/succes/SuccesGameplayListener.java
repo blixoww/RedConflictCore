@@ -32,15 +32,25 @@ public class SuccesGameplayListener implements Listener {
     private final Map<UUID, Integer> streaks = new HashMap<>();
 
     private final SuccesManager manager;
+    /**
+     * Blocs posés à la main, qui ne comptent pas pour les succès « miner N
+     * blocs » : sans ce suivi, une obsidienne ou un minerai (Toucher de soie)
+     * posé puis recassé en boucle validait « obsidienne-64 » ou « diamant-256 ».
+     * Persisté comme celui du métier Mineur, pour survivre au redémarrage.
+     */
+    private final fr.redconflict.job.PlacedOreTracker placed;
 
-    public SuccesGameplayListener(SuccesManager manager) {
+    public SuccesGameplayListener(SuccesManager manager, fr.redconflict.job.PlacedOreTracker placed) {
         this.manager = manager;
+        this.placed = placed;
     }
 
     // ── Blocs ────────────────────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
+        // La marque tombe quel que soit le casseur : le bloc quitte l'emplacement.
+        if (placed.consume(event.getBlock())) return;
         Player player = event.getPlayer();
         if (ignored(player)) return;
 
@@ -53,6 +63,28 @@ public class SuccesGameplayListener implements Listener {
         if (ignored(player)) return;
 
         manager.progress(player, SuccesTrigger.BLOCK_PLACE, event.getBlock().getType().name(), 1);
+    }
+
+    /**
+     * Blocs qui comptent pour les succès de minage même posés à la main.
+     *
+     * <p>L'obsidienne ne se trouve pas telle quelle dans la nature : elle se
+     * fabrique (lave + eau) puis se pose. Refuser les blocs posés rendait donc
+     * « obsidienne-64 » quasi impossible. Et la boucle poser/casser reste lente
+     * — près de 10 s par bloc à la pioche en diamant —, ce qui la rend peu
+     * rentable. C'est la seule exception.
+     */
+    static final java.util.Set<String> REPLACEABLE_COUNTS =
+            java.util.Collections.singleton("OBSIDIAN");
+
+    /** Marque les blocs posés qu'un succès de minage attend (hors du filtre « chargé »). */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onMarkPlaced(BlockPlaceEvent event) {
+        String type = event.getBlock().getType().name();
+        if (REPLACEABLE_COUNTS.contains(type)) return;
+        if (!manager.getCatalog().matching(SuccesTrigger.BLOCK_MINE, type).isEmpty()) {
+            placed.mark(event.getBlock());
+        }
     }
 
     // ── Établi, four, table d'enchantement ───────────────────────────────────
@@ -118,6 +150,9 @@ public class SuccesGameplayListener implements Listener {
 
         Player killer = victim.getKiller();
         if (killer == null || killer.equals(victim) || ignored(killer)) return;
+        // Même IP, ou même victime tuée il y a moins de 10 min : ni kill ni
+        // série — sinon deux comptes suffisaient à farmer « 1000 kills ».
+        if (!fr.redconflict.core.KillFarmGuard.counts(event)) return;
 
         manager.progress(killer, SuccesTrigger.KILL_PLAYER, 1);
 

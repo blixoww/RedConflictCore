@@ -135,7 +135,48 @@ public final class SuccesCatalog {
                 goal,
                 money,
                 items,
-                buildRewardText(money, items));
+                buildRewardText(money, items),
+                section.contains("note") ? section.getString("note", "") : defaultNote(trigger, target));
+    }
+
+    /**
+     * Ce que les garde-fous excluent, par déclencheur. Tenu ici plutôt que
+     * dans chaque entrée du YAML : un nouveau succès sur un déclencheur existant
+     * hérite de la bonne explication sans qu'on y pense. Une entrée peut la
+     * remplacer avec {@code note:} (ou la retirer avec {@code note: ""}).
+     *
+     * <p>Doit rester fidèle au code qu'elle décrit : KillFarmGuard, AfkTracker,
+     * le suivi des blocs posés, l'anti-collusion de l'HDV et les garde-fous des
+     * métiers. Courte, aussi : elle voyage avec la description (256 caractères).
+     */
+    static String defaultNote(SuccesTrigger trigger, String target) {
+        switch (trigger) {
+            case BLOCK_MINE:
+                // Seule exception : l'obsidienne posée compte (voir SuccesGameplayListener).
+                if (SuccesGameplayListener.REPLACEABLE_COUNTS.contains(target)) return "";
+                return "Les blocs posés à la main ne comptent pas (poser puis recasser le même bloc).";
+            case KILL_PLAYER:
+                return "Ne compte pas : un joueur de la même adresse IP que toi, ni la même victime"
+                     + " tuée moins de 10 min après ton kill précédent sur elle.";
+            case KILLSTREAK:
+                return "Ne font pas avancer la série : un joueur de la même adresse IP que toi, ni"
+                     + " la même victime tuée moins de 10 min après ton kill précédent sur elle.";
+            case PLAYTIME_MIN:
+                return "Le temps AFK ne compte pas : après 5 min sans tourner la tête, parler ni"
+                     + " agir, toute la pause est retirée. Être poussé par l'eau n'est pas une activité.";
+            case HDV_BUY:
+            case HDV_SELL:
+                return "1 transaction compte pour 1, quelle que soit la quantité. Ne comptent pas :"
+                     + " les échanges avec ta propre IP, et plus de 5 par jour avec le même joueur.";
+            case MONEY_SPENT:
+                return "À l'HDV, un achat compte au plus la valeur de l'objet en bourse (5 000 $ s'il"
+                     + " n'y est pas), et pas entre mêmes IP ni plus de 5 fois/jour avec un même joueur.";
+            case JOB_LEVEL:
+                return "Pas d'XP pour : les crafts réversibles (lingots ↔ bloc), une potion non"
+                     + " brassée, l'enclume non payée, les graines recassées avant maturité.";
+            default:
+                return "";
+        }
     }
 
     /**
@@ -263,13 +304,9 @@ public final class SuccesCatalog {
      * Même précaution que {@code JobConfig}.
      */
     private FileConfiguration load(JavaPlugin plugin) {
-        File file = new File(plugin.getDataFolder(), "succes/succes.yml");
-        try {
-            file.getParentFile().mkdirs();
-            if (!file.exists()) plugin.saveResource("succes/succes.yml", false);
-        } catch (Exception e) {
-            LOG.warning("[Succes] Extraction de succes.yml impossible (" + e.getMessage() + ").");
-        }
+        // Versionné : un rééquilibrage publié dans le jar remplace la copie du
+        // serveur (l'ancienne est gardée en .bak) — voir BundledConfig.
+        File file = fr.redconflict.core.BundledConfig.refresh(plugin, "succes/succes.yml");
 
         FileConfiguration onDisk = parseYaml(readFile(file), "plugins/RedConflictCore/succes/succes.yml");
         if (onDisk != null) return onDisk;

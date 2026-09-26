@@ -45,6 +45,7 @@ public class UtilityModule implements Module {
         commands.register("tpu", new TpuCommand(plugin));
         commands.register("baltop", new BaltopCommand(plugin));
         commands.register("guide", new GuideCommand(plugin));
+        commands.register("discord", new DiscordCommand(plugin));
 
         // /poubelle et /cobble sont à la fois exécuteurs et listeners (même instance).
         PoubelleCommand poubelle = new PoubelleCommand(plugin);

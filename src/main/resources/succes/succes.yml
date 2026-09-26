@@ -41,6 +41,17 @@
 #  un serveur qui ne les a pas.
 # ═══════════════════════════════════════════════════════════════════════════
 
+# Version du fichier. À INCRÉMENTER à chaque changement d'objectif ou de
+# récompense : le serveur remplace alors sa copie par celle du jar (l'ancienne
+# est gardée en succes.yml.v<N>.bak). Sans ça, un nouveau jar garde l'ancien
+# catalogue — c'est ce qui a laissé « Balise » à 150 000 $ en production.
+#
+# RÈGLE D'ÉQUILIBRE : un succès qu'on peut valider en ACHETANT de quoi le faire
+# (fabriquer, enchanter, manger, poser) ne doit pas rapporter plus que ce qu'il
+# coûte. Sinon, chaque nouveau compte devient une source d'argent : on l'ouvre,
+# on achète, on encaisse, on transfère au compte principal.
+version: 3
+
 succes:
 
   # ── MINAGE ───────────────────────────────────────────────────────────────
@@ -160,8 +171,10 @@ succes:
     trigger: CRAFT
     target: RUBY_CHESTPLATE
     goal: 1
+    # 8 rubis = ~960 $ en bourse : l'ancienne récompense (6 000 $) se rachetait
+    # six fois par compte.
     reward:
-      money: 6000
+      money: 500
       items:
         - "STEEL_ANVIL:1"
 
@@ -172,8 +185,10 @@ succes:
     tier: 2
     trigger: ENCHANT
     goal: 100
+    # 100 enchantements au plus bas (1 lapis + 1 niveau + 1 livre) coûtent
+    # ~4 000 $ achetés en bourse : la récompense reste en dessous.
     reward:
-      money: 17500
+      money: 2500
       items:
         - "EXP_BOTTLE:64"
         - "INK_SACK:64:4"
@@ -186,11 +201,13 @@ succes:
     trigger: CRAFT
     target: BEACON
     goal: 1
+    # Une balise coûte ~20 000 $ (étoile du Nether). La récompense en rembourse
+    # une partie sans rendre l'opération rentable — et ne redonne plus d'étoile,
+    # qui permettait d'enchaîner les balises.
     reward:
-      money: 75000
+      money: 10000
       items:
         - "RUBY_BLOCK:1"
-        - "NETHER_STAR:1"
 
   # ── COMBAT ───────────────────────────────────────────────────────────────
 
@@ -301,7 +318,7 @@ succes:
 
   hdv-achat-100:
     name: "Bon client"
-    description: "Acheter 100 objets à l'hôtel des ventes."
+    description: "Conclure 100 achats à l'hôtel des ventes."
     category: ECONOMIE
     tier: 1
     trigger: HDV_BUY
@@ -311,7 +328,7 @@ succes:
 
   hdv-vente-100:
     name: "Marchand"
-    description: "Vendre 100 objets à l'hôtel des ventes."
+    description: "Conclure 100 ventes à l'hôtel des ventes."
     category: ECONOMIE
     tier: 1
     trigger: HDV_SELL
@@ -341,7 +358,7 @@ succes:
     reward:
       money: 150000
       items:
-        - "COBALt_BLOCK:1"
+        - "COBALT_BLOCK:1"
 
   # ── DIVERS ───────────────────────────────────────────────────────────────
 
@@ -402,7 +419,7 @@ succes:
     trigger: BLOCK_PLACE
     target: TNT
     goal: 256
+    # Pas de TNT en récompense : une TNT posée se recasse et se repose, le
+    # succès se valide avec un seul bloc — il ne doit rien rendre de revendable.
     reward:
       money: 500
-      items:
-        - "TNT:64"

@@ -296,6 +296,7 @@ public class SuccesCommand extends CoreCommand {
         commandSender.sendMessage(succes.tierColor() + "§l" + succes.name
                 + " §8— §7" + succes.tierColor() + succes.tierName());
         commandSender.sendMessage("§7" + succes.description);
+        if (!succes.note.isEmpty()) commandSender.sendMessage("§8» §7" + succes.note);
         commandSender.sendMessage("§8» §7Objectif : §f" + succes.goal);
         commandSender.sendMessage("§8» §7Récompense : " + succes.rewardText);
         if (commandSender instanceof Player) {

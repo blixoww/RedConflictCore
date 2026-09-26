@@ -46,6 +46,18 @@ public class LotoManager {
     private final Map<UUID, Long> bets = new LinkedHashMap<>();
     /** Noms des joueurs pour l'affichage. */
     private final Map<UUID, String> betNames = new HashMap<>();
+    /** Adresse IP de chaque parieur : le bonus ne compte que des joueurs distincts. */
+    private final Map<UUID, String> betIps = new HashMap<>();
+
+    /**
+     * Plafond du bonus versé par le serveur à chaque tirage ($).
+     *
+     * <p>Le bonus multipliait la cagnotte (jusqu'à ×2) sans plafond de mise :
+     * treize comptes misant 1 M$ chacun créaient 13 M$. C'est désormais un
+     * cadeau borné, comme une récompense de vote, et seuls les parieurs
+     * d'adresses IP différentes le font grimper.
+     */
+    private static final long BONUS_CAP = 5_000L;
 
     /** true si un loto est actuellement ouvert aux paris. */
     private boolean open = false;
@@ -104,6 +116,7 @@ public class LotoManager {
         lotoStartTime = System.currentTimeMillis();
         bets.clear();
         betNames.clear();
+        betIps.clear();
         reminderTasks.clear();
 
         // Annonce globale
@@ -157,15 +170,19 @@ public class LotoManager {
             }
             broadcast(Text.fmt(RC.LOTO_CANCELLED, bets.size(), MIN_PARTICIPANTS));
         } else {
-            // Calcul du multiplicateur (1.0 à 2.0) basé sur le nombre de joueurs
-            double multiplier = 1.0 + Math.min(1.0, (bets.size() - MIN_PARTICIPANTS) / 10.0);
+            // Bonus (0 à +100 %) selon le nombre de parieurs DISTINCTS (par IP) :
+            // plusieurs comptes d'une même machine ne comptent qu'une fois.
+            int distinct = new java.util.HashSet<String>(betIps.values()).size();
+            double multiplier = 1.0 + Math.max(0.0, Math.min(1.0, (distinct - MIN_PARTICIPANTS) / 10.0));
 
             // Cagnotte totale
             long totalPool = 0;
             for (long amount : bets.values()) {
                 totalPool += amount;
             }
-            long finalPool = (long) (totalPool * multiplier);
+            // Le bonus est de l'argent créé : plafonné, quelle que soit la mise.
+            long bonus = Math.min(BONUS_CAP, (long) (totalPool * (multiplier - 1.0)));
+            long finalPool = totalPool + bonus;
 
             // Tirage au sort pondéré par la mise
             UUID winnerId = drawWeightedWinner();
@@ -183,11 +200,12 @@ public class LotoManager {
 
             // Annonce globale
             broadcast(Text.fmt(RC.LOTO_WIN_BROADCAST, winnerName, finalPool,
-                    bets.size(), String.format("%.1fx", multiplier)));
+                    bets.size(), String.format("%.2fx", totalPool > 0 ? (double) finalPool / totalPool : 1.0)));
         }
 
         bets.clear();
         betNames.clear();
+        betIps.clear();
         reminderTasks.clear();
 
         // Programmer le prochain loto
@@ -240,6 +258,8 @@ public class LotoManager {
         eco.withdrawPlayer(player, amount);
         bets.put(player.getUniqueId(), amount);
         betNames.put(player.getUniqueId(), player.getName());
+        String ip = fr.redconflict.core.KillFarmGuard.host(player);
+        betIps.put(player.getUniqueId(), ip != null ? ip : player.getUniqueId().toString());
 
         player.sendMessage(Text.fmt(RC.LOTO_BET_OK, amount));
         broadcast(Text.fmt(RC.LOTO_BET_BROADCAST, player.getName(), bets.size()));
@@ -260,6 +280,7 @@ public class LotoManager {
         lotoStartTime = System.currentTimeMillis();
         bets.clear();
         betNames.clear();
+        betIps.clear();
         reminderTasks.clear();
 
         broadcast(RC.LOTO_START);
@@ -312,6 +333,7 @@ public class LotoManager {
         lotoStartTime = 0;
         bets.clear();
         betNames.clear();
+        betIps.clear();
         reminderTasks.clear();
         broadcast(RC.LOTO_FORCE_STOP);
 

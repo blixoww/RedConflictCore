@@ -116,6 +116,26 @@ public class PlayerDataDatabase {
         } catch (SQLException e) { LOG.severe("[Sync] save(" + uuid + "): " + e.getMessage()); }
     }
 
+    /**
+     * Réécrit le seul enderchest d'un joueur, sans toucher au reste de sa ligne.
+     * Réservé à l'édition staff d'un joueur absent, verrou de présence détenu.
+     *
+     * @return {@code true} si la ligne existait et a été mise à jour
+     */
+    public boolean saveEnder(UUID uuid, byte[] ender) {
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                "UPDATE player_data SET ender = ?, updated_at = ? WHERE uuid = ?")) {
+            ps.setBytes(1, ender);
+            ps.setLong(2, System.currentTimeMillis());
+            ps.setString(3, uuid.toString());
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            LOG.severe("[Sync] saveEnder(" + uuid + "): " + e.getMessage());
+            return false;
+        }
+    }
+
     /** Les anneaux déjà enregistrés pour ce joueur, ou {@code null}. */
     private byte[] currentRings(UUID uuid) {
         try (Connection c = db.getConnection();

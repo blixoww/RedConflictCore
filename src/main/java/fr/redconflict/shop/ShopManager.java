@@ -14,13 +14,14 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.logging.Logger;
 
 public class ShopManager {
     private static final Logger LOG = Logger.getLogger("Shop");
     private static final String CHANNEL_S2C = "CUSTOM:SHOP_S2C";
-    private static final int MAX_HISTORY = 20;
+    private static final int MAX_HISTORY = ShopDatabase.HISTORY_DAYS;
 
     // Packet IDs S2C
     private static final int SHOP_CATEGORIES_RESPONSE = 0x40;
@@ -69,6 +70,38 @@ public class ShopManager {
 
     public static ShopManager getInstance() { return instance; }
 
+    // ── Garde anti-arbitrage entre items ─────────────────────────────────────
+
+    private ConversionGuard conversionGuard;
+    /** Item de bourse par clé « MATERIAL:meta », reconstruit avec la garde. */
+    private volatile Map<String, ShopItem> materialIndex = java.util.Collections.emptyMap();
+
+    /** Reconstruit l'index et les plafonds de revente sur les prix du moment. */
+    void refreshConversionGuard() {
+        Map<String, ShopItem> index = new java.util.HashMap<String, ShopItem>();
+        for (ShopItem it : database.getAllItems()) {
+            Material mat = resolveMaterial(it.minecraftItem);
+            if (mat == null) continue;
+            String key = ConversionGuard.key(mat, resolveEffectiveMeta(it.minecraftItem, it.meta));
+            if (!index.containsKey(key)) index.put(key, it);
+        }
+        this.materialIndex = index;
+        if (conversionGuard != null && eventManager != null) {
+            eventManager.refreshConversions(conversionGuard, index);
+        }
+    }
+
+    /**
+     * Prix d'achat en bourse (centimes) d'une pile, ou -1 si l'item n'y est pas
+     * coté. Sert de valeur de référence ailleurs (HDV).
+     */
+    @SuppressWarnings("deprecation")
+    public long referenceBuyPrice(ItemStack stack) {
+        if (stack == null) return -1L;
+        ShopItem it = materialIndex.get(ConversionGuard.key(stack.getType(), stack.getDurability()));
+        return it == null ? -1L : effBuy(it) * stack.getAmount();
+    }
+
     public ShopManager(RedConflictCore plugin) {
         this.plugin = plugin;
         this.database = new ShopDatabase(plugin, plugin.getCoreDatabase());
@@ -87,7 +120,14 @@ public class ShopManager {
                 LOG.severe("[Shop] Impossible de charger les items depuis shop_items.yml !");
                 return false;
             }
+        } else {
+            // Le YAML fait foi pour les prix de base : un rééquilibrage publié
+            // atteint enfin les serveurs en service (voir syncFromConfig).
+            database.syncFromConfig();
         }
+
+        this.conversionGuard = ConversionGuard.fromServer();
+        refreshConversionGuard();
 
         startDailyRegressionTask();
         LOG.info("[Shop] Shop initialisé.");
@@ -134,6 +174,7 @@ public class ShopManager {
             }
             database.purgeOldPriceHistory();
             database.purgeOldTransactions();
+            refreshConversionGuard();
             nextRegressionTime = System.currentTimeMillis() + (interval / 20L * 1000L);
             LOG.info("[Shop] Régression journalière terminée.");
         }, interval, interval).getTaskId();
@@ -170,6 +211,7 @@ public class ShopManager {
 
             database.purgeOldPriceHistory();
             database.purgeOldTransactions();
+            refreshConversionGuard();
 
             Bukkit.getScheduler().runTask(plugin, () -> {
                 for (org.bukkit.entity.Player online : Bukkit.getOnlinePlayers()) {
@@ -256,6 +298,7 @@ public class ShopManager {
 
     private void sendItemList(Player player, List<ShopItem> items, int action) {
         // Chunking pour ne pas depasser la taille max de paquet (32KB)
+        Map<Integer, long[]> volumes = database.getVolumesLast7Days();
         int MAX_CHUNK = 20; // max items par paquet
         int start = 0;
         boolean first = true;
@@ -270,7 +313,7 @@ public class ShopManager {
             pb.writeVarInt(chunk.size());
 
             for (ShopItem item : chunk) {
-                writeShopItem(pb, player, item);
+                writeShopItem(pb, player, item, volumes);
             }
 
             player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
@@ -297,7 +340,8 @@ public class ShopManager {
         "cooked_fish", "golden_apple", "sponge", "prismarine", "banner"
     ));
 
-    private void writeShopItem(PacketBuilder pb, Player player, ShopItem item) {
+    /** @param volumes volumes des 7 derniers jours par item ({@link ShopDatabase#getVolumesLast7Days()}) */
+    private void writeShopItem(PacketBuilder pb, Player player, ShopItem item, Map<Integer, long[]> volumes) {
         pb.writeVarInt(item.id);
         pb.writeString(item.displayName);
         // Toujours inclure le meta pour les items qui en ont besoin,
@@ -327,8 +371,11 @@ public class ShopManager {
         for (long price : sellHist) pb.writeLong(price);
 
         // Volumes cumules
-        pb.writeLong(item.totalBuyVolume);
-        pb.writeLong(item.totalSellVolume);
+        // Volumes des 7 derniers jours, et non les totaux cumulés depuis
+        // l'ouverture : la bourse ne montre rien de plus vieux que ses courbes.
+        long[] vol = volumes.get(item.id);
+        pb.writeLong(vol == null ? 0L : vol[0]);
+        pb.writeLong(vol == null ? 0L : vol[1]);
     }
 
     // ── Achat ────────────────────────────────────────────────────────────────
@@ -372,11 +419,14 @@ public class ShopManager {
         giveItems(player, item.minecraftItem, item.meta, quantity);
 
         // Succès « dépensier » : la bourse est la deuxième source de dépense
-        // après l'hôtel des ventes.
+        // après l'hôtel des ventes. ATTENTION aux unités : les prix de la
+        // bourse sont en CENTIMES, le succès compte en dollars (comme l'HDV).
+        // Passer totalCost tel quel comptait chaque achat cent fois.
         fr.redconflict.succes.SuccesManager succes = fr.redconflict.succes.SuccesManager.get();
-        if (succes != null) {
+        long spentDollars = totalCost / 100L;
+        if (succes != null && spentDollars > 0) {
             succes.progress(player, fr.redconflict.succes.SuccesTrigger.MONEY_SPENT,
-                    (int) Math.min(Integer.MAX_VALUE, totalCost));
+                    (int) Math.min(Integer.MAX_VALUE, spentDollars));
         }
 
         // Enregistrer le volume cumulatif (prix mis à jour uniquement toutes les 24h)
@@ -533,19 +583,19 @@ public class ShopManager {
         PacketBuilder pb = PacketBuilder.create(SHOP_ITEMS_RESPONSE);
         pb.writeVarInt(0); // action = clear & add
         pb.writeVarInt(1); // count = 1
-        writeShopItem(pb, player, item);
+        writeShopItem(pb, player, item, database.getVolumesLast7Days());
         player.sendPluginMessage((Plugin) plugin, CHANNEL_S2C, pb.build());
     }
 
     // ── Market Stats ─────────────────────────────────────────────────────────
 
     public void sendMarketStats(Player player) {
-        List<ShopDatabase.MarketStatEntry> topBought = database.getTopBoughtLast24h(10);
-        List<ShopDatabase.MarketStatEntry> topSold   = database.getTopSoldLast24h(10);
+        List<ShopDatabase.MarketStatEntry> topBought = database.getTopBoughtLast7Days(10);
+        List<ShopDatabase.MarketStatEntry> topSold   = database.getTopSoldLast7Days(10);
 
         PacketBuilder pb = PacketBuilder.create(SHOP_MARKET_STATS);
 
-        // Top bought (24h)
+        // Top bought (7 derniers jours)
         // Format client : id (VarInt), displayName (String), mcItem (String),
         //                  buyPrice (long), sellPrice (long), volume (long), avgPrice (long)
         pb.writeVarInt(topBought.size());
@@ -981,7 +1031,7 @@ public class ShopManager {
 
     private String generateAsciiChart(int itemId) {
         // On prend les snapshots des 7 derniers jours, max 28 points
-        List<Long> history = database.getBuyPriceHistory(itemId, 28);
+        List<Long> history = database.getBuyPriceHistory(itemId, MAX_HISTORY);
         if (history.size() < 2) return "";
 
         long min = Long.MAX_VALUE, max = Long.MIN_VALUE;

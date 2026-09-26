@@ -127,6 +127,93 @@ public final class VoteStatusMirror {
         return resultat;
     }
 
+    /** Code d'erreur MariaDB pour « command denied to user … for column » (GRANT de colonne). */
+    private static final int ER_COLUMNACCESS_DENIED = 1143;
+
+    /** Bilan d'un {@link #effacer(UUID)}, pour le message rendu à l'administrateur. */
+    public static final class Effacement {
+        /** Votes supprimés de {@code vote_votes}. */
+        public final int votes;
+        /** Le joueur a-t-il un compte sur le site ({@code users.game_id}) ? */
+        public final boolean compteTrouve;
+        /** Motif d'échec lisible, ou {@code null} si tout s'est bien passé. */
+        public final String erreur;
+
+        Effacement(int votes, boolean compteTrouve, String erreur) {
+            this.votes = votes;
+            this.compteTrouve = compteTrouve;
+            this.erreur = erreur;
+        }
+    }
+
+    /**
+     * Efface <b>tout</b> l'historique de votes du joueur côté site, pour
+     * {@code /rcvote reset}. Irréversible.
+     *
+     * <p>Deux écritures, dans une seule transaction : les votes d'Azuriom
+     * ({@code vote_votes}) — c'est d'eux que le plugin Vote déduit le délai avant
+     * le prochain vote et ses classements — puis la ligne de {@code rc_vote_status},
+     * passée à « un site votable, aucune échéance » pour que l'encart du HUD
+     * s'ouvre sans attendre. Le site la recalcule de lui-même à la prochaine page
+     * chargée par le joueur : on ne fait que dire « plus rien ne bloque ».
+     *
+     * <p>Droits requis : {@code sql/006-vote-reset.sql}. Réseau : à n'appeler
+     * que hors du thread principal.
+     */
+    public Effacement effacer(UUID uuid) {
+        if (site == null || !site.isAvailable()) {
+            return new Effacement(0, false, "pont vers le site fermé");
+        }
+        String gameId = SitePBLedger.gameId(uuid);
+
+        try (Connection c = site.getConnection()) {
+            Long userId = null;
+            try (PreparedStatement ps = c.prepareStatement("SELECT id FROM users WHERE game_id = ?")) {
+                ps.setString(1, gameId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) userId = rs.getLong(1);
+                }
+            }
+            if (userId == null) return new Effacement(0, false, null);
+
+            boolean autoCommit = c.getAutoCommit();
+            c.setAutoCommit(false);
+            try {
+                int votes;
+                try (PreparedStatement del = c.prepareStatement(
+                        "DELETE FROM vote_votes WHERE user_id = ?")) {
+                    del.setLong(1, userId);
+                    votes = del.executeUpdate();
+                }
+                try (PreparedStatement upd = c.prepareStatement(
+                        "UPDATE rc_vote_status SET available = 1, next_vote_at = 0, computed_at = ? "
+                      + "WHERE game_id = ?")) {
+                    upd.setLong(1, System.currentTimeMillis() / 1000L);
+                    upd.setString(2, gameId);
+                    upd.executeUpdate();
+                }
+                c.commit();
+                return new Effacement(votes, true, null);
+            } catch (SQLException e) {
+                c.rollback();
+                throw e;
+            } finally {
+                c.setAutoCommit(autoCommit);
+            }
+        } catch (SQLException e) {
+            int code = e.getErrorCode();
+            if (code == ER_TABLEACCESS_DENIED || code == ER_COLUMNACCESS_DENIED) {
+                return new Effacement(0, true, "droit manquant pour rc_sync — passe "
+                        + "sql/006-vote-reset.sql sur la base du site");
+            }
+            if (code == ER_NO_SUCH_TABLE) {
+                return new Effacement(0, true, "table absente (plugin Vote d'Azuriom, ou "
+                        + "sql/003-vote-status.sql non passé)");
+            }
+            return new Effacement(0, true, e.getMessage());
+        }
+    }
+
     /**
      * Journalise une fois, puis se tait le temps de la pause.
      *

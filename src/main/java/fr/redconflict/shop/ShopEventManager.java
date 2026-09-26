@@ -56,6 +56,27 @@ public class ShopEventManager {
     private int maxConcurrentGlobal   = 1;
     private int maxConcurrentAubaines = 5;
 
+    /**
+     * Garde-fous anti-arbitrage (section {@code garde_fous} de shop_events.yml).
+     *
+     * <p>Les events déplacent achat et vente indépendamment. Sans borne, deux
+     * boucles créaient de l'argent à partir de rien : une aubaine « hausse »
+     * portait la revente AU-DESSUS du prix d'achat (acheter puis revendre
+     * aussitôt), et une aubaine « baisse » ou un krach faisaient passer l'achat
+     * SOUS le prix de revente normal (acheter bradé, revendre après l'event).
+     *
+     * <p>La règle qui ferme les deux : la revente ne dépasse jamais {@code marge}
+     * × le prix d'achat LE PLUS BAS que l'item peut atteindre, events et collier
+     * du marchand compris. Toutes deux sont exprimées en fraction du prix
+     * d'achat naturel (hors event) de l'item.
+     */
+    private double buyFloorRatio = 0.65;
+    private double arbitrageMargin = 0.90;
+
+    /** Collier du marchand (voir ShopManager) : -5 % à l'achat, +5 % à la revente. */
+    static final double NECKLACE_BUY  = 0.95;
+    static final double NECKLACE_SELL = 1.05;
+
     // Date du dernier roll quotidien (yyyymmdd)
     private int lastDailyRollDay = -1;
 
@@ -90,8 +111,7 @@ public class ShopEventManager {
 
     private void loadConfig() {
         try {
-            File f = new File(plugin.getDataFolder(), "shop/shop_events.yml");
-            if (!f.exists()) plugin.saveResource("shop/shop_events.yml", false);
+            File f = fr.redconflict.core.BundledConfig.refresh(plugin, "shop/shop_events.yml");
             org.bukkit.configuration.file.YamlConfiguration cfg =
                 new org.bukkit.configuration.file.YamlConfiguration();
             try (InputStreamReader r = new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8)) {
@@ -105,6 +125,8 @@ public class ShopEventManager {
             notifyOnJoin          = cfg.getBoolean("announce.notify_on_join", true);
             maxConcurrentGlobal   = cfg.getInt("max_concurrent_global", 1);
             maxConcurrentAubaines = cfg.getInt("max_concurrent_aubaines", 5);
+            buyFloorRatio   = clamp(cfg.getDouble("garde_fous.achat_min", 0.65), 0.30, 1.0);
+            arbitrageMargin = clamp(cfg.getDouble("garde_fous.marge", 0.90), 0.50, 0.99);
         } catch (Exception e) {
             LOG.severe("[ShopEvent] Erreur chargement shop_events.yml: " + e.getMessage());
         }
@@ -290,7 +312,7 @@ public class ShopEventManager {
     }
 
     /**
-     * Déclenché par /shopdebug tick all : simule un passage de 24h pour les events.
+     * Déclenché par /boursedebug tick all : simule un passage de 24h pour les events.
      * Expire les events qui auraient dû finir, puis tente un roll quotidien.
      * À appeler sur le thread principal après la régression des prix.
      */
@@ -413,17 +435,59 @@ public class ShopEventManager {
     }
 
     public long effectiveBuyPrice(ShopItem item) {
-        double m = getBuyMultiplier(item.id);
+        // Plancher sur le multiplicateur CUMULÉ : krach + aubaine « baisse »
+        // se composent, et sans lui le prix pouvait tomber à ~20 % du normal.
+        double m = Math.max(buyFloorRatio, getBuyMultiplier(item.id));
         if (m == 1.0) return item.currentBuyPrice;
         long v = (long) Math.round(item.currentBuyPrice * m);
         return Math.max(item.floorPrice + 1, Math.min(item.ceilPrice, v));
     }
 
+    /**
+     * Prix de revente, borné par {@link #sellCeiling}. La borne s'applique aussi
+     * hors event : sinon on achèterait pendant un krach pour revendre au prix
+     * normal le lendemain.
+     */
     public long effectiveSellPrice(ShopItem item) {
         double m = getSellMultiplier(item.id);
-        if (m == 1.0) return item.currentSellPrice;
-        long v = (long) Math.round(item.currentSellPrice * m);
-        return Math.max(item.floorPrice, v);
+        long v = item.currentSellPrice;
+        if (m != 1.0) v = Math.max(item.floorPrice, (long) Math.round(item.currentSellPrice * m));
+        return Math.min(v, sellCeiling(item));
+    }
+
+    /**
+     * Revente maximale, collier du marchand NON compris : une fois le collier
+     * appliqué (+5 %), elle reste sous {@code marge} × l'achat le plus bas
+     * possible, collier compris (-5 %). Aucun enchaînement d'events ne rend
+     * donc l'aller-retour achat → revente rentable.
+     */
+    public long sellCeiling(ShopItem item) {
+        long own = (long) Math.floor(lowestBuy(item) * arbitrageMargin / NECKLACE_SELL);
+        // Même règle entre items : le produit d'une recette ne se revend pas
+        // plus cher que ses ingrédients au plus bas (voir ConversionGuard).
+        ConversionGuard guard = conversionGuard;
+        long conv = guard == null ? -1L : guard.ceiling(item.id);
+        return conv >= 0 ? Math.min(own, conv) : own;
+    }
+
+    /** Achat le plus bas qu'un item puisse atteindre : plancher des events et collier compris. */
+    public double lowestBuy(ShopItem item) {
+        return Math.max(item.floorPrice + 1, item.currentBuyPrice * buyFloorRatio) * NECKLACE_BUY;
+    }
+
+    private volatile ConversionGuard conversionGuard;
+
+    /**
+     * Recalcule les plafonds entre items sur les prix d'achat courants. À
+     * appeler au démarrage et après chaque régression quotidienne.
+     */
+    void refreshConversions(ConversionGuard guard, java.util.Map<String, ShopItem> index) {
+        guard.recompute(index, this::lowestBuy, arbitrageMargin / NECKLACE_SELL);
+        this.conversionGuard = guard;
+    }
+
+    private static double clamp(double v, double min, double max) {
+        return Math.max(min, Math.min(max, v));
     }
 
     // ── Annonces ──────────────────────────────────────────────────────────────
@@ -473,7 +537,7 @@ public class ShopEventManager {
             else tag = ChatColor.GREEN + "AUBAINE";
             p.sendMessage(" " + ChatColor.GRAY + "• " + tag + ChatColor.GRAY + " (reste " + left + " min)");
         }
-        p.sendMessage(ChatColor.GRAY + "Tapez " + ChatColor.WHITE + "/shop" + ChatColor.GRAY + " pour voir le détail.");
+        p.sendMessage(ChatColor.GRAY + "Tapez " + ChatColor.WHITE + "/bourse" + ChatColor.GRAY + " pour voir le détail.");
     }
 
     /**

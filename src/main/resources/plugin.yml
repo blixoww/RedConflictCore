@@ -16,6 +16,9 @@ commands:
     description: Répare tous tes items (cooldown 24h)
     aliases: [repair]
     permission: redconflict.repair
+  discord:
+    description: Affiche le lien du Discord
+    usage: /discord
   poubelle:
     description: Ouvre la poubelle virtuelle
     aliases: [trash]
@@ -46,6 +49,10 @@ commands:
     # « shop » pointe desormais ici : c'est la Boutique que les joueurs
     # cherchent quand ils la tapent.
     aliases: [boutique, pbboutique, shop]
+  vote:
+    description: Compteur de votes, palier de fidélité et récompenses
+    usage: /vote [joueur]
+    aliases: [votes, recompenses]
   rcvote:
     description: Récompense un vote (appelée par Azuriom via AzLink)
     usage: /rcvote <pseudo> | reload | info | compte <pseudo> | reset <pseudo>
@@ -65,9 +72,9 @@ commands:
   sellall:
     description: Vend automatiquement tous les items vendables de l'inventaire au prix du shop
     usage: /sellall
-  shopdebug:
-    description: Commandes de debug du shop (admin)
-    usage: /shopdebug <tick all|info|reset>
+  boursedebug:
+    description: Commandes de debug de la bourse (admin)
+    usage: /boursedebug <tick all|info|reset>
     permission: shop.admin
   shopevent:
     description: Gestion des événements boursiers (krach, inflation, aubaine) — staff

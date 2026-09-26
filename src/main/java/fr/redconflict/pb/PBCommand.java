@@ -181,11 +181,10 @@ public class PBCommand extends CoreCommand {
     }
 
     private OfflinePlayer resolve(String name) {
-        Player online = Bukkit.getPlayerExact(name);
-        if (online != null) return online;
-        @SuppressWarnings("deprecation")
-        OfflinePlayer off = Bukkit.getOfflinePlayer(name);
-        return off;
+        // Jamais Bukkit.getOfflinePlayer(name) : derrière Velocity il peut rendre
+        // l'UUID premium d'un inconnu, et les PB partiraient sur un game_id
+        // qu'Azuriom ne connaît pas. Voir PlayerIds.
+        return fr.redconflict.core.PlayerIds.offlinePlayer(name);
     }
 
     @Override

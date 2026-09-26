@@ -3,11 +3,14 @@ package fr.redconflict.boutique;
 import fr.redconflict.RedConflictCore;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import java.io.File;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -41,9 +44,23 @@ public final class RewardDispatcher {
      */
     public static boolean requiresOnline(BoutiqueItem item, boolean permanent) {
         for (String line : item.commandsFor(permanent)) {
-            if (isGive(line)) return true;
+            if (lineRequiresOnline(line)) return true;
         }
         return false;
+    }
+
+    /**
+     * Une ligne de récompense dépose-t-elle quelque chose dans l'inventaire ?
+     * {@code give}, {@code givekey} et {@code kit} : les trois attendent le joueur.
+     * Partagée avec les lots de vote, pour que les deux ne divergent pas.
+     */
+    public static boolean lineRequiresOnline(String line) {
+        String[] t = line.trim().replaceFirst("^/", "").split("\\s+");
+        if (t.length < 2) return false;
+        String head = t[0].toLowerCase(Locale.ROOT);
+        int ns = head.indexOf(':');
+        if (ns >= 0) head = head.substring(ns + 1);
+        return head.equals("give") || head.equals("givekey") || head.equals("kit");
     }
 
     /**
@@ -70,6 +87,7 @@ public final class RewardDispatcher {
         // (Material.matchMaterial), contrairement à la base d'items figée
         // d'Essentials (items.csv) qu'il faudrait sinon maintenir à la main.
         if (giveNatively(resolved)) return;
+        if (kitNatively(resolved)) return;
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), resolved);
     }
 
@@ -140,6 +158,84 @@ public final class RewardDispatcher {
         }
         target.updateInventory();
         return true;
+    }
+
+    /**
+     * {@code kit <nom> <joueur>} — remise directe d'un kit GreatKits.
+     *
+     * <p><b>Pourquoi pas la commande.</b> Le {@code /kit} de GreatKits commence
+     * par {@code sender instanceof Player} : lancé depuis la console il ne fait
+     * rien, sans un mot, et n'a aucune variante « donner à un autre joueur ».
+     * Les lots « kit … » du vote ne livraient donc jamais rien. On lit ici le
+     * fichier du kit ({@code plugins/GreatKits/Kits/<nom>.yml}) et on remet son
+     * contenu par l'API Bukkit, comme les {@code give}. Pas de cooldown ni de
+     * permission : c'est une récompense, pas un kit réclamé.
+     *
+     * @return {@code true} si la ligne était un kit (remis, ou échec journalisé)
+     */
+    private boolean kitNatively(String command) {
+        String[] t = command.trim().split("\\s+");
+        if (t.length != 3) return false;
+        String head = t[0].toLowerCase(Locale.ROOT);
+        int ns = head.indexOf(':');
+        if (ns >= 0) head = head.substring(ns + 1);
+        if (!head.equals("kit")) return false;
+
+        File dir = new File(plugin.getDataFolder().getParentFile(), "GreatKits/Kits");
+        File file = findKitFile(dir, t[1]);
+        if (file == null) {
+            // Pas un kit GreatKits connu : on laisse la commande suivre son cours
+            // normal (autre plugin de kits qui, lui, accepterait la console).
+            return false;
+        }
+
+        Player target = Bukkit.getPlayerExact(t[2]);
+        if (target == null) {
+            plugin.getLogger().warning("[Boutique] kit : joueur introuvable '" + t[2] + "' (" + command + ")");
+            return true;
+        }
+
+        YamlConfiguration kit = YamlConfiguration.loadConfiguration(file);
+        int given = 0;
+        for (String section : new String[] { "Inventory.Main", "Inventory.Armor" }) {
+            List<?> items = kit.getList(section);
+            if (items == null) continue;
+            for (Object o : items) {
+                if (!(o instanceof ItemStack)) continue;          // cases vides : null
+                ItemStack stack = ((ItemStack) o).clone();
+                if (stack.getType() == Material.AIR) continue;
+                for (ItemStack left : target.getInventory().addItem(stack).values()) {
+                    target.getWorld().dropItemNaturally(target.getLocation(), left);
+                }
+                given++;
+            }
+        }
+        target.updateInventory();
+        if (given == 0) {
+            plugin.getLogger().warning("[Boutique] kit : '" + file.getName() + "' est vide (" + command + ")");
+        }
+        return true;
+    }
+
+    /**
+     * Fichier du kit, insensible à la casse. Accepte aussi un nom qui ne diffère
+     * que par un suffixe (« Potions » pour {@code potion.yml}) s'il désigne un
+     * seul kit : c'est précisément l'écart qui traînait dans la table de vote.
+     */
+    private static File findKitFile(File dir, String name) {
+        File[] files = dir.listFiles();
+        if (files == null) return null;
+        String wanted = name.toLowerCase(Locale.ROOT);
+        File prefixMatch = null;
+        int prefixCount = 0;
+        for (File f : files) {
+            String n = f.getName().toLowerCase(Locale.ROOT);
+            if (!n.endsWith(".yml")) continue;
+            n = n.substring(0, n.length() - 4);
+            if (n.equals(wanted)) return f;
+            if (wanted.startsWith(n) || n.startsWith(wanted)) { prefixMatch = f; prefixCount++; }
+        }
+        return prefixCount == 1 ? prefixMatch : null;
     }
 
     /** Résout un nom d'enchantement (alias Essentials ou nom Bukkit brut). */

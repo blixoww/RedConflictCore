@@ -237,6 +237,19 @@ public class JobConfig {
         return lookup(actionXp.get(JobType.MINER), materialKey, level);
     }
 
+    /**
+     * Ce matériau rapporte-t-il de l'XP Mineur à au moins un palier ? Sert à
+     * marquer les minerais posés à la main (voir {@link PlacedOreTracker}).
+     */
+    public boolean hasMinerXp(String materialKey) {
+        Map<String, int[]> map = actionXp.get(JobType.MINER);
+        if (map == null) return false;
+        int[] arr = map.get(materialKey.toUpperCase(Locale.ROOT));
+        if (arr == null) return false;
+        for (int v : arr) if (v > 0) return true;
+        return false;
+    }
+
     /** XP Artisan pour un type d'action ("craft", "brew", "enchant", "anvil"), selon le palier. */
     public int getArtisanXp(String action, int level) {
         return lookup(actionXp.get(JobType.ARTISAN), action, level);

@@ -27,21 +27,21 @@ public class ShopCommand extends CoreCommand {
     protected void execute(CommandSender sender, String label, String[] args) {
         String cmdName = label.toLowerCase(Locale.ROOT);
 
-        // ── /shopdebug ─────────────────────────────────────────────────────
-        if (cmdName.equals("shopdebug")) {
+        // ── /boursedebug ─────────────────────────────────────────────────────
+        if (cmdName.equals("boursedebug")) {
             if (!sender.hasPermission("shop.admin")) {
                 sender.sendMessage("§cVous n'avez pas la permission.");
                 return;
             }
             if (args.length == 0) {
-                sender.sendMessage("§cUsage: /shopdebug <tick all|info|reset>");
+                sender.sendMessage("§cUsage: /boursedebug <tick all|info|reset>");
                 return;
             }
             String sub = args[0].toLowerCase(Locale.ROOT);
             switch (sub) {
                 case "tick": {
                     if (args.length < 2 || !args[1].equalsIgnoreCase("all")) {
-                        sender.sendMessage("§cUsage: /shopdebug tick all");
+                        sender.sendMessage("§cUsage: /boursedebug tick all");
                         return;
                     }
                     sender.sendMessage("§6[Shop] §eDébut de la simulation de 24h (async)...");
@@ -75,7 +75,7 @@ public class ShopCommand extends CoreCommand {
                     return;
                 }
                 default:
-                    sender.sendMessage("§cUsage: /shopdebug <tick all|info|reset>");
+                    sender.sendMessage("§cUsage: /boursedebug <tick all|info|reset>");
                     return;
             }
         }
@@ -97,15 +97,15 @@ public class ShopCommand extends CoreCommand {
 
         // /shop help
         if (args.length == 1 && args[0].equalsIgnoreCase("help")) {
-            player.sendMessage("§6[Shop] §eCommandes Shop");
-            player.sendMessage("§7  /shop §f- Ouvrir le Shop");
-            player.sendMessage("§7  /shop help §f- Afficher cette aide");
-            player.sendMessage("§7  /shop next §f- Prochain rééquilibrage des prix");
+            player.sendMessage("§6[Bourse] §eCommandes Bourse");
+            player.sendMessage("§7  /bourse §f- Ouvrir la Bourse");
+            player.sendMessage("§7  /bourse help §f- Afficher cette aide");
+            player.sendMessage("§7  /bourse next §f- Prochain rééquilibrage des prix");
             if (player.hasPermission("shop.admin")) {
                 player.sendMessage("§3  — Staff —");
-                player.sendMessage("§7  /shopdebug info §f- Résumé du marché");
-                player.sendMessage("§7  /shopdebug tick all §f- Simuler une régression 24h");
-                player.sendMessage("§7  /shopdebug reset §f- Réinitialiser le catalogue");
+                player.sendMessage("§7  /boursedebug info §f- Résumé du marché");
+                player.sendMessage("§7  /boursedebug tick all §f- Simuler une régression 24h");
+                player.sendMessage("§7  /boursedebug reset §f- Réinitialiser le catalogue");
             }
             return;
         }
@@ -129,7 +129,7 @@ public class ShopCommand extends CoreCommand {
             return;
         }
 
-        player.sendMessage("§cSous-commande inconnue. Tapez §e/shop help §cpour la liste des commandes.");
+        player.sendMessage("§cSous-commande inconnue. Tapez §e/bourse help §cpour la liste des commandes.");
         return;
     }
 
@@ -137,7 +137,7 @@ public class ShopCommand extends CoreCommand {
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         String cmdName = alias.toLowerCase(Locale.ROOT);
 
-        if (cmdName.equals("shopdebug")) {
+        if (cmdName.equals("boursedebug")) {
             if (!sender.hasPermission("shop.admin")) return new ArrayList<>();
             if (args.length == 1) {
                 return Arrays.asList("tick", "info", "reset").stream()

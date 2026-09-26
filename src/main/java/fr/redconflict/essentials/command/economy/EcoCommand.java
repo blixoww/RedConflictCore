@@ -109,9 +109,10 @@ public class EcoCommand extends EssCommand {
      * ({@code AZURIOM_GAME=mc-offline}) et celle que {@code VoteRewards} utilise déjà pour
      * désigner sa cible. La cible est donc la bonne, même sans passage enregistré.
      */
-    @SuppressWarnings("deprecation")
     private static UUID offlineUuid(String name) {
-        return Bukkit.getOfflinePlayer(name).getUniqueId();
+        // Calcul direct : Bukkit.getOfflinePlayer(name) interroge Mojang derrière
+        // Velocity et peut rendre l'UUID premium d'un inconnu. Voir PlayerIds.
+        return fr.redconflict.core.PlayerIds.offlineUuid(name);
     }
 
     @Override

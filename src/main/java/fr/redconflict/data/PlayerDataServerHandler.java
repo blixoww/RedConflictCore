@@ -172,17 +172,36 @@ public class PlayerDataServerHandler implements PluginMessageListener {
             db.updateRank(player.getUniqueId(), rank);
         }
 
-        // PB — solde Points Boutique
-        int pb = 0;
-        if (plugin.getPBManager() != null) {
-            try { pb = plugin.getPBManager().get(player); } catch (Exception ignored) {}
-        }
-        byte[] data = PacketBuilder.create(82)
-                .writeString(rank).writeLong(balance)
-                .writeVarInt(kills).writeVarInt(deaths).writeVarInt(playTimeMin)
-                .writeVarInt(pb)
-                .build();
-        player.sendPluginMessage((Plugin)plugin, "CUSTOM:PDATA_S2C", data);
+        // PB — solde Points Boutique. Lu HORS du thread principal : le solde vit
+        // dans users.money (MariaDB), et le client envoie cette requête tout seul.
+        // Lu ici en direct, une base du site injoignable gelait le serveur 8 s
+        // PAR JOUEUR (timeout du pool) — assez pour que tous se fassent expulser
+        // pour « too many packets » au dégel. Le reste du paquet est lu ici, sur
+        // le thread principal, où Vault et le rang doivent être lus.
+        final String fRank = rank;
+        final long fBalance = balance;
+        final int fKills = kills, fDeaths = deaths, fPlayTime = playTimeMin;
+        final fr.redconflict.pb.PBManager pbManager = plugin.getPBManager();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+            @Override public void run() {
+                int pb = 0;
+                if (pbManager != null) {
+                    try { pb = pbManager.get(player); } catch (Exception ignored) {}
+                }
+                final byte[] data = PacketBuilder.create(82)
+                        .writeString(fRank).writeLong(fBalance)
+                        .writeVarInt(fKills).writeVarInt(fDeaths).writeVarInt(fPlayTime)
+                        .writeVarInt(pb)
+                        .build();
+                Bukkit.getScheduler().runTask(plugin, new Runnable() {
+                    @Override public void run() {
+                        if (player.isOnline()) {
+                            player.sendPluginMessage((Plugin) plugin, "CUSTOM:PDATA_S2C", data);
+                        }
+                    }
+                });
+            }
+        });
     }
 
     public static void sendBalance(Player player, long balance) {

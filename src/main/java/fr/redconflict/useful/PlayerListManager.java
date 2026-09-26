@@ -463,7 +463,7 @@ public class PlayerListManager {
                     + " \u00a78Monnaie \u00a78: \u00a77" + balanceStr + " \u00a78$\n"
                     + " \u00a78PB \u00a78: \u00a7e" + pbStr + " \u00a78PB\n"
                     + " \u00a78Kills \u00a78: \u00a7a" + kills
-                    + " \u00a78| \u00a78Deaths \u00a78: \u00a7c" + deaths + "\n"
+                    + " \u00a78| \u00a78Morts \u00a78: \u00a7c" + deaths + "\n"
                     + " \u00a78Ratio K/D \u00a78: \u00a7e" + ratio + "\n";
 
             String ver = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3];

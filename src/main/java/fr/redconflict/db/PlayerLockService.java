@@ -147,6 +147,22 @@ public class PlayerLockService {
         }
     }
 
+    /** {@code true} si ce serveur détient toujours le verrou en ligne de ce joueur. */
+    public boolean holds(UUID uuid, String serverId) {
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                 "SELECT 1 FROM player_locks WHERE uuid = ? AND server_id = ? AND online = TRUE")) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, serverId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            LOG.severe("[Lock] holds(" + uuid + "): " + e.getMessage());
+            return false;
+        }
+    }
+
     /** {@code true} si le joueur est détenu en ligne par un autre serveur. */
     public boolean isLockedElsewhere(UUID uuid, String serverId) {
         try (Connection c = db.getConnection();

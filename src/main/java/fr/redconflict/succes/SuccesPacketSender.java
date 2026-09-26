@@ -50,6 +50,23 @@ public class SuccesPacketSender {
         this.manager = manager;
     }
 
+    /** Le client lit la description sur 256 caractères au plus. */
+    private static final int WIRE_DESCRIPTION_MAX = 256;
+
+    /**
+     * Description + note « ne compte pas », séparées par un retour à la ligne.
+     *
+     * <p>Même champ que la description, et non un champ de plus : un client
+     * pas encore mis à jour lit toujours le paquet sans se décaler (il affiche
+     * simplement la note à la suite, tronquée par la carte). Le client à jour
+     * coupe au retour à la ligne et range la note dans l'infobulle.
+     */
+    static String wireDescription(Succes succes) {
+        if (succes.note.isEmpty()) return succes.description;
+        String s = succes.description + "\n" + succes.note;
+        return s.length() <= WIRE_DESCRIPTION_MAX ? s : s.substring(0, WIRE_DESCRIPTION_MAX - 1) + "…";
+    }
+
     /** Catalogue complet : identité, rubrique, difficulté, objectif, récompense. */
     public void sendInit(Player player) {
         List<Succes> all = catalog.all();
@@ -58,7 +75,7 @@ public class SuccesPacketSender {
         for (Succes succes : all) {
             pb.writeString(succes.id);
             pb.writeString(succes.name);
-            pb.writeString(succes.description);
+            pb.writeString(wireDescription(succes));
             pb.writeString(succes.category);
             pb.writeVarInt(succes.tier);
             pb.writeVarInt(succes.goal);

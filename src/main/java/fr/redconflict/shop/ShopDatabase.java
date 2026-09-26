@@ -146,7 +146,7 @@ public class ShopDatabase {
         } catch (SQLException ignored) {}
     }
 
-    /** Avance les timestamps de tous les events actifs de 24h (simulation /shopdebug tick all). */
+    /** Avance les timestamps de tous les events actifs de 24h (simulation /boursedebug tick all). */
     public void advanceActiveEventsByOneDay() {
         long now = System.currentTimeMillis() / 1000L;
         try (Connection c = db.getConnection();
@@ -340,9 +340,11 @@ public class ShopDatabase {
              PreparedStatement ps = c.prepareStatement(
                 "SELECT buy_price FROM shop_price_history " +
                 "WHERE item_id=? AND daily=1 AND timestamp>=? " +
-                "ORDER BY timestamp ASC LIMIT ?")) {
-            ps.setInt(1, itemId); ps.setLong(2, sevenDaysAgo); ps.setInt(3, maxDays);
-            try (ResultSet rs = ps.executeQuery()) { while (rs.next()) list.add(rs.getLong(1)); }
+                "ORDER BY timestamp DESC LIMIT ?")) {
+            // Les N points les PLUS RÉCENTS, remis dans l'ordre chronologique :
+            // la fenêtre de 7 jours peut contenir 8 instantanés (J-7 à J0).
+            ps.setInt(1, itemId); ps.setLong(2, sevenDaysAgo); ps.setInt(3, Math.min(maxDays, HISTORY_DAYS));
+            try (ResultSet rs = ps.executeQuery()) { while (rs.next()) list.add(0, rs.getLong(1)); }
         } catch (SQLException e) { LOG.severe("[Shop] getBuyPriceHistory: " + e.getMessage()); }
         return list;
     }
@@ -354,12 +356,17 @@ public class ShopDatabase {
              PreparedStatement ps = c.prepareStatement(
                 "SELECT sell_price FROM shop_price_history " +
                 "WHERE item_id=? AND daily=1 AND timestamp>=? " +
-                "ORDER BY timestamp ASC LIMIT ?")) {
-            ps.setInt(1, itemId); ps.setLong(2, sevenDaysAgo); ps.setInt(3, maxDays);
-            try (ResultSet rs = ps.executeQuery()) { while (rs.next()) list.add(rs.getLong(1)); }
+                "ORDER BY timestamp DESC LIMIT ?")) {
+            // Les N points les PLUS RÉCENTS, remis dans l'ordre chronologique :
+            // la fenêtre de 7 jours peut contenir 8 instantanés (J-7 à J0).
+            ps.setInt(1, itemId); ps.setLong(2, sevenDaysAgo); ps.setInt(3, Math.min(maxDays, HISTORY_DAYS));
+            try (ResultSet rs = ps.executeQuery()) { while (rs.next()) list.add(0, rs.getLong(1)); }
         } catch (SQLException e) { LOG.severe("[Shop] getSellPriceHistory: " + e.getMessage()); }
         return list;
     }
+
+    /** Profondeur des courbes et de tout ce que la bourse affiche : 7 jours, pas plus. */
+    public static final int HISTORY_DAYS = 7;
 
     public void purgeOldPriceHistory() {
         long sevenDaysAgo = System.currentTimeMillis() / 1000L - 7 * 86400L;
@@ -400,21 +407,22 @@ public class ShopDatabase {
     // ── Stats de marché ──────────────────────────────────────────────────────
 
     /**
-     * Top N items les plus achetés dans les 24 dernières heures.
+     * Top N items les plus achetés sur les 7 derniers jours — la même fenêtre
+     * que les courbes et que le réajustement des prix.
      * Agrégation pré-calculée en sous-requête (compatible GROUP BY strict H2/PostgreSQL).
      */
-    public List<MarketStatEntry> getTopBoughtLast24h(int limit) {
-        return getTopByTypeLast24h("BUY", limit);
+    public List<MarketStatEntry> getTopBoughtLast7Days(int limit) {
+        return getTopByType("BUY", limit);
     }
 
-    /** Top N items les plus vendus dans les 24 dernières heures. */
-    public List<MarketStatEntry> getTopSoldLast24h(int limit) {
-        return getTopByTypeLast24h("SELL", limit);
+    /** Top N items les plus vendus sur les 7 derniers jours. */
+    public List<MarketStatEntry> getTopSoldLast7Days(int limit) {
+        return getTopByType("SELL", limit);
     }
 
-    private List<MarketStatEntry> getTopByTypeLast24h(String type, int limit) {
+    private List<MarketStatEntry> getTopByType(String type, int limit) {
         List<MarketStatEntry> list = new ArrayList<>();
-        long since = System.currentTimeMillis() / 1000L - 86400L;
+        long since = System.currentTimeMillis() / 1000L - HISTORY_DAYS * 86400L;
         String sql =
             "SELECT i.*, c.name AS category_name, agg.qty_24h, agg.avg_price FROM (" +
             "  SELECT item_id, SUM(quantity) AS qty_24h, CAST(AVG(price_unit) AS BIGINT) AS avg_price" +
@@ -430,8 +438,31 @@ public class ShopDatabase {
                 while (rs.next())
                     list.add(new MarketStatEntry(readItem(rs), rs.getLong("qty_24h"), rs.getLong("avg_price")));
             }
-        } catch (SQLException e) { LOG.severe("[Shop] getTopByTypeLast24h(" + type + "): " + e.getMessage()); }
+        } catch (SQLException e) { LOG.severe("[Shop] getTopByType(" + type + "): " + e.getMessage()); }
         return list;
+    }
+
+    /**
+     * Volumes achetés / vendus par item sur les 7 derniers jours, en une requête.
+     * Remplace à l'affichage les totaux cumulés depuis l'ouverture de la bourse.
+     *
+     * @return item → {achat, vente}
+     */
+    public java.util.Map<Integer, long[]> getVolumesLast7Days() {
+        java.util.Map<Integer, long[]> out = new java.util.HashMap<Integer, long[]>();
+        long since = System.currentTimeMillis() / 1000L - HISTORY_DAYS * 86400L;
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                "SELECT item_id," +
+                "  COALESCE(SUM(CASE WHEN type='BUY'  THEN quantity END),0)," +
+                "  COALESCE(SUM(CASE WHEN type='SELL' THEN quantity END),0) " +
+                "FROM shop_transactions WHERE timestamp>=? GROUP BY item_id")) {
+            ps.setLong(1, since);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) out.put(rs.getInt(1), new long[] {rs.getLong(2), rs.getLong(3)});
+            }
+        } catch (SQLException e) { LOG.severe("[Shop] getVolumesLast7Days: " + e.getMessage()); }
+        return out;
     }
 
     public long getBuyVolumeLast7Days(int itemId) {
@@ -644,8 +675,7 @@ public class ShopDatabase {
 
     public boolean loadItemsFromConfig() {
         try {
-            File configFile = new File(plugin.getDataFolder(), "shop/shop_items.yml");
-            if (!configFile.exists()) plugin.saveResource("shop/shop_items.yml", false);
+            File configFile = fr.redconflict.core.BundledConfig.refresh(plugin, "shop/shop_items.yml");
 
             org.bukkit.configuration.file.YamlConfiguration config =
                 new org.bukkit.configuration.file.YamlConfiguration();
@@ -719,6 +749,109 @@ public class ShopDatabase {
         }
     }
 
+    /**
+     * Réaligne la base sur shop_items.yml : tout article dont les prix de base,
+     * le plancher, le plafond ou la pile max diffèrent du fichier est remis aux
+     * valeurs du fichier (prix courant compris), et son historique est purgé.
+     * Un article absent de la base est créé.
+     *
+     * <p><b>Pourquoi.</b> Le YAML n'était lu qu'à la première installation :
+     * ensuite, changer un prix dans le fichier n'avait AUCUN effet sur un
+     * serveur en service. C'est ce qui avait laissé l'étoile du Nether à 500 $.
+     * Les articles inchangés gardent leur cours du jour.
+     *
+     * <p>L'historique est purgé parce que la régression quotidienne y mesure la
+     * volatilité : un saut de prix voulu y passerait pour une panique du marché
+     * et triplerait l'écart achat/vente pendant une semaine.
+     *
+     * @return nombre d'articles réalignés ou créés
+     */
+    public int syncFromConfig() {
+        int changed = 0;
+        try {
+            File configFile = fr.redconflict.core.BundledConfig.refresh(plugin, "shop/shop_items.yml");
+            org.bukkit.configuration.file.YamlConfiguration config =
+                new org.bukkit.configuration.file.YamlConfiguration();
+            try (java.io.InputStreamReader reader = new java.io.InputStreamReader(
+                    new java.io.FileInputStream(configFile), java.nio.charset.StandardCharsets.UTF_8)) {
+                config.load(reader);
+            }
+            org.bukkit.configuration.ConfigurationSection cats = config.getConfigurationSection("categories");
+            if (cats == null) return 0;
+
+            java.util.Map<String, ShopItem> byKey = new java.util.HashMap<String, ShopItem>();
+            for (ShopItem it : getAllItems()) {
+                String k = it.minecraftItem + ":" + it.meta;
+                if (!byKey.containsKey(k)) byKey.put(k, it);
+            }
+            java.util.Set<String> seen = new java.util.HashSet<String>();
+
+            try (Connection c = db.getConnection();
+                 PreparedStatement up = c.prepareStatement(
+                    "UPDATE shop_items SET base_buy_price=?, base_sell_price=?, current_buy_price=?, "
+                  + "current_sell_price=?, floor_price=?, ceil_price=?, max_stack=? WHERE id=?");
+                 PreparedStatement del = c.prepareStatement(
+                    "DELETE FROM shop_price_history WHERE item_id=?")) {
+                for (String catKey : cats.getKeys(false)) {
+                    org.bukkit.configuration.ConfigurationSection cs = cats.getConfigurationSection(catKey);
+                    if (cs == null) continue;
+                    for (String line : cs.getStringList("items")) {
+                        String[] p = line.split("\\|");
+                        if (p.length != 7) continue;
+                        String mcItem = p[1]; int meta = 0;
+                        if (mcItem.contains(":")) {
+                            String[] mp = mcItem.split(":");
+                            mcItem = mp[0];
+                            try { meta = Integer.parseInt(mp[1]); } catch (NumberFormatException ignored) {}
+                        }
+                        String key = mcItem + ":" + meta;
+                        if (!seen.add(key)) continue;   // doublon : la 1re occurrence fait foi
+                        long buy, sell, floor, ceil; int stack;
+                        try {
+                            buy = Long.parseLong(p[2]); sell = Long.parseLong(p[3]);
+                            stack = Integer.parseInt(p[4]);
+                            floor = Long.parseLong(p[5]); ceil = Long.parseLong(p[6]);
+                        } catch (NumberFormatException e) { continue; }
+
+                        ShopItem it = byKey.get(key);
+                        if (it == null) {
+                            int catId = categoryIdByName(c, cs.getString("name", catKey));
+                            if (catId == -1) catId = createCategory(cs.getString("name", catKey),
+                                    cs.getString("icon", "minecraft:chest"), cs.getInt("sort", 999));
+                            if (catId != -1 && createItem(catId, p[0], mcItem, meta, buy, sell, stack, floor, ceil) != -1) {
+                                changed++;
+                            }
+                            continue;
+                        }
+                        if (it.baseBuyPrice == buy && it.baseSellPrice == sell && it.floorPrice == floor
+                                && it.ceilPrice == ceil && it.maxStack == stack) continue;
+                        up.setLong(1, buy);  up.setLong(2, sell);
+                        up.setLong(3, buy);  up.setLong(4, sell);
+                        up.setLong(5, floor); up.setLong(6, ceil);
+                        up.setInt(7, stack); up.setInt(8, it.id);
+                        up.addBatch();
+                        del.setInt(1, it.id);
+                        del.addBatch();
+                        changed++;
+                    }
+                }
+                up.executeBatch();
+                del.executeBatch();
+            }
+        } catch (Exception e) {
+            LOG.severe("[Shop] Synchronisation avec shop_items.yml : " + e.getMessage());
+        }
+        if (changed > 0) LOG.info("[Shop] " + changed + " article(s) réaligné(s) sur shop_items.yml.");
+        return changed;
+    }
+
+    private int categoryIdByName(Connection c, String name) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("SELECT id FROM shop_categories WHERE name=?")) {
+            ps.setString(1, name);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? rs.getInt(1) : -1; }
+        }
+    }
+
     // ── Utilitaires admin ────────────────────────────────────────────────────
 
     public void dropAllShopData() {
@@ -745,16 +878,17 @@ public class ShopDatabase {
         long bVol = 0, sVol = 0;
         try (Connection c = db.getConnection();
              Statement s = c.createStatement();
-             ResultSet rs = s.executeQuery("SELECT COUNT(*),SUM(total_buy_volume)," +
-                "SUM(total_sell_volume),SUM(CASE WHEN frozen=1 THEN 1 ELSE 0 END) FROM shop_items")) {
-            if (rs.next()) { items=rs.getInt(1); bVol=rs.getLong(2); sVol=rs.getLong(3); frozen=rs.getInt(4); }
+             ResultSet rs = s.executeQuery("SELECT COUNT(*)," +
+                "SUM(CASE WHEN frozen=1 THEN 1 ELSE 0 END) FROM shop_items")) {
+            if (rs.next()) { items=rs.getInt(1); frozen=rs.getInt(2); }
         } catch (SQLException e) { LOG.severe("[Shop] getMarketSummary: " + e.getMessage()); }
+        for (long[] v : getVolumesLast7Days().values()) { bVol += v[0]; sVol += v[1]; }
         return new String[]{
             "§6=== État du Marché ===",
             "§7Catégories : §f" + getCategories().size(),
             "§7Items : §f" + items + " §8(dont §c" + frozen + " gelés§8)",
-            "§7Volume Achats : §6" + bVol,
-            "§7Volume Ventes : §a" + sVol
+            "§7Volume Achats §8(7 j) §7: §6" + bVol,
+            "§7Volume Ventes §8(7 j) §7: §a" + sVol
         };
     }
 
