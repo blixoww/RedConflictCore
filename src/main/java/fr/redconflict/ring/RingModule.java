@@ -36,7 +36,7 @@ public class RingModule implements Module {
         plugin.getServer().getPluginManager().registerEvents(new RingLoginListener(manager, sender), plugin);
 
         RingEffects.init(manager);
-        plugin.getServer().getPluginManager().registerEvents(new RingEffectListener(), plugin);
+        plugin.getServer().getPluginManager().registerEvents(new RingEffectListener(plugin), plugin);
         RingEffectListener.startTask(plugin);
 
         // Drop ou conservation des rings à la mort (Totem of Undying).

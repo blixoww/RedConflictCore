@@ -64,6 +64,24 @@ public class ViolationTracker {
         applyAction(player, check);
     }
 
+    /**
+     * Signalement qui est déjà une preuve à lui seul : alerte et action
+     * immédiates, sans attendre le seuil du compteur.
+     *
+     * <p>Réservé aux contrôles qui ont eux-mêmes mesuré une durée (une série de
+     * secondes au-dessus d'un plafond, par exemple) : le seuil sert à
+     * distinguer un écart isolé d'une répétition, et la répétition est ici déjà
+     * établie. À appeler sur le thread principal.
+     */
+    public void flagConclusive(Player player, Check check, String detail) {
+        if (player == null || isExempt(player, check)) {
+            return;
+        }
+        reset(player.getUniqueId(), check);
+        announce(player, check, threshold(check), detail);
+        applyAction(player, check);
+    }
+
     /** Remet à zéro tous les compteurs du joueur (déconnexion). */
     public void forget(UUID player) {
         counters.remove(player);

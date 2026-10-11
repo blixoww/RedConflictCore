@@ -293,59 +293,37 @@ anticheat:
     latency-margin-ms: 150
     threshold: 8
 
-  # Coups PORTÉS par seconde (pas les clics : seuls les coups qui touchent).
+  # Cadence de clics (autoclick), comptee sur les paquets de swing.
   #
-  # Ce plafond mesure une QUANTITE : un autoclick regle a 10 coups/s passe
-  # dessous sans difficulte. C'est pourquoi il est double d'une analyse de la
-  # REGULARITE, qui mesure une maniere et non un volume.
+  # Le client Red Conflict envoie exactement un swing par clic gauche — sur un
+  # joueur, un bloc ou dans le vide. Le compte par seconde est donc le vrai CPS.
+  # Le minage est ecarte (tout swing qui suit de pres un paquet de casse).
   #
-  # Une main humaine ne produit jamais deux intervalles identiques : tremblement
-  # et fatigue donnent un ecart-type de 15 a 40 % de l'intervalle moyen. Un
-  # automate reste sous 10 %, meme « randomise ». Baisser sa cadence ne l'aide
-  # pas : il devient un automate lent.
+  # Pourquoi l'ancien controle laissait passer un autoclick a 22 CPS : il
+  # comptait les coups PORTES (masques par l'invulnerabilite de la cible : 2 a
+  # 3 par seconde au plus contre un joueur) et les clics « dans le vide » (perdus
+  # des qu'on regarde le sol). Voir ClickCheck.
+  #
+  # Chaque verdict porte sur une SERIE de secondes, donc alerte immediatement
+  # (pas de compteur de violations a remplir). Une seconde sous le seuil, ou deux
+  # secondes sans clic, remettent la serie a zero. Une alerte au plus toutes les
+  # 15 s par joueur.
+  #
+  # Pour calibrer avec un vrai joueur : anticheat.debug: true journalise le CPS
+  # mesure de chaque seconde de clic.
   autoclick:
     enabled: true
-    # Coups qui ont TOUCHE une cible, par seconde.
-    max-hits-per-second: 16
-
-    # ── Clics dans le vide ───────────────────────────────────────────────────
-    # Un autoclick tourne en permanence, y compris quand il ne touche rien —
-    # c'est meme son etat le plus courant, et le plus lisible : ni cooldown
-    # d'attaque, ni coups manques, ni mort de la cible pour brouiller le rythme.
-    # Le minage n'est pas concerne : le serveur ne compte que les swings dont le
-    # trace de 4,5 blocs ne rencontre aucun bloc.
-
-    # Plafond brut. Un humain en drag-click peut depasser 20/s sur une ou deux
-    # secondes, d'ou une barre haute : c'est le filet, pas le detecteur principal.
-    max-swings-per-second: 20
-
-    # Cadence tenue. C'est ce qui attrape l'automate regle SOUS le plafond : une
-    # main fait 20 clics/s pendant deux secondes, elle ne tient pas 13 clics/s
-    # pendant dix secondes d'affilee. Une violation par seconde tant que ca dure.
-    #
-    # 13 est calibre, pas devine : a 13, un butterfly-clicker humain tenant
-    # 13 clics/s pendant 15 s ne declenche rien (le jitter casse la serie de
-    # secondes consecutives), alors qu'un autoclick randomise a +/-20 % en
-    # declenche des dizaines. Descendre a 11 fait remonter le jitter humain.
-    #
-    # Angle mort assume : un autoclick regle a 11 clics/s avec une vraie
-    # randomisation reste dans la plage humaine sur la cadence seule. Il faut
-    # alors compter sur la regularite ci-dessous, ou sur la duree - personne ne
-    # clique en continu pendant dix minutes.
+    # Plafond : au-dessus de max-cps pendant max-cps-seconds secondes de suite.
+    # Un drag-click humain depasse 20 une seconde ou deux, il ne tient pas.
+    max-cps: 20
+    max-cps-seconds: 3
+    # Cadence tenue : l'automate regle SOUS le plafond. Une main fait 20 clics/s
+    # deux secondes, elle ne tient pas 13 clics/s dix secondes d'affilee sans
+    # jamais retomber.
     sustained-cps: 13
     sustained-seconds: 10
-
-    # ── Regularite (s'applique aux coups portes ET aux clics dans le vide) ───
-    # Coefficient de variation (ecart-type / moyenne) sous lequel la cadence est
-    # jugee mecanique. 0.10 est prudent ; un humain descend rarement sous 0.15.
-    max-cv: 0.10
-    # Intervalles rigoureusement identiques toleres dans l'echantillon.
-    max-repeats: 6
-    # Taille minimale d'echantillon avant tout verdict : on juge une sequence
-    # soutenue, jamais trois clics.
-    min-samples: 20
-
-    threshold: 10
+    # alert (defaut), kick, ou une commande : voir anticheat.action.
+    # action: kick
 
   # Coup à travers un bloc plein. Le tracé s'arrête un bloc avant la cible pour
   # ne pas compter les combats d'angle.

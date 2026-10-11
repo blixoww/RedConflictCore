@@ -46,6 +46,7 @@ public class AntiCheatModule implements Module, Listener {
     private BreakSpeedCheck breakSpeed;
     private ContainerCulling containers;
     private NativeGuard natives;
+    private ClickCheck clicks;
     private BukkitTask decayTask;
 
     public AntiCheatModule(Plugin plugin) {
@@ -79,6 +80,11 @@ public class AntiCheatModule implements Module, Listener {
         positions = new PositionHistory();
         positions.start(plugin);
         Bukkit.getPluginManager().registerEvents(new CombatCheck(plugin, violations, positions), plugin);
+        // Autoclick : compté sur les paquets de swing, pas sur les coups portés
+        // (l'invulnérabilité de la cible les masquait). Voir ClickCheck.
+        this.clicks = new ClickCheck(plugin, violations);
+        Bukkit.getPluginManager().registerEvents(clicks, plugin);
+        clicks.start();
         // Mémoire commune des volées de casses (marteau 3×3) : cadence et
         // vitesse de minage jugent un coup, pas neuf blocs. Voir BreakBurst.
         this.bursts = new BreakBurst();
@@ -186,6 +192,10 @@ public class AntiCheatModule implements Module, Listener {
         if (containers != null) {
             containers.stop();
             containers = null;
+        }
+        if (clicks != null) {
+            clicks.stop();
+            clicks = null;
         }
         if (decayTask != null) {
             decayTask.cancel();
